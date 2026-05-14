@@ -117,6 +117,21 @@ npm run dev -- --port 5173
 
 ---
 
+## Workflow de desarrollo
+
+**Claude maneja todos los commits automáticamente.** Después de cada cambio de código, Claude corre `git add`, `git commit` y `git push` vía herramientas internas — no hace falta correr nada desde la terminal.
+
+### Empezar en otra computadora
+
+```bash
+git clone https://github.com/insuma/kitchen-dashboard.git
+cd kitchen-dashboard
+npm install
+npm run dev -- --port 5173
+```
+
+---
+
 ## Convenciones de commits
 
 ```
