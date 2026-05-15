@@ -9,30 +9,11 @@ import { PagosTabEnhanced } from './PagosProveedorSheet';
 import { MetricasTab } from './MetricasTab';
 import { RecetasTab, CATALOG_INSUMOS } from './RecetasTab';
 import { NuevoInsumoModal } from './NuevoInsumoModal';
-import { UsuarioConfig } from './OnboardingFlow';
+import { loadUsuarios as loadUsuariosDB, loadNegocio, loadInsumos, crearInsumo } from '../../lib/db';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface UserProfile { id: string; name: string; role: 'admin' | 'chef'; pin?: string; }
-
-function loadUsuarios(): UserProfile[] {
-  try {
-    const raw: UsuarioConfig[] = JSON.parse(localStorage.getItem('insuma_usuarios') ?? '[]');
-    return raw.map(u => ({
-      id: u.id,
-      name: u.nombre,
-      role: u.rol === 'admin' ? 'admin' : 'chef',
-      pin: u.pin,
-    }));
-  } catch { return []; }
-}
-
-function loadNombreNegocio(): string {
-  try {
-    const raw = JSON.parse(localStorage.getItem('insuma_negocio') ?? 'null');
-    return raw?.nombre ?? 'Cocina';
-  } catch { return 'Cocina'; }
-}
 
 type OrderStatus = 'waiting' | 'on_way' | 'received' | 'discrepancy' | 'paid_cash';
 type PaymentStatus = 'pending' | 'confirmed' | 'paid_digital';
@@ -955,13 +936,11 @@ export const InsumaKitchenDashboard = () => {
   const [showNuevoPedido, setShowNuevoPedido] = useState(false);
   const [showNuevoProveedor, setShowNuevoProveedor] = useState(false);
   const [showNuevoInsumo, setShowNuevoInsumo] = useState(false);
-  const [customInsumos, setCustomInsumos] = useState<{ id: string; name: string; category: string; unit: string; pricePerKg: number; provider: string }[]>(() => {
-    try { return JSON.parse(localStorage.getItem('insuma_custom_insumos') ?? '[]'); } catch { return []; }
-  });
+  const [customInsumos, setCustomInsumos] = useState<{ id: string; name: string; category: string; unit: string; pricePerKg: number; provider: string }[]>([]);
   const [showRecepcion, setShowRecepcion] = useState(false);
-  // Dynamic users & business
-  const [usuarios] = useState<UserProfile[]>(() => loadUsuarios());
-  const [negocioNombre] = useState<string>(() => loadNombreNegocio());
+  // Dynamic users & business (cargado desde Supabase)
+  const [usuarios, setUsuarios] = useState<UserProfile[]>([]);
+  const [negocioNombre, setNegocioNombre] = useState<string>('Cocina');
   const [recepcionOrderId, setRecepcionOrderId] = useState<string | undefined>(undefined);
   const [todayOrders, setTodayOrders] = useState<Order[]>(MOCK_ORDERS);
   const [providers, setProviders] = useState<Provider[]>(INITIAL_PROVIDERS);
@@ -969,10 +948,7 @@ export const InsumaKitchenDashboard = () => {
   const [alertOrderId, setAlertOrderId] = useState<string | null>(null);
   const [showBellPanel, setShowBellPanel] = useState(false);
   const [notifPermission, setNotifPermission] = useState<NotificationPermission>('default');
-  const [activeUser, setActiveUser] = useState<UserProfile>(() => {
-    const all = loadUsuarios();
-    return all.find(u => u.role === 'chef') ?? all[0] ?? { id: 'chef', name: 'Cocinero', role: 'chef' };
-  });
+  const [activeUser, setActiveUser] = useState<UserProfile>({ id: 'chef', name: 'Cocinero', role: 'chef' });
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showPinModal, setShowPinModal] = useState(false);
   const [pinInput, setPinInput] = useState('');
@@ -980,8 +956,32 @@ export const InsumaKitchenDashboard = () => {
   const [pendingAdmin, setPendingAdmin] = useState<UserProfile | null>(null);
   const swipeStartX = React.useRef<number | null>(null);
   const swipeStartY = React.useRef<number | null>(null);
+
+  // Cargar datos desde Supabase al montar
   useEffect(() => {
     if ('Notification' in window) setNotifPermission(Notification.permission);
+
+    // Cargar negocio
+    loadNegocio().then(negocio => {
+      if (negocio) setNegocioNombre(negocio.nombre);
+    });
+
+    // Cargar usuarios
+    loadUsuariosDB().then(rawUsuarios => {
+      const mapped: UserProfile[] = rawUsuarios.map(u => ({
+        id: u.id,
+        name: u.nombre,
+        role: u.rol === 'admin' ? 'admin' : 'chef',
+        pin: u.pin,
+      }));
+      setUsuarios(mapped);
+      // Usuario activo inicial = primer cocinero, o primero si no hay
+      const inicial = mapped.find(u => u.role === 'chef') ?? mapped[0];
+      if (inicial) setActiveUser(inicial);
+    });
+
+    // Cargar insumos custom
+    loadInsumos().then(insumos => setCustomInsumos(insumos));
   }, []);
   const handleRequestNotifications = useCallback(async () => {
     await requestNotificationPermission();
@@ -1455,10 +1455,15 @@ export const InsumaKitchenDashboard = () => {
       <NuevoInsumoModal
         isOpen={showNuevoInsumo}
         onClose={() => setShowNuevoInsumo(false)}
-        onInsumoCreated={insumo => {
-          const updated = [...customInsumos, insumo];
-          setCustomInsumos(updated);
-          localStorage.setItem('insuma_custom_insumos', JSON.stringify(updated));
+        onInsumoCreated={async insumo => {
+          try {
+            const saved = await crearInsumo(insumo, insumo.category === 'Descartables' ? 'apoyo' : 'ingrediente');
+            setCustomInsumos(prev => [...prev, saved]);
+          } catch (err) {
+            console.error('Error guardando insumo:', err);
+            // Fallback optimista en caso de error de red
+            setCustomInsumos(prev => [...prev, insumo]);
+          }
         }}
         catalogInsumos={CATALOG_INSUMOS}
         customInsumos={customInsumos}

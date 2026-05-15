@@ -7,27 +7,55 @@ export interface Database {
         Row: {
           id: string;
           nombre: string;
-          tipo: 'restaurante' | 'local' | 'delivery' | 'otro';
+          tipo: string;
           pais: string;
           email: string;
           created_at: string;
           updated_at: string;
         };
-        Insert: Omit<Database['public']['Tables']['negocio']['Row'], 'created_at' | 'updated_at'>;
-        Update: Partial<Database['public']['Tables']['negocio']['Insert']>;
+        Insert: {
+          id?: string;
+          nombre: string;
+          tipo: string;
+          pais: string;
+          email: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          nombre?: string;
+          tipo?: string;
+          pais?: string;
+          email?: string;
+          updated_at?: string;
+        };
       };
       usuarios: {
         Row: {
           id: string;
           negocio_id: string;
           nombre: string;
-          rol: 'admin' | 'cocinero';
+          rol: string;
           pin: string | null;
           activo: boolean;
           created_at: string;
         };
-        Insert: Omit<Database['public']['Tables']['usuarios']['Row'], 'created_at'>;
-        Update: Partial<Database['public']['Tables']['usuarios']['Insert']>;
+        Insert: {
+          id?: string;
+          negocio_id: string;
+          nombre: string;
+          rol: string;
+          pin?: string | null;
+          activo?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          nombre?: string;
+          rol?: string;
+          pin?: string | null;
+          activo?: boolean;
+        };
       };
       pedidos: {
         Row: {
@@ -35,7 +63,7 @@ export interface Database {
           negocio_id: string;
           proveedor_nombre: string;
           proveedor_id: string | null;
-          estado: 'en_espera' | 'en_camino' | 'recibido' | 'con_diferencias' | 'pago_efectivo';
+          estado: string;
           nota: string | null;
           creado_por: string | null;
           recepcionado_por: string | null;
@@ -46,8 +74,30 @@ export interface Database {
           created_at: string;
           updated_at: string;
         };
-        Insert: Omit<Database['public']['Tables']['pedidos']['Row'], 'created_at' | 'updated_at'>;
-        Update: Partial<Database['public']['Tables']['pedidos']['Insert']>;
+        Insert: {
+          id?: string;
+          negocio_id: string;
+          proveedor_nombre: string;
+          proveedor_id?: string | null;
+          estado?: string;
+          nota?: string | null;
+          creado_por?: string | null;
+          recepcionado_por?: string | null;
+          tiene_efectivo?: boolean;
+          alertas?: Json | null;
+          items?: Json;
+          total?: number | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          estado?: string;
+          nota?: string | null;
+          recepcionado_por?: string | null;
+          tiene_efectivo?: boolean;
+          alertas?: Json | null;
+          updated_at?: string;
+        };
       };
       proveedores: {
         Row: {
@@ -61,8 +111,25 @@ export interface Database {
           activo: boolean;
           created_at: string;
         };
-        Insert: Omit<Database['public']['Tables']['proveedores']['Row'], 'created_at'>;
-        Update: Partial<Database['public']['Tables']['proveedores']['Insert']>;
+        Insert: {
+          id?: string;
+          negocio_id: string;
+          nombre: string;
+          categoria?: string | null;
+          contacto?: string | null;
+          email?: string | null;
+          telefono?: string | null;
+          activo?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          nombre?: string;
+          categoria?: string | null;
+          contacto?: string | null;
+          email?: string | null;
+          telefono?: string | null;
+          activo?: boolean;
+        };
       };
       insumos: {
         Row: {
@@ -70,15 +137,33 @@ export interface Database {
           negocio_id: string;
           nombre: string;
           categoria: string;
-          unidad: 'kg' | 'lt' | 'u' | 'paq' | 'atado' | 'otro';
+          unidad: string;
           costo_por_unidad: number | null;
           proveedor_id: string | null;
-          tipo: 'ingrediente' | 'apoyo';
+          tipo: string;
           activo: boolean;
           created_at: string;
         };
-        Insert: Omit<Database['public']['Tables']['insumos']['Row'], 'created_at'>;
-        Update: Partial<Database['public']['Tables']['insumos']['Insert']>;
+        Insert: {
+          id?: string;
+          negocio_id: string;
+          nombre: string;
+          categoria?: string;
+          unidad: string;
+          costo_por_unidad?: number | null;
+          proveedor_id?: string | null;
+          tipo?: string;
+          activo?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          nombre?: string;
+          categoria?: string;
+          unidad?: string;
+          costo_por_unidad?: number | null;
+          proveedor_id?: string | null;
+          activo?: boolean;
+        };
       };
       recetas: {
         Row: {
@@ -95,8 +180,31 @@ export interface Database {
           created_at: string;
           updated_at: string;
         };
-        Insert: Omit<Database['public']['Tables']['recetas']['Row'], 'created_at' | 'updated_at'>;
-        Update: Partial<Database['public']['Tables']['recetas']['Insert']>;
+        Insert: {
+          id?: string;
+          negocio_id: string;
+          nombre: string;
+          categoria?: string | null;
+          porciones?: number;
+          precio_venta?: number | null;
+          tiempo_prep?: number | null;
+          ingredientes?: Json;
+          insumos_apoyo?: Json;
+          notas?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          nombre?: string;
+          categoria?: string | null;
+          porciones?: number;
+          precio_venta?: number | null;
+          tiempo_prep?: number | null;
+          ingredientes?: Json;
+          insumos_apoyo?: Json;
+          notas?: string | null;
+          updated_at?: string;
+        };
       };
       menus_mes: {
         Row: {
@@ -106,8 +214,17 @@ export interface Database {
           receta_ids: string[];
           created_at: string;
         };
-        Insert: Omit<Database['public']['Tables']['menus_mes']['Row'], 'created_at'>;
-        Update: Partial<Database['public']['Tables']['menus_mes']['Insert']>;
+        Insert: {
+          id?: string;
+          negocio_id: string;
+          label: string;
+          receta_ids?: string[];
+          created_at?: string;
+        };
+        Update: {
+          label?: string;
+          receta_ids?: string[];
+        };
       };
     };
     Views: Record<string, never>;

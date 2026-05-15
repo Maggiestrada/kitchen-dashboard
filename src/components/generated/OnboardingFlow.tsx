@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, ChefHat, Store, Truck, MoreHorizontal, X, Check, User, Lock } from 'lucide-react';
+import { ArrowLeft, ChefHat, Store, Truck, MoreHorizontal, X, Check, User, Lock, Loader2 } from 'lucide-react';
+import { guardarOnboarding } from '../../lib/db';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -228,17 +229,27 @@ export const OnboardingFlow: React.FC<{ onComplete: () => void }> = ({ onComplet
   const cocineros = usuarios.filter(u => u.rol === 'cocinero');
   const admins = usuarios.filter(u => u.rol === 'admin');
 
-  const handleEmpezar = () => {
+  const [guardando, setGuardando] = useState(false);
+  const [errorGuardar, setErrorGuardar] = useState<string | null>(null);
+
+  const handleEmpezar = async () => {
+    setGuardando(true);
+    setErrorGuardar(null);
     const negocio: NegocioConfig = {
       nombre: nombreNegocio.trim(),
       tipo: tipoNegocio as NegocioConfig['tipo'],
       pais,
       email: email.trim(),
     };
-    localStorage.setItem('insuma_negocio', JSON.stringify(negocio));
-    localStorage.setItem('insuma_usuarios', JSON.stringify(usuarios));
-    localStorage.setItem('insuma_onboarding_ok', '1');
-    onComplete();
+    try {
+      await guardarOnboarding(negocio, usuarios);
+      onComplete();
+    } catch (err) {
+      console.error(err);
+      setErrorGuardar('Hubo un error al guardar. Revisá tu conexión e intentá de nuevo.');
+    } finally {
+      setGuardando(false);
+    }
   };
 
   const canContinueStep3 = email.trim().includes('@');
@@ -475,14 +486,21 @@ export const OnboardingFlow: React.FC<{ onComplete: () => void }> = ({ onComplet
                 {!canEmpezar && (
                   <p className="text-xs text-neutral-400 text-center">Agregá al menos un usuario para continuar</p>
                 )}
+                {errorGuardar && (
+                  <p className="text-xs text-red-500 text-center">{errorGuardar}</p>
+                )}
               </div>
 
               <button
                 onClick={handleEmpezar}
-                disabled={!canEmpezar}
-                className="w-full bg-black text-white rounded-2xl py-4 text-sm font-medium active:scale-[0.98] transition-all disabled:opacity-30 mt-6"
+                disabled={!canEmpezar || guardando}
+                className="w-full bg-black text-white rounded-2xl py-4 text-sm font-medium active:scale-[0.98] transition-all disabled:opacity-30 mt-6 flex items-center justify-center gap-2"
               >
-                Empezar 🚀
+                {guardando ? (
+                  <><Loader2 size={16} className="animate-spin" /> Guardando...</>
+                ) : (
+                  'Empezar 🚀'
+                )}
               </button>
             </motion.div>
           )}
