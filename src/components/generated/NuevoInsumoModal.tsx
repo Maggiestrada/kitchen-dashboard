@@ -30,6 +30,7 @@ interface NuevoInsumoModalProps {
   onInsumoCreated: (insumo: Insumo) => void;
   catalogInsumos: Insumo[];
   customInsumos: Insumo[];
+  proveedores: string[];
 }
 
 type SheetView = 'catalog' | 'create';
@@ -37,7 +38,8 @@ type SheetView = 'catalog' | 'create';
 const CreateForm: React.FC<{
   onBack: () => void;
   onSave: (insumo: Insumo) => void;
-}> = ({ onBack, onSave }) => {
+  proveedores: string[];
+}> = ({ onBack, onSave, proveedores }) => {
   const [tipo, setTipo] = useState<'ingrediente' | 'apoyo'>('ingrediente');
   const [nombre, setNombre] = useState('');
   const [categoria, setCategoria] = useState(INGREDIENTE_CATEGORIES[0]);
@@ -45,6 +47,7 @@ const CreateForm: React.FC<{
   const [proveedor, setProveedor] = useState('');
   const [showUnitPicker, setShowUnitPicker] = useState(false);
   const [showCategoriaPicker, setShowCategoriaPicker] = useState(false);
+  const [showProveedorPicker, setShowProveedorPicker] = useState(false);
   const [error, setError] = useState('');
 
   const handleSave = () => {
@@ -195,13 +198,37 @@ const CreateForm: React.FC<{
         {/* Proveedor (requerido) */}
         <div>
           <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-2">Proveedor</p>
-          <input
-            type="text"
-            value={proveedor}
-            onChange={e => { setProveedor(e.target.value); setError(''); }}
-            placeholder="Nombre del proveedor…"
-            className={`w-full bg-neutral-50 border rounded-xl px-3.5 py-3 text-sm text-black outline-none placeholder-neutral-400 focus:border-neutral-400 transition-colors ${error && !proveedor.trim() ? 'border-red-300' : 'border-neutral-200'}`}
-          />
+          <button
+            onClick={() => { setShowProveedorPicker(v => !v); setError(''); }}
+            className={`w-full flex items-center justify-between bg-neutral-50 border rounded-xl px-3.5 py-3 active:scale-[0.99] transition-transform ${error && !proveedor ? 'border-red-300' : 'border-neutral-200'}`}
+          >
+            <span className={`text-sm ${proveedor ? 'text-black' : 'text-neutral-400'}`}>
+              {proveedor || 'Seleccioná un proveedor…'}
+            </span>
+            <ChevronDown size={14} className={`text-neutral-400 transition-transform ${showProveedorPicker ? 'rotate-180' : ''}`} />
+          </button>
+          <AnimatePresence>
+            {showProveedorPicker && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="overflow-hidden"
+              >
+                <div className="mt-1.5 bg-white border border-neutral-200 rounded-xl overflow-hidden shadow-sm">
+                  {proveedores.map(p => (
+                    <button
+                      key={p}
+                      onClick={() => { setProveedor(p); setShowProveedorPicker(false); }}
+                      className={`w-full text-left px-4 py-3 text-sm border-b border-neutral-50 last:border-0 transition-colors ${proveedor === p ? 'bg-black text-white' : 'text-black active:bg-neutral-50'}`}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {error && (
@@ -227,6 +254,7 @@ export const NuevoInsumoModal: React.FC<NuevoInsumoModalProps> = ({
   onInsumoCreated,
   catalogInsumos,
   customInsumos,
+  proveedores,
 }) => {
   const [view, setView] = useState<SheetView>('catalog');
   const [search, setSearch] = useState('');
@@ -383,7 +411,7 @@ export const NuevoInsumoModal: React.FC<NuevoInsumoModalProps> = ({
                   transition={{ duration: 0.18 }}
                   className="flex flex-col flex-1 min-h-0"
                 >
-                  <CreateForm onBack={() => setView('catalog')} onSave={handleCreated} />
+                  <CreateForm onBack={() => setView('catalog')} onSave={handleCreated} proveedores={proveedores} />
                 </motion.div>
               )}
             </AnimatePresence>
