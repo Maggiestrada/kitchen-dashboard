@@ -7,7 +7,8 @@ import { ProveedorPerfilSheet } from './ProveedorPerfilSheet';
 import { RecepcionPedidoModal } from './RecepcionPedidoModal';
 import { PagosTabEnhanced } from './PagosProveedorSheet';
 import { MetricasTab } from './MetricasTab';
-import { RecetasTab } from './RecetasTab';
+import { RecetasTab, CATALOG_INSUMOS } from './RecetasTab';
+import { NuevoInsumoModal } from './NuevoInsumoModal';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -936,6 +937,10 @@ export const InsumaKitchenDashboard = () => {
   const [activeTab, setActiveTab] = useState('home');
   const [showNuevoPedido, setShowNuevoPedido] = useState(false);
   const [showNuevoProveedor, setShowNuevoProveedor] = useState(false);
+  const [showNuevoInsumo, setShowNuevoInsumo] = useState(false);
+  const [customInsumos, setCustomInsumos] = useState<{ id: string; name: string; category: string; unit: string; pricePerKg: number; provider: string }[]>(() => {
+    try { return JSON.parse(localStorage.getItem('insuma_custom_insumos') ?? '[]'); } catch { return []; }
+  });
   const [showRecepcion, setShowRecepcion] = useState(false);
   const [recepcionOrderId, setRecepcionOrderId] = useState<string | undefined>(undefined);
   const [todayOrders, setTodayOrders] = useState<Order[]>(MOCK_ORDERS);
@@ -1234,7 +1239,7 @@ export const InsumaKitchenDashboard = () => {
       }} className="px-4 pt-4 space-y-4">
             <section>
               <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-[0.16em] mb-2">Accesos rápidos</p>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 <button onClick={() => setShowNuevoPedido(true)} className="bg-black text-white p-4 rounded-2xl flex flex-col items-start gap-3 active:scale-95 transition-transform">
                   <div className="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center"><Plus size={18} strokeWidth={1.75} /></div>
                   <span className="font-light text-sm leading-tight tracking-wide">Nuevo<br />Pedido</span>
@@ -1242,6 +1247,10 @@ export const InsumaKitchenDashboard = () => {
                 <button onClick={() => setShowRecepcion(true)} className="bg-neutral-50 border border-neutral-100 text-neutral-800 p-4 rounded-2xl flex flex-col items-start gap-3 active:scale-95 transition-transform">
                   <div className="w-8 h-8 rounded-xl bg-neutral-200 flex items-center justify-center"><Truck size={18} strokeWidth={1.75} className="text-neutral-600" /></div>
                   <span className="font-light text-sm leading-tight tracking-wide text-neutral-800">Recepcionar</span>
+                </button>
+                <button onClick={() => setShowNuevoInsumo(true)} className="bg-neutral-50 border border-neutral-100 text-neutral-800 p-4 rounded-2xl flex flex-col items-start gap-3 active:scale-95 transition-transform">
+                  <div className="w-8 h-8 rounded-xl bg-neutral-200 flex items-center justify-center"><Package size={18} strokeWidth={1.75} className="text-neutral-600" /></div>
+                  <span className="font-light text-sm leading-tight tracking-wide text-neutral-800">Insumo<br />Nuevo</span>
                 </button>
               </div>
             </section>
@@ -1358,7 +1367,7 @@ export const InsumaKitchenDashboard = () => {
         {activeTab === 'alertas' && <AlertasTab orders={todayOrders} onResolve={handleResolveAlert} />}
         {activeTab === 'recibidos' && <RecibidosTab orders={todayOrders} />}
         {activeTab === 'pagos' && <PagosTabEnhanced orders={todayOrders} onConfirmCash={handleConfirmCash} onPayDigital={handlePayDigital} onUpdateBillingDiscrepancy={handleUpdateBillingDiscrepancy} canView={activeUser.role === 'admin'} />}
-        {activeTab === 'recetas' && <RecetasTab canViewCosts={activeUser.role === 'admin'} />}
+        {activeTab === 'recetas' && <RecetasTab canViewCosts={activeUser.role === 'admin'} customInsumos={customInsumos} />}
         {activeTab === 'metricas' && <MetricasTab />}
 
       </main>
@@ -1417,6 +1426,17 @@ export const InsumaKitchenDashboard = () => {
       </nav>
 
       {/* Modals */}
+      <NuevoInsumoModal
+        isOpen={showNuevoInsumo}
+        onClose={() => setShowNuevoInsumo(false)}
+        onInsumoCreated={insumo => {
+          const updated = [...customInsumos, insumo];
+          setCustomInsumos(updated);
+          localStorage.setItem('insuma_custom_insumos', JSON.stringify(updated));
+        }}
+        catalogInsumos={CATALOG_INSUMOS}
+        customInsumos={customInsumos}
+      />
       <NuevoPedidoModal isOpen={showNuevoPedido} onClose={() => setShowNuevoPedido(false)} onOrderCreated={handleOrderCreated} />
       <NuevoProveedorModal isOpen={showNuevoProveedor} onClose={() => setShowNuevoProveedor(false)} onProveedorCreated={handleProveedorCreated} />
       <ProveedorPerfilSheet proveedor={selectedProveedor} isOpen={selectedProveedor !== null} onClose={() => setSelectedProveedor(null)} onNuevoPedido={() => {

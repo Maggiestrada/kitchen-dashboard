@@ -66,6 +66,7 @@ interface Receta {
   precioVenta?: number;
   ingredientesExtra?: ExtraItem[];
   horasManoObra?: number;
+  rindeGramos?: number;
   createdAt: string;
 }
 
@@ -162,7 +163,7 @@ function foodCostBg(pct: number): string {
 
 // ─── Catalog ──────────────────────────────────────────────────────────────────
 
-const CATALOG_INSUMOS: Insumo[] = [
+export const CATALOG_INSUMOS: Insumo[] = [
   { id: 'ins-01', name: 'Lomo vacuno', category: 'Carnes', unit: 'kg', pricePerKg: 3800, provider: 'Frigorífico Central' },
   { id: 'ins-02', name: 'Bife de chorizo', category: 'Carnes', unit: 'kg', pricePerKg: 3200, provider: 'Frigorífico Central' },
   { id: 'ins-03', name: 'Pollo entero', category: 'Carnes', unit: 'kg', pricePerKg: 1200, provider: 'Frigorífico Central' },
@@ -658,6 +659,7 @@ const RecetaForm = ({
   const [ingredientes, setIngredientes] = useState<RecetaIngrediente[]>(initial?.ingredientes ?? []);
   const [ingredientesExtra, setIngredientesExtra] = useState<ExtraItem[]>(initial?.ingredientesExtra ?? []);
   const [horasManoObra, setHorasManoObra] = useState(initial?.horasManoObra ?? 0);
+  const [rindeGramos, setRindeGramos] = useState<number | ''>(initial?.rindeGramos ?? '');
   const [tarifaHora] = useState(() => getTarifaHora());
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -671,6 +673,7 @@ const RecetaForm = ({
       setIngredientes(initial?.ingredientes ?? []);
       setIngredientesExtra(initial?.ingredientesExtra ?? []);
       setHorasManoObra(initial?.horasManoObra ?? 0);
+      setRindeGramos(initial?.rindeGramos ?? '');
     }
   }, [isOpen]);
 
@@ -721,6 +724,7 @@ const RecetaForm = ({
       precioVenta: initial?.precioVenta,
       ingredientesExtra,
       horasManoObra,
+      rindeGramos: rindeGramos !== '' ? Number(rindeGramos) : undefined,
       createdAt: initial?.createdAt ?? 'ahora',
     });
     onClose();
@@ -815,6 +819,26 @@ const RecetaForm = ({
                   </button>
                 </div>
               </div>
+            </div>
+
+            {/* Rinde total */}
+            <div>
+              <label className="text-[10px] uppercase tracking-widest text-neutral-400 font-normal block mb-1.5">Rinde total <span className="normal-case font-normal text-neutral-300">(opcional)</span></label>
+              <div className="flex items-center gap-1.5 bg-neutral-50 border border-neutral-200 rounded-xl px-3.5 py-2.5">
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  value={rindeGramos}
+                  onChange={e => setRindeGramos(e.target.value === '' ? '' : Number(e.target.value))}
+                  placeholder="Ej: 1200"
+                  className="flex-1 bg-transparent text-sm text-black outline-none tabular-nums placeholder-neutral-400"
+                  style={{ MozAppearance: 'textfield' } as React.CSSProperties}
+                />
+                <span className="text-sm text-neutral-400">g</span>
+              </div>
+              {rindeGramos !== '' && porciones > 0 && (
+                <p className="text-[11px] text-neutral-400 mt-1">{Math.round(Number(rindeGramos) / porciones)} g por porción</p>
+              )}
             </div>
 
             {/* Ingredientes */}
@@ -1276,7 +1300,12 @@ const RecetaDetailView = ({
                 {receta.categoria}
               </span>
               <h1 className="text-3xl font-light text-black leading-tight tracking-wide">{receta.nombre}</h1>
-              <p className="text-sm text-neutral-400 mt-1">{receta.porciones} {receta.porciones === 1 ? 'porción' : 'porciones'}</p>
+              <p className="text-sm text-neutral-400 mt-1">
+                {receta.porciones * multiplicador} {receta.porciones * multiplicador === 1 ? 'porción' : 'porciones'}
+                {receta.rindeGramos && receta.porciones > 0
+                  ? ` · ${Math.round(receta.rindeGramos * multiplicador / receta.porciones)} g c/u`
+                  : null}
+              </p>
             </div>
 
             {/* Scaling banner */}
@@ -1835,11 +1864,11 @@ const FoodCostRow = ({
 
 // ─── RecetasTab ───────────────────────────────────────────────────────────────
 
-export const RecetasTab: React.FC<{ canViewCosts?: boolean }> = ({ canViewCosts = true }) => {
+export const RecetasTab: React.FC<{ canViewCosts?: boolean; customInsumos?: Insumo[] }> = ({ canViewCosts = true, customInsumos }) => {
   const [activeTab, setActiveTab] = useState<'recetario' | 'subrecetas' | 'foodcost'>('recetario');
   const [recetas, setRecetas] = useState<Receta[]>(INITIAL_RECETAS);
   const [subRecetas, setSubRecetas] = useState<SubReceta[]>(INITIAL_SUBRECETAS);
-  const insumos = CATALOG_INSUMOS;
+  const insumos = React.useMemo(() => [...CATALOG_INSUMOS, ...(customInsumos ?? [])], [customInsumos]);
   const [showCosts, setShowCosts] = useState(false);
   const effectiveShowCosts = canViewCosts && showCosts;
   // Search bars
