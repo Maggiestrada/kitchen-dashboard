@@ -50,86 +50,113 @@ export async function guardarOnboarding(
   negocio: NegocioConfig,
   usuarios: UsuarioConfig[]
 ): Promise<{ negocioId: string }> {
-  // 1. Insertar negocio
-  const { data: negocioData, error: negocioError } = await supabase
-    .from('negocio')
-    .insert({
-      id: crypto.randomUUID(),
-      nombre: negocio.nombre,
-      tipo: negocio.tipo,
-      pais: negocio.pais,
-      email: negocio.email,
-    })
-    .select('id')
-    .single();
+  const negocioId = crypto.randomUUID();
 
-  if (negocioError || !negocioData) {
-    throw new Error(`Error guardando negocio: ${negocioError?.message}`);
+  // Guardar siempre en localStorage como fuente de verdad local
+  localStorage.setItem('insuma_negocio', JSON.stringify(negocio));
+  localStorage.setItem('insuma_usuarios', JSON.stringify(usuarios));
+
+  // Intentar guardar en Supabase (sin bloquear si falla)
+  try {
+    const { data: negocioData, error: negocioError } = await supabase
+      .from('negocio')
+      .insert({
+        id: negocioId,
+        nombre: negocio.nombre,
+        tipo: negocio.tipo,
+        pais: negocio.pais,
+        email: negocio.email,
+      })
+      .select('id')
+      .single();
+
+    if (!negocioError && negocioData) {
+      const remoteId = negocioData.id;
+
+      const usuariosInsert = usuarios.map(u => ({
+        id: u.id,
+        negocio_id: remoteId,
+        nombre: u.nombre,
+        rol: u.rol,
+        pin: u.pin ?? null,
+        activo: true,
+      }));
+
+      await supabase.from('usuarios').insert(usuariosInsert);
+      setNegocioId(remoteId);
+    } else {
+      // Supabase no disponible — usar ID local
+      setNegocioId(negocioId);
+    }
+  } catch {
+    // Sin conexión — continuar con localStorage
+    setNegocioId(negocioId);
   }
 
-  const negocioId = negocioData.id;
-
-  // 2. Insertar usuarios
-  const usuariosInsert = usuarios.map(u => ({
-    id: u.id,
-    negocio_id: negocioId,
-    nombre: u.nombre,
-    rol: u.rol,
-    pin: u.pin ?? null,
-    activo: true,
-  }));
-
-  const { error: usuariosError } = await supabase
-    .from('usuarios')
-    .insert(usuariosInsert);
-
-  if (usuariosError) {
-    throw new Error(`Error guardando usuarios: ${usuariosError.message}`);
-  }
-
-  // 3. Guardar referencia local
-  setNegocioId(negocioId);
   localStorage.setItem('insuma_onboarding_ok', '1');
-
   return { negocioId };
 }
 
 // ─── Cargar negocio ───────────────────────────────────────────────────────────
 
 export async function loadNegocio(): Promise<NegocioConfig | null> {
+  // Intentar desde Supabase
   const negocioId = getNegocioId();
-  if (!negocioId) return null;
+  if (negocioId) {
+    try {
+      const { data, error } = await supabase
+        .from('negocio')
+        .select('nombre, tipo, pais, email')
+        .eq('id', negocioId)
+        .single();
+      if (!error && data) return data as NegocioConfig;
+    } catch { /* fallback */ }
+  }
 
-  const { data, error } = await supabase
-    .from('negocio')
-    .select('nombre, tipo, pais, email')
-    .eq('id', negocioId)
-    .single();
+  // Fallback a localStorage
+  try {
+    const local = localStorage.getItem('insuma_negocio');
+    if (local) return JSON.parse(local) as NegocioConfig;
+  } catch { /* ignore */ }
 
-  if (error || !data) return null;
-  return data as NegocioConfig;
+  return null;
 }
 
 // ─── Cargar usuarios ──────────────────────────────────────────────────────────
 
 export async function loadUsuarios(): Promise<UsuarioConfig[]> {
+  // Intentar desde Supabase
   const negocioId = getNegocioId();
-  if (!negocioId) return [];
+  if (negocioId) {
+    try {
+      const { data, error } = await supabase
+        .from('usuarios')
+        .select('id, nombre, rol, pin')
+        .eq('negocio_id', negocioId)
+        .eq('activo', true)
+        .order('created_at');
 
-  const { data, error } = await supabase
-    .from('usuarios')
-    .select('id, nombre, rol, pin')
-    .eq('negocio_id', negocioId)
-    .eq('activo', true)
-    .order('created_at');
+      if (!error && data && data.length > 0) {
+        return data.map(u => ({
+          id: u.id,
+          nombre: u.nombre,
+          rol: u.rol as 'admin' | 'cocinero',
+          pin: u.pin ?? undefined,
+        }));
+      }
+    } catch { /* fallback */ }
+  }
 
-  if (error || !data) return [];
-  return data.map(u => ({
-    id: u.id,
-    nombre: u.nombre,
-    rol: u.rol as 'admin' | 'cocinero',
-    pin: u.pin ?? undefined,
-  }));
+  // Fallback a localStorage
+  try {
+    const local = localStorage.getItem('insuma_usuarios');
+    if (local) {
+      const arr = JSON.parse(local);
+      if (Array.isArray(arr) && arr.length > 0) return arr as UsuarioConfig[];
+    }
+  } catch { /* ignore */ }
+
+  return [];
 }
 
 // ─── Insumos custom ───────────────────────────────────────────────────────────
