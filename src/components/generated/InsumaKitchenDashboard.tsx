@@ -962,14 +962,29 @@ export const InsumaKitchenDashboard = () => {
   useEffect(() => {
     if ('Notification' in window) setNotifPermission(Notification.permission);
 
-    // Cargar negocio
+    // Cargar negocio — Supabase primero, fallback a localStorage
     loadNegocio().then(negocio => {
-      if (negocio) setNegocioNombre(negocio.nombre);
+      if (negocio) {
+        setNegocioNombre(negocio.nombre);
+      } else {
+        try {
+          const local = JSON.parse(localStorage.getItem('insuma_negocio') ?? 'null');
+          if (local?.nombre) setNegocioNombre(local.nombre);
+        } catch { /* ignore */ }
+      }
     });
 
-    // Cargar usuarios
+    // Cargar usuarios — Supabase primero, fallback a localStorage
     loadUsuariosDB().then(rawUsuarios => {
-      const mapped: UserProfile[] = rawUsuarios.map(u => ({
+      let source = rawUsuarios;
+      // Fallback: si Supabase no devuelve usuarios, leer de localStorage
+      if (source.length === 0) {
+        try {
+          const local = JSON.parse(localStorage.getItem('insuma_usuarios') ?? '[]');
+          if (Array.isArray(local) && local.length > 0) source = local;
+        } catch { /* ignore */ }
+      }
+      const mapped: UserProfile[] = source.map((u: { id: string; nombre: string; rol: string; pin?: string }) => ({
         id: u.id,
         name: u.nombre,
         role: u.rol === 'admin' ? 'admin' : 'chef',
