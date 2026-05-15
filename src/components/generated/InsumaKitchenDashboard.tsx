@@ -74,12 +74,79 @@ interface Provider {
   category: string;
   isOrganic?: boolean;
   lastOrderDate?: string;
+  telefono?: string;
+  nombreVentas?: string;
+  email?: string;
+  alias?: string;
+  cbu?: string;
+  cuit?: string;
+  diasEntrega?: string[];
+  plazoPago?: string;
 }
 
 // ─── Static Data ──────────────────────────────────────────────────────────────
 
 const MOCK_ORDERS: Order[] = [];
-const INITIAL_PROVIDERS: Provider[] = [];
+const INITIAL_PROVIDERS: Provider[] = [
+  { id: 'e8ccfe93', name: 'Zuccardi', category: 'Bebidas', telefono: '+5491165310391', nombreVentas: 'Sergio / fernanda doll', email: 'sarregui@familiazuccardi.com', cuit: '30-51787491-0', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'], plazoPago: '15 días' },
+  { id: 'prov1', name: 'Fura', category: 'Carnes', telefono: '+5491156937934', nombreVentas: 'Ariel', email: 'comprobantesfura@gmail.com', cuit: '3694464056', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'], plazoPago: '7 días' },
+  { id: 'prov2', name: 'Santo berraco', category: 'Carnes', telefono: '+5491122506002', nombreVentas: 'Santo berraco', email: 'santoberraco@gmail.com', cbu: '0070028320000009570717', cuit: '30716480719', diasEntrega: ['Lun', 'Mié'], plazoPago: '7 días' },
+  { id: 'prov3', name: 'Cocorokeen', category: 'Bebidas', telefono: '+5491170040501', cuit: '30-71421721-2', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'] },
+  { id: 'prov4', name: 'Patricia Graffer', category: 'Verduras', telefono: '+5492226472711', nombreVentas: 'Patricia Graffer', diasEntrega: ['Mié'] },
+  { id: 'prov5', name: 'The grocery', category: 'Verduras', telefono: '+5491167083458', nombreVentas: 'Daniel central', email: 'thegrocerypalermo@gmail.com', alias: 'thegrocery-distribu', cbu: '000003100020299695455', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'], plazoPago: '7 días' },
+  { id: 'a4eb5955', name: '4 estaciones', category: 'Verduras', telefono: '+5491150496176', nombreVentas: 'Pablo bonano', email: 'bolsonorganicoentucasa@gmail.com', alias: '4estaciones.producto', cbu: '0720084788000002275404', cuit: '20-27282431-3', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'], plazoPago: '7 días' },
+  { id: 'prov6', name: 'Gabi verduleria', category: 'Verduras', telefono: '+5491136294534' },
+  { id: 'prov7', name: 'Barrio chino', category: 'Verduras', telefono: '+5491140969494', nombreVentas: 'Mari', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'] },
+  { id: 'prov8', name: 'Kaiken', category: 'Bebidas', telefono: '+5491167073332' },
+  { id: 'prov9', name: 'Adrian huevos', category: 'Lácteos', telefono: '+5491165461043', nombreVentas: 'Adrian Alejandro Cambón', alias: 'PERRO.TEATRO.GROSOR', cbu: '00702418 30004017164628', cuit: '20267604062', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'], plazoPago: '7 días' },
+  { id: 'prov10', name: 'Coppola', category: 'Bebidas', telefono: '+5491165462877', nombreVentas: 'Nadia', cbu: '19100506-55005000934546', cuit: '20-17367047-9', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'] },
+  { id: 'prov11', name: 'Soleil', category: 'Almacén', telefono: '+5491128324242', nombreVentas: 'Sol', alias: 'LE.SOLEIL', cbu: '0720476488000000166036', cuit: '2728 44 73 510', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'], plazoPago: '7 días' },
+  { id: 'prov12', name: 'Quilmes', category: 'Bebidas', telefono: '+5491135810054', nombreVentas: 'Gonzalo casco' },
+  { id: 'prov13', name: 'Criollo', category: 'Carnes', telefono: '+5491163512001', nombreVentas: 'Juan Pablo', cbu: '1910057555005702004132', cuit: '30-70887901-7', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'], plazoPago: '1 días' },
+  { id: 'prov14', name: 'alyser', category: 'Otros', telefono: '+5491164872924', nombreVentas: 'Belen' },
+  { id: 'prov15', name: 'La chacrita', category: 'Carnes', telefono: '+5493468524428', nombreVentas: 'La chacrita', alias: 'alcaparra.pecan', cbu: '0150501601000201164397', cuit: '20-25537629-3', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'], plazoPago: '7 días' },
+  { id: 'prov16', name: 'Juan grande', category: 'Otros', telefono: '+5491160211545', nombreVentas: 'Ignacio grande', diasEntrega: ['Jue'], plazoPago: '10 días' },
+  { id: 'prov17', name: 'la meson', category: 'Otros', telefono: '+5491155608565', nombreVentas: 'La meson', alias: 'LOMO.MARCO.PIOLA', cbu: '00700221-20000004018937', cuit: '3070 82 48 238', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'], plazoPago: '1 días' },
+  { id: 'prov18', name: 'arrivata', category: 'Verduras', diasEntrega: ['Mar'] },
+  { id: 'prov19', name: 'ventigmilia', category: 'Otros', telefono: '+5492995573637', nombreVentas: 'kiara', email: 'ventas@queseriaventimiglia.com.ar', cbu: '2590103810349036610070', cuit: '30-71038353-3', diasEntrega: ['Vie', 'Sáb'] },
+  { id: 'prov20', name: 'molino cerillo', category: 'Almacén', telefono: '+5493875161190', nombreVentas: 'Facundo', alias: 'MOLINO.CERRILLOS.DP', cbu: '2850121130094198134361', cuit: '30-71126903-3', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'], plazoPago: '3 días' },
+  { id: 'prov21', name: 'miguel simone', category: 'Carnes', nombreVentas: 'casa grippo' },
+  { id: 'prov22', name: 'Fer hara', category: 'Otros', nombreVentas: 'Fernando hara' },
+  { id: 'prov23', name: 'bapan', category: 'Almacén', telefono: '+5491132347280', nombreVentas: 'Jose Ambuchástegui', alias: 'Bapan.Harina.Organic', cbu: '0720210288000037121886', cuit: '20-22503650-1', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'], plazoPago: '7 días' },
+  { id: 'prov24', name: 'Pampas rice', category: 'Almacén', telefono: '+5491132440055', nombreVentas: 'Federico Fernandez', alias: 'CELDA.FINCA.METRO', cbu: '0070058020000006647937', cuit: '30-71799558-5', diasEntrega: ['Mar', 'Mié', 'Jue', 'Vie'], plazoPago: '10 días' },
+  { id: 'prov25', name: 'Cuervo', category: 'Carnes', telefono: '+5491140869149', nombreVentas: 'Agustin chino', cuit: '30-71548552-0', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'] },
+  { id: 'prov26', name: 'J.D fish art', category: 'Pescados', telefono: '+5491135484954', nombreVentas: 'Jorge Dominguez' },
+  { id: 'prov27', name: 'Pulpo patagonico', category: 'Pescados', telefono: '+5492804597670', nombreVentas: 'Gonzalo Colipi' },
+  { id: 'prov28', name: 'Hernan viva', category: 'Otros', telefono: '+5492234567446', nombreVentas: 'Hernan' },
+  { id: 'prov29', name: 'Gaby Leña', category: 'Otros', telefono: '+5491151340157', nombreVentas: 'Gaby', alias: 'escudo.soga.cal', cbu: '0340142808710047584015', cuit: '2011 27 98 251', plazoPago: '2 días' },
+  { id: 'prov30', name: 'kamado', category: 'Otros', telefono: '+5491158539717', nombreVentas: 'luciana', cuit: '30-70959917-4', plazoPago: '30 días' },
+  { id: 'prov31', name: 'JMS', category: 'Almacén', telefono: '+5491166797241', nombreVentas: 'JMS', alias: 'ARROYO.MUSA.CENTRO', cbu: '0070007820000014273188', cuit: '30-70298442-0', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'] },
+  { id: 'prov32', name: 'Moop', category: 'Almacén', telefono: '+5491169703452', nombreVentas: 'Ann', cuit: '20-23678865-3', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'], plazoPago: '15 días' },
+  { id: 'prov33', name: 'Casa thames', category: 'Almacén', telefono: '+5491166541474', nombreVentas: 'Greta', alias: 'CLPLimpieza1', cbu: '1910006355000606806332', cuit: '3069 45 92 526', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'], plazoPago: '7 días' },
+  { id: 'prov34', name: 'Morgade', category: 'Bebidas', diasEntrega: ['Lun'] },
+  { id: 'prov35', name: 'Coca cola', category: 'Bebidas' },
+  { id: 'prov36', name: 'AQA', category: 'Bebidas', telefono: '+5491133972317', nombreVentas: 'Nicolas Portillo' },
+  { id: 'prov37', name: 'Elephant Wines', category: 'Bebidas', telefono: '+5491140426066', nombreVentas: 'Sebastián López' },
+  { id: 'prov38', name: 'Jarilla Wines', category: 'Bebidas', telefono: '+5491141988049', nombreVentas: 'Juan Ferrarotti', cuit: '30-71688148-9', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'], plazoPago: '30 días' },
+  { id: 'prov39', name: 'Verum Patagonia', category: 'Bebidas', telefono: '+5491150951600', nombreVentas: 'Catalina Uriburu', email: 'uriburu.cata@gmail.com', cuit: '30-71645252-9', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'], plazoPago: '30 días' },
+  { id: 'prov40', name: 'San Pedro de Yacochuya', category: 'Bebidas', telefono: '+5491150951600', nombreVentas: 'Catalina Uriburu', email: 'uriburu.cata@gmail.com', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'], plazoPago: '30 días' },
+  { id: 'prov41', name: 'Establecimiento Humberto Canale', category: 'Bebidas', telefono: '+5491150951600', nombreVentas: 'Catalina Uriburu', email: 'uriburu.cata@gmail.com', cuit: '33-50210468-9', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'], plazoPago: '30 días' },
+  { id: 'prov42', name: 'El Garage de Aldo', category: 'Bebidas', telefono: '+5491125537053', nombreVentas: 'Carolina Lopez Bueno', cuit: '33-71275220-9', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'], plazoPago: '30 días' },
+  { id: 'prov43', name: 'Rocamadre Wines', category: 'Bebidas', nombreVentas: 'Juanfa Suares', email: 'vinosrocamadre@gmail.com', cuit: '30-71775285-2' },
+  { id: 'prov44', name: 'Casa de Uco', category: 'Bebidas', telefono: '+5491150951600', nombreVentas: 'Catalina Uriburu', email: 'uriburu.cata@gmail.com' },
+  { id: 'prov45', name: 'El Porvenir', category: 'Bebidas', telefono: '+5491130391384', nombreVentas: 'Daniel Davila', cuit: '3070043629', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'], plazoPago: '30 días' },
+  { id: 'prov46', name: 'Catena Zapata', category: 'Bebidas', telefono: '+5491168840990', nombreVentas: 'Patricia Haux', cuit: '30-50258442-8', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'], plazoPago: '30 días' },
+  { id: 'prov47', name: 'Grupo Avinea', category: 'Bebidas', telefono: '+5491156605268', nombreVentas: 'Andrea Techera', email: 'andrea.techera@grupoavinea.com', cuit: '30-56065543-2', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'], plazoPago: '60 días' },
+  { id: 'prov48', name: 'Chacra', category: 'Bebidas', telefono: '+5492984415032', nombreVentas: 'Rocio Morales', cuit: '30-71859831-8', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'] },
+  { id: 'prov49', name: 'El Gallo Wines', category: 'Bebidas', telefono: '+5491150951600', nombreVentas: 'Catalina Uriburu', email: 'uriburu.cata@gmail.com', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'], plazoPago: '30 días' },
+  { id: 'prov50', name: 'Vinandina', category: 'Bebidas', nombreVentas: 'Vinandina', cuit: '30-71705674-0' },
+  { id: 'prov51', name: 'Punto', category: 'Otros', telefono: '+5491133578389', nombreVentas: 'Alma Cabral', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'], plazoPago: '30 días' },
+  { id: 'prov52', name: 'Grand Cru', category: 'Bebidas', telefono: '+5491152499975', nombreVentas: 'Alberto Levi', cuit: '30-70202681-0', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'] },
+  { id: 'prov53', name: 'Aurea', category: 'Bebidas', telefono: '+5491133578389', nombreVentas: 'Alma Cabral', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'], plazoPago: '30 días' },
+  { id: 'prov54', name: 'Vinicult', category: 'Bebidas', telefono: '+5491169012375', nombreVentas: 'Rodrigo Calderon', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'], plazoPago: '30 días' },
+  { id: 'prov55', name: 'Finca Sophenia', category: 'Bebidas', telefono: '+5491160479400', nombreVentas: 'Eugenia Luka', cuit: '30-69439267-5', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'], plazoPago: '30 días' },
+  { id: 'prov56', name: 'Achaval Ferrer', category: 'Bebidas', telefono: '+5491150951600', nombreVentas: 'Catalina Uriburu', email: 'uriburu.cata@gmail.com', cuit: '30-70086601-3', plazoPago: '45 días' },
+];
 
 // ─── Status helpers ───────────────────────────────────────────────────────────
 

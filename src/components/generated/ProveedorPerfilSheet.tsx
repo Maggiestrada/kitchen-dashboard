@@ -885,7 +885,7 @@ export const ProveedorPerfilSheet = ({
 
   if (!proveedor) return null;
 
-  const proveedorFull: ProveedorPerfil = proveedorData ?? { ...proveedor, ...(MOCK_PROVIDER_EXTRAS[proveedor.id] ?? {}) };
+  const proveedorFull: ProveedorPerfil = proveedorData ?? { ...proveedor };
 
   const history = (MOCK_HISTORY[proveedor.id] ?? FALLBACK_HISTORY).map(order => ({
     ...order,
