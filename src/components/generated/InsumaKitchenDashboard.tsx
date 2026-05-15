@@ -815,7 +815,7 @@ export const InsumaKitchenDashboard = () => {
   const [alertOrderId, setAlertOrderId] = useState<string | null>(null);
   const [showBellPanel, setShowBellPanel] = useState(false);
   const [notifPermission, setNotifPermission] = useState<NotificationPermission>('default');
-  const [activeUser, setActiveUser] = useState<UserProfile>({ id: 'chef', name: 'Cocinero', role: 'chef' });
+  const [activeUser, setActiveUser] = useState<UserProfile>({ id: 'chef', name: 'Operador', role: 'chef' });
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showPinModal, setShowPinModal] = useState(false);
   const [pinInput, setPinInput] = useState('');
@@ -1347,7 +1347,7 @@ export const InsumaKitchenDashboard = () => {
         customInsumos={customInsumos}
         proveedores={providers.map(p => p.name)}
       />
-      <NuevoPedidoModal isOpen={showNuevoPedido} onClose={() => setShowNuevoPedido(false)} onOrderCreated={handleOrderCreated} creadoPor={activeUser.name} />
+      <NuevoPedidoModal isOpen={showNuevoPedido} onClose={() => setShowNuevoPedido(false)} onOrderCreated={handleOrderCreated} creadoPor={activeUser.name} providers={providers} />
       <NuevoProveedorModal isOpen={showNuevoProveedor} onClose={() => setShowNuevoProveedor(false)} onProveedorCreated={handleProveedorCreated} />
       <ProveedorPerfilSheet proveedor={selectedProveedor} isOpen={selectedProveedor !== null} onClose={() => setSelectedProveedor(null)} onNuevoPedido={() => {
       setSelectedProveedor(null);
@@ -1365,6 +1365,9 @@ export const InsumaKitchenDashboard = () => {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/30 z-50" onClick={() => setShowUserMenu(false)} />
           <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', damping: 28, stiffness: 300 }} className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white rounded-t-3xl z-50 px-5 pt-5 pb-10 shadow-2xl">
             <div className="w-10 h-1 bg-neutral-200 rounded-full mx-auto mb-5" />
+            <div className="mb-4 px-1">
+              <p className="text-base font-bold text-black">{negocioNombre}</p>
+            </div>
             <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-3">Cambiar perfil</p>
             <div className="space-y-2">
               {usuarios.map(profile => {
@@ -1387,13 +1390,25 @@ export const InsumaKitchenDashboard = () => {
                     </div>
                     <div className="flex-1 text-left">
                       <p className={`text-sm font-medium ${isActive ? 'text-white' : 'text-black'}`}>{profile.name}</p>
-                      <p className={`text-[10px] ${isActive ? 'text-white/60' : 'text-neutral-400'}`}>{profile.role === 'admin' ? 'Admin · requiere PIN' : 'Cocinero'}</p>
+                      <p className={`text-[10px] ${isActive ? 'text-white/60' : 'text-neutral-400'}`}>{profile.role === 'admin' ? 'Admin · requiere PIN' : 'Operador'}</p>
                     </div>
                     {isActive && <span className="w-2 h-2 bg-emerald-400 rounded-full" />}
                   </button>
                 );
               })}
             </div>
+            <button
+              onClick={() => {
+                localStorage.removeItem('insuma_onboarding_ok');
+                localStorage.removeItem('insuma_negocio_id');
+                localStorage.removeItem('insuma_negocio');
+                localStorage.removeItem('insuma_usuarios');
+                window.location.reload();
+              }}
+              className="w-full mt-4 flex items-center justify-center gap-2 px-4 py-3 rounded-2xl border border-red-100 text-red-500 text-sm font-medium active:bg-red-50 transition-colors"
+            >
+              Cerrar sesión
+            </button>
           </motion.div>
         </>}
       </AnimatePresence>

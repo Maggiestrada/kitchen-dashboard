@@ -318,17 +318,28 @@ const CustomProductPanel = ({
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
+interface ProviderProp {
+  id: string;
+  name: string;
+  category: string;
+  telefono?: string;
+  isOrganic?: boolean;
+  isFavorite?: boolean;
+  lastOrderDate?: string;
+}
 interface NuevoPedidoModalProps {
   isOpen: boolean;
   onClose: () => void;
   onOrderCreated: (providerName?: string, orderNote?: string, creadoPor?: string) => void;
   creadoPor?: string;
+  providers?: ProviderProp[];
 }
 export const NuevoPedidoModal = ({
   isOpen,
   onClose,
   onOrderCreated,
   creadoPor,
+  providers: providersProp = [],
 }: NuevoPedidoModalProps) => {
   const [step, setStep] = useState<WizardStep>(1);
   const [search, setSearch] = useState('');
@@ -368,7 +379,16 @@ export const NuevoPedidoModal = ({
 
   // ── Step 1 helpers ─────────────────────────────────────────────────────────
 
-  const filteredProviders = PROVIDERS.filter(p => p.name.toLowerCase().includes(search.toLowerCase()) || p.category.toLowerCase().includes(search.toLowerCase()));
+  const mappedProviders: Provider[] = providersProp.map(p => ({
+    id: p.id,
+    name: p.name,
+    category: p.category,
+    whatsapp: p.telefono ?? '',
+    isOrganic: p.isOrganic,
+    isFavorite: p.isFavorite,
+    lastOrderDate: p.lastOrderDate,
+  }));
+  const filteredProviders = mappedProviders.filter(p => p.name.toLowerCase().includes(search.toLowerCase()) || p.category.toLowerCase().includes(search.toLowerCase()));
   const selectProvider = (p: Provider) => {
     setSelectedProvider(p);
     setCart({});

@@ -92,7 +92,7 @@ const AgregarUsuarioSheet: React.FC<{
         <div className="w-10 h-1 bg-neutral-200 rounded-full mx-auto mb-4" />
         <div className="flex items-center justify-between mb-5">
           <h3 className="text-base font-medium text-black">
-            {rol === 'cocinero' ? 'Agregar cocinero' : 'Agregar admin'}
+            {rol === 'cocinero' ? 'Agregar operador' : 'Agregar admin'}
           </h3>
           <button onClick={onClose} className="w-8 h-8 rounded-full bg-neutral-100 flex items-center justify-center text-neutral-500 active:scale-90 transition-transform">
             <X size={14} strokeWidth={2} />
@@ -438,7 +438,7 @@ export const OnboardingFlow: React.FC<{ onComplete: () => void }> = ({ onComplet
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <div>
-                      <p className="text-sm font-medium text-black">Cocineros</p>
+                      <p className="text-sm font-medium text-black">Operadores</p>
                       <p className="text-[11px] text-neutral-400">Sin PIN — acceso directo</p>
                     </div>
                     {cocineros.length < 3 && (
@@ -452,7 +452,7 @@ export const OnboardingFlow: React.FC<{ onComplete: () => void }> = ({ onComplet
                   </div>
                   {cocineros.length === 0 ? (
                     <div className="bg-neutral-50 border border-dashed border-neutral-200 rounded-xl py-4 flex items-center justify-center">
-                      <p className="text-xs text-neutral-400">Ningún cocinero agregado</p>
+                      <p className="text-xs text-neutral-400">Ningún operador agregado</p>
                     </div>
                   ) : (
                     <div className="flex flex-wrap gap-2">
