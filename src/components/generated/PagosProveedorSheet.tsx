@@ -95,103 +95,11 @@ interface OrderLineItem {
   precioUnit: number;
 }
 
-const MOCK_ORDER_ITEMS: OrderLineItem[] = [
-  { id: 'oi-1', nombre: 'Lomo vacuno', cantPedida: 5, cantRecibida: 5, unit: 'kg', precioUnit: 3800 },
-  { id: 'oi-2', nombre: 'Bife de chorizo', cantPedida: 3, cantRecibida: 2, unit: 'kg', precioUnit: 3200 },
-  { id: 'oi-3', nombre: 'Molleja de corazón', cantPedida: 2, cantRecibida: 2, unit: 'kg', precioUnit: 2200 },
-];
+const MOCK_ORDER_ITEMS: OrderLineItem[] = [];
 
 // ─── Mock AI Scan Data ────────────────────────────────────────────────────────
 
-const MOCK_AI_SCANS: Record<string, AiInvoiceScan> = {
-  '1023': {
-    scannedAt: 'Hoy, 09:47 AM',
-    total: 11200,
-    vendor: 'Lácteos La Fé',
-    invoiceNumber: 'FC-0045892',
-    date: '15/01/2025',
-    items: [{
-      id: 'ai1',
-      name: 'Queso Cremoso x kg',
-      qty: 8,
-      unit: 'kg',
-      unitPrice: 650,
-      total: 5200
-    }, {
-      id: 'ai2',
-      name: 'Manteca 500g',
-      qty: 6,
-      unit: 'u',
-      unitPrice: 420,
-      total: 2520
-    }, {
-      id: 'ai3',
-      name: 'Crema de leche 1lt',
-      qty: 8,
-      unit: 'lt',
-      unitPrice: 435,
-      total: 3480
-    }]
-  },
-  '1022': {
-    scannedAt: 'Hoy, 09:17 AM',
-    total: 15600,
-    vendor: 'Distribuidora Almacén',
-    invoiceNumber: 'FC-0012345',
-    date: '15/01/2025',
-    items: [{
-      id: 'ai4',
-      name: 'Harina 000 x 25kg',
-      qty: 4,
-      unit: 'bolsa',
-      unitPrice: 1800,
-      total: 7200
-    }, {
-      id: 'ai5',
-      name: 'Aceite girasol 5lt',
-      qty: 6,
-      unit: 'u',
-      unitPrice: 980,
-      total: 5880
-    }, {
-      id: 'ai6',
-      name: 'Azúcar x kg',
-      qty: 12,
-      unit: 'kg',
-      unitPrice: 210,
-      total: 2520
-    }]
-  },
-  '1018': {
-    scannedAt: 'Lun, 10:33 AM',
-    total: 19500,
-    vendor: 'Pescadería del Puerto',
-    invoiceNumber: 'FC-0098231',
-    date: '12/01/2025',
-    items: [{
-      id: 'ai7',
-      name: 'Salmón noruego x kg',
-      qty: 5,
-      unit: 'kg',
-      unitPrice: 2100,
-      total: 10500
-    }, {
-      id: 'ai8',
-      name: 'Merluza filet x kg',
-      qty: 6,
-      unit: 'kg',
-      unitPrice: 980,
-      total: 5880
-    }, {
-      id: 'ai9',
-      name: 'Langostinos x kg',
-      qty: 3,
-      unit: 'kg',
-      unitPrice: 1040,
-      total: 3120
-    }]
-  }
-};
+const MOCK_AI_SCANS: Record<string, AiInvoiceScan> = {};
 
 // ─── Payment term configs ─────────────────────────────────────────────────────
 

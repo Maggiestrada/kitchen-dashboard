@@ -179,47 +179,7 @@ function foodCostBg(pct: number): string {
 
 // ─── Catalog ──────────────────────────────────────────────────────────────────
 
-export const CATALOG_INSUMOS: Insumo[] = [
-  { id: 'ins-01', name: 'Lomo vacuno', category: 'Carnes', unit: 'kg', pricePerKg: 3800, provider: 'Frigorífico Central' },
-  { id: 'ins-02', name: 'Bife de chorizo', category: 'Carnes', unit: 'kg', pricePerKg: 3200, provider: 'Frigorífico Central' },
-  { id: 'ins-03', name: 'Pollo entero', category: 'Carnes', unit: 'kg', pricePerKg: 1200, provider: 'Frigorífico Central' },
-  { id: 'ins-04', name: 'Costeleta de cerdo', category: 'Carnes', unit: 'kg', pricePerKg: 1800, provider: 'Frigorífico Central' },
-  { id: 'ins-05', name: 'Molleja de corazón', category: 'Carnes', unit: 'kg', pricePerKg: 2200, provider: 'Frigorífico Central' },
-  { id: 'ins-06', name: 'Tomate redondo', category: 'Verduras', unit: 'kg', pricePerKg: 280, provider: 'Huerta Orgánica' },
-  { id: 'ins-07', name: 'Cebolla morada', category: 'Verduras', unit: 'kg', pricePerKg: 190, provider: 'Huerta Orgánica' },
-  { id: 'ins-08', name: 'Ajo', category: 'Verduras', unit: 'kg', pricePerKg: 650, provider: 'Huerta Orgánica' },
-  { id: 'ins-09', name: 'Albahaca fresca', category: 'Verduras', unit: 'kg', pricePerKg: 1200, provider: 'Huerta Orgánica' },
-  { id: 'ins-10', name: 'Zanahoria', category: 'Verduras', unit: 'kg', pricePerKg: 150, provider: 'Huerta Orgánica' },
-  { id: 'ins-11', name: 'Papas', category: 'Verduras', unit: 'kg', pricePerKg: 180, provider: 'Huerta Orgánica' },
-  { id: 'ins-12', name: 'Limón', category: 'Verduras', unit: 'kg', pricePerKg: 260, provider: 'Huerta Orgánica' },
-  { id: 'ins-13', name: 'Perejil fresco', category: 'Verduras', unit: 'kg', pricePerKg: 980, provider: 'Huerta Orgánica' },
-  { id: 'ins-14', name: 'Atado de verdeo', category: 'Verduras', unit: 'kg', pricePerKg: 420, provider: 'Huerta Orgánica' },
-  { id: 'ins-15', name: 'Leche entera', category: 'Lácteos', unit: 'lt', pricePerKg: 180, provider: 'Lácteos La Fé' },
-  { id: 'ins-16', name: 'Crema de leche', category: 'Lácteos', unit: 'lt', pricePerKg: 620, provider: 'Lácteos La Fé' },
-  { id: 'ins-17', name: 'Queso rallado', category: 'Lácteos', unit: 'kg', pricePerKg: 1800, provider: 'Lácteos La Fé' },
-  { id: 'ins-18', name: 'Manteca', category: 'Lácteos', unit: 'kg', pricePerKg: 1400, provider: 'Lácteos La Fé' },
-  { id: 'ins-19', name: 'Huevo', category: 'Lácteos', unit: 'u', pricePerKg: 1445, provider: 'Lácteos La Fé' },
-  { id: 'ins-20', name: 'Harina 000', category: 'Almacén', unit: 'kg', pricePerKg: 280, provider: 'Distribuidora Almacén' },
-  { id: 'ins-21', name: 'Harina 0000', category: 'Almacén', unit: 'kg', pricePerKg: 310, provider: 'Distribuidora Almacén' },
-  { id: 'ins-22', name: 'Aceite de girasol', category: 'Almacén', unit: 'lt', pricePerKg: 430, provider: 'Distribuidora Almacén' },
-  { id: 'ins-23', name: 'Azúcar blanca', category: 'Almacén', unit: 'kg', pricePerKg: 220, provider: 'Distribuidora Almacén' },
-  { id: 'ins-24', name: 'Sal fina', category: 'Almacén', unit: 'kg', pricePerKg: 95, provider: 'Distribuidora Almacén' },
-  { id: 'ins-25', name: 'Arroz largo', category: 'Almacén', unit: 'kg', pricePerKg: 310, provider: 'Distribuidora Almacén' },
-  { id: 'ins-26', name: 'Caldo de res', category: 'Almacén', unit: 'lt', pricePerKg: 320, provider: 'Distribuidora Almacén' },
-  { id: 'ins-27', name: 'Filete de merluza', category: 'Pescados', unit: 'kg', pricePerKg: 2400, provider: 'Pescadería del Puerto' },
-  { id: 'ins-28', name: 'Camarones', category: 'Pescados', unit: 'kg', pricePerKg: 4200, provider: 'Pescadería del Puerto' },
-  { id: 'ins-29', name: 'Hongos shitake', category: 'Almacén', unit: 'kg', pricePerKg: 3800, provider: 'Distribuidora Almacén' },
-  { id: 'ins-30', name: 'Pimienta en grano', category: 'Almacén', unit: 'kg', pricePerKg: 2400, provider: 'Distribuidora Almacén' },
-  { id: 'ins-31', name: 'Semilla de mostaza', category: 'Almacén', unit: 'kg', pricePerKg: 680, provider: 'Distribuidora Almacén' },
-  { id: 'ins-32', name: 'Aceite de oliva', category: 'Almacén', unit: 'lt', pricePerKg: 1800, provider: 'Distribuidora Almacén' },
-  { id: 'apo-01', name: 'Leña', category: 'Descartables', unit: 'u', pricePerKg: 200, provider: 'Proveedor Descartables' },
-  { id: 'apo-02', name: 'Film plástico', category: 'Descartables', unit: 'u', pricePerKg: 150, provider: 'Proveedor Descartables' },
-  { id: 'apo-03', name: 'Bandeja aluminio', category: 'Descartables', unit: 'u', pricePerKg: 80, provider: 'Proveedor Descartables' },
-  { id: 'apo-04', name: 'Bolsa de vacío', category: 'Descartables', unit: 'u', pricePerKg: 120, provider: 'Proveedor Descartables' },
-  { id: 'apo-05', name: 'Papel manteca', category: 'Descartables', unit: 'u', pricePerKg: 50, provider: 'Proveedor Descartables' },
-  { id: 'apo-06', name: 'Palillo madera', category: 'Descartables', unit: 'u', pricePerKg: 15, provider: 'Proveedor Descartables' },
-  { id: 'apo-07', name: 'Descartable', category: 'Descartables', unit: 'u', pricePerKg: 60, provider: 'Proveedor Descartables' },
-];
+export const CATALOG_INSUMOS: Insumo[] = [];
 
 const CATEGORIAS = ['Entradas', 'Principales', 'Pastas', 'Postres', 'Panadería', 'Salsas', 'Fermentos', 'Cocina', 'Bebidas'];
 
@@ -235,95 +195,9 @@ const CATEGORIA_COLORS: Record<string, string> = {
   Bebidas: '#72BDE8',
 };
 
-const INITIAL_SUBRECETAS: SubReceta[] = [
-  {
-    id: 'sub-01',
-    nombre: 'Gravy de molleja',
-    rinde: 400,
-    rindeUnit: 'gr',
-    ingredientes: [
-      { id: 'si-1', tipo: 'insumo', referenciaId: 'ins-07', nombre: 'Cebolla morada', grams: 120, unit: 'gr' },
-      { id: 'si-2', tipo: 'insumo', referenciaId: 'ins-08', nombre: 'Ajo', grams: 20, unit: 'gr' },
-      { id: 'si-3', tipo: 'insumo', referenciaId: 'ins-26', nombre: 'Caldo de res', grams: 500, unit: 'ml' },
-      { id: 'si-4', tipo: 'insumo', referenciaId: 'ins-18', nombre: 'Manteca', grams: 40, unit: 'gr' },
-    ],
-    procedimiento: 'Rehogar cebolla y ajo en manteca. Deglacear con caldo y reducir a la mitad. Tamizar y sazonar.',
-    createdAt: 'hace 2 días',
-  },
-  {
-    id: 'sub-02',
-    nombre: 'Hongos fermentados',
-    rinde: 500,
-    rindeUnit: 'gr',
-    ingredientes: [
-      { id: 'si-5', tipo: 'insumo', referenciaId: 'ins-29', nombre: 'Hongos shitake', grams: 500, unit: 'gr' },
-      { id: 'si-6', tipo: 'insumo', referenciaId: 'ins-24', nombre: 'Sal fina', grams: 4, unit: 'gr' },
-    ],
-    procedimiento: 'Limpiar hongos y laminar. Mezclar con sal y dejar fermentar en frasco tapado a temperatura ambiente por 48 hs.',
-    createdAt: 'hace 1 semana',
-  },
-  {
-    id: 'sub-03',
-    nombre: 'Dressing de mostaza',
-    rinde: 350,
-    rindeUnit: 'ml',
-    ingredientes: [
-      { id: 'si-7', tipo: 'insumo', referenciaId: 'ins-31', nombre: 'Semilla de mostaza', grams: 30, unit: 'gr' },
-      { id: 'si-8', tipo: 'insumo', referenciaId: 'ins-12', nombre: 'Limón', grams: 40, unit: 'gr' },
-      { id: 'si-9', tipo: 'insumo', referenciaId: 'ins-22', nombre: 'Aceite de girasol', grams: 200, unit: 'ml' },
-      { id: 'si-10', tipo: 'insumo', referenciaId: 'ins-13', nombre: 'Perejil fresco', grams: 15, unit: 'gr' },
-    ],
-    procedimiento: 'Procesar todos los ingredientes. Emulsionar el aceite en hilo. Sazonar y refrigerar.',
-    createdAt: 'hace 3 días',
-  },
-];
+const INITIAL_SUBRECETAS: SubReceta[] = [];
 
-const INITIAL_RECETAS: Receta[] = [
-  {
-    id: 'rec-01',
-    nombre: 'Molleja brasa',
-    categoria: 'Principales',
-    porciones: 1,
-    ingredientes: [
-      { id: 'ri-1', tipo: 'insumo', referenciaId: 'ins-05', nombre: 'Molleja de corazón', grams: 400, wastePercent: 10, unit: 'gr' },
-      { id: 'ri-2', tipo: 'subreceta', referenciaId: 'sub-01', nombre: 'Gravy de molleja', grams: 30, wastePercent: 0, unit: 'gr' },
-      { id: 'ri-3', tipo: 'insumo', referenciaId: 'ins-14', nombre: 'Atado de verdeo', grams: 120, wastePercent: 15, unit: 'gr' },
-    ],
-    procedimiento: 'Blanquear molleja 5 minutos. Asar a las brasas hasta dorar bien por fuera. Servir con gravy caliente y verdeo salteado.',
-    precioVenta: 40000,
-    createdAt: 'hace 3 días',
-  },
-  {
-    id: 'rec-02',
-    nombre: 'Risotto de hongos fermentados',
-    categoria: 'Principales',
-    porciones: 1,
-    ingredientes: [
-      { id: 'ri-4', tipo: 'insumo', referenciaId: 'ins-25', nombre: 'Arroz largo', grams: 120, wastePercent: 0, unit: 'gr' },
-      { id: 'ri-5', tipo: 'insumo', referenciaId: 'ins-26', nombre: 'Caldo de res', grams: 400, wastePercent: 0, unit: 'ml' },
-      { id: 'ri-6', tipo: 'subreceta', referenciaId: 'sub-02', nombre: 'Hongos fermentados', grams: 60, wastePercent: 0, unit: 'gr' },
-      { id: 'ri-7', tipo: 'insumo', referenciaId: 'ins-18', nombre: 'Manteca', grams: 40, wastePercent: 0, unit: 'gr' },
-      { id: 'ri-8', tipo: 'insumo', referenciaId: 'ins-17', nombre: 'Queso rallado', grams: 30, wastePercent: 0, unit: 'gr' },
-    ],
-    procedimiento: 'Nacarar arroz en manteca. Incorporar caldo caliente de a poco revolviendo. A mitad de cocción agregar los hongos fermentados. Terminar con manteca y queso fuera del fuego.',
-    precioVenta: 35000,
-    createdAt: 'hace 1 semana',
-  },
-  {
-    id: 'rec-03',
-    nombre: 'Filete de merluza con dressing',
-    categoria: 'Principales',
-    porciones: 1,
-    ingredientes: [
-      { id: 'ri-9', tipo: 'insumo', referenciaId: 'ins-27', nombre: 'Filete de merluza', grams: 280, wastePercent: 5, unit: 'gr' },
-      { id: 'ri-10', tipo: 'subreceta', referenciaId: 'sub-03', nombre: 'Dressing de mostaza', grams: 40, wastePercent: 0, unit: 'ml' },
-      { id: 'ri-11', tipo: 'insumo', referenciaId: 'ins-11', nombre: 'Papas', grams: 200, wastePercent: 20, unit: 'gr' },
-    ],
-    procedimiento: 'Sellar filete en sartén caliente con aceite. Terminar en horno 4 minutos. Servir sobre papas rústicas y bañar con dressing de mostaza.',
-    precioVenta: 38000,
-    createdAt: 'hace 2 días',
-  },
-];
+const INITIAL_RECETAS: Receta[] = [];
 
 // ─── IngredientePicker ────────────────────────────────────────────────────────
 

@@ -31,7 +31,9 @@ type AreaKey = keyof AreaData;
 
 // ─── Mock Data ────────────────────────────────────────────────────────────────
 
-const MONTHS_DATA: MonthData[] = [{
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const MONTHS_DATA: MonthData[] = [];
+const _MONTHS_DATA_UNUSED = [{
   month: 'Noviembre 2024',
   shortMonth: 'Nov',
   total: 187400,
@@ -386,6 +388,7 @@ const MONTHS_DATA: MonthData[] = [{
     }
   }
 }];
+// ─── Area colors ──────────────────────────────────────────────────────────────
 const AREA_COLORS: Record<AreaKey, {
   primary: string;
   light: string;
@@ -758,177 +761,22 @@ const maxItemVal = (item: ItemDetail) => Math.max(...item.values, 1);
 // ─── Main MetricasTab ─────────────────────────────────────────────────────────
 
 export const MetricasTab = () => {
-  const [selectedArea, setSelectedArea] = useState<AreaKey | null>(null);
+  return <motion.div key="tab-metricas" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="px-4 pt-4 pb-24">
+    {/* Header */}
+    <div className="mb-6">
+      <h2 className="text-xl font-black text-black leading-tight">Métricas</h2>
+      <p className="text-[11px] text-neutral-400 font-medium mt-0.5">Gastos por categoría</p>
+    </div>
 
-  // Combined 3-month chart data for areas
-  const areaChartData = MONTHS_DATA.map(m => {
-    const entry: Record<string, string | number> = {
-      month: m.shortMonth
-    };
-    AREA_KEYS.forEach(area => {
-      entry[area] = m.areas[area].total;
-    });
-    return entry;
-  });
-
-  // Total per month
-  const monthTotals = MONTHS_DATA.map(m => m.total);
-  const lastMonthTotal = monthTotals[monthTotals.length - 1];
-  const prevMonthTotal = monthTotals[monthTotals.length - 2];
-  const totalDiff = lastMonthTotal - prevMonthTotal;
-  const totalPct = prevMonthTotal > 0 ? (totalDiff / prevMonthTotal * 100).toFixed(1) : '0';
-  const totalIsUp = totalDiff > 0;
-
-  // Area totals for current month
-  const currentMonth = MONTHS_DATA[MONTHS_DATA.length - 1];
-  const prevMonth = MONTHS_DATA[MONTHS_DATA.length - 2];
-
-  // Bar data for the stacked comparison
-  const comparisonData = MONTHS_DATA.map(m => ({
-    month: m.shortMonth,
-    total: m.total,
-    Carnes: m.areas.Carnes.total,
-    Verduras: m.areas.Verduras.total,
-    Bebidas: m.areas.Bebidas.total,
-    Limpieza: m.areas.Limpieza.total,
-    Almacén: m.areas.Almacén.total
-  }));
-  return <motion.div key="tab-metricas" initial={{
-    opacity: 0
-  }} animate={{
-    opacity: 1
-  }} className="px-4 pt-4 pb-24 space-y-5">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-black text-black leading-tight">Métricas</h2>
-          <p className="text-[11px] text-neutral-400 font-medium mt-0.5">Últimos 3 meses</p>
-        </div>
-        <div className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-sm font-black ${totalIsUp ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`}>
-          {totalIsUp ? <TrendingUp size={14} strokeWidth={2.5} /> : <TrendingDown size={14} strokeWidth={2.5} />}
-          <span>{totalIsUp ? '+' : ''}{totalPct}%</span>
-        </div>
+    {/* Empty state */}
+    <div className="flex flex-col items-center justify-center py-20 text-center">
+      <div className="w-16 h-16 rounded-2xl bg-neutral-100 flex items-center justify-center mb-4">
+        <BarChart2 size={28} strokeWidth={1.5} className="text-neutral-400" />
       </div>
-
-      {/* Month summary cards */}
-      <div className="grid grid-cols-3 gap-2">
-        {MONTHS_DATA.map((m, idx) => {
-        const isLatest = idx === MONTHS_DATA.length - 1;
-        const prev = idx > 0 ? MONTHS_DATA[idx - 1].total : null;
-        const pct = prev ? ((m.total - prev) / prev * 100).toFixed(0) : null;
-        const up = pct !== null && parseFloat(pct) > 0;
-        return <div key={m.shortMonth} className={`rounded-xl px-3 py-3 border ${isLatest ? 'bg-black border-black' : 'bg-neutral-50 border-neutral-100'}`}>
-              <p className={`text-[9px] font-bold uppercase tracking-widest mb-1 ${isLatest ? 'text-neutral-400' : 'text-neutral-400'}`}>
-                {m.shortMonth}
-              </p>
-              <p className={`text-sm font-black tabular-nums leading-tight ${isLatest ? 'text-white' : 'text-black'}`}>
-                {formatMoneyShort(m.total)}
-              </p>
-              {pct !== null && <div className={`flex items-center gap-0.5 mt-1 ${up ? 'text-red-400' : 'text-green-400'}`}>
-                  {up ? <TrendingUp size={8} strokeWidth={3} /> : <TrendingDown size={8} strokeWidth={3} />}
-                  <span className="text-[8px] font-black">{up ? '+' : ''}{pct}%</span>
-                </div>}
-            </div>;
-      })}
-      </div>
-
-      {/* 3-month comparison chart by area */}
-      <div className="bg-white border border-neutral-100 rounded-2xl p-4">
-        <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-4">Gasto total por mes</p>
-        <div className="h-44">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={comparisonData} barSize={28}>
-              <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{
-              fontSize: 11,
-              fontWeight: 700,
-              fill: '#9CA3AF'
-            }} />
-              <YAxis hide />
-              <CartesianGrid vertical={false} stroke="#F3F4F6" />
-              <Tooltip formatter={(value: number, name: string) => [formatMoney(value), name]} contentStyle={{
-              border: 'none',
-              borderRadius: 12,
-              boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
-              fontSize: 11,
-              fontWeight: 700
-            }} cursor={{
-              fill: 'rgba(0,0,0,0.04)',
-              radius: 6
-            }} />
-              {AREA_KEYS.map(area => <Bar key={area} dataKey={area} stackId="a" fill={AREA_COLORS[area].primary} radius={area === 'Almacén' ? [6, 6, 0, 0] : [0, 0, 0, 0]} />)}
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-        {/* Legend */}
-        <div className="flex flex-wrap gap-x-3 gap-y-1 mt-3">
-          {AREA_KEYS.map(area => <div key={area} className="flex items-center gap-1">
-              <div className="w-2 h-2 rounded-full" style={{
-            backgroundColor: AREA_COLORS[area].primary
-          }} />
-              <span className="text-[9px] font-bold text-neutral-500">{area}</span>
-            </div>)}
-        </div>
-      </div>
-
-      {/* Area breakdown */}
-      <div>
-        <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">Por área · tocá para ver detalle</p>
-        <div className="space-y-2">
-          {AREA_KEYS.map(area => {
-          const colors = AREA_COLORS[area];
-          const currentTotal = currentMonth.areas[area].total;
-          const prevTotal = prevMonth.areas[area].total;
-          const diff = currentTotal - prevTotal;
-          const pct = prevTotal > 0 ? (diff / prevTotal * 100).toFixed(1) : '0';
-          const isUp = diff > 0;
-
-          // Mini bar: last 3 months
-          const areaVals = MONTHS_DATA.map(m => m.areas[area].total);
-          const areaMax = Math.max(...areaVals, 1);
-          return <button key={area} onClick={() => setSelectedArea(area)} className="w-full text-left bg-white border border-neutral-100 rounded-2xl px-4 py-3.5 active:scale-[0.985] transition-transform">
-                <div className="flex items-center justify-between gap-3 mb-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{
-                  backgroundColor: colors.light
-                }}>
-                      <BarChart2 size={16} strokeWidth={2} style={{
-                    color: colors.primary
-                  }} />
-                    </div>
-                    <div>
-                      <p className="text-sm font-black text-neutral-900 leading-tight">{area}</p>
-                      <p className="text-[10px] text-neutral-400 font-medium">{currentMonth.areas[area].items.length} insumos</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <div className={`flex items-center gap-0.5 text-[9px] font-black px-2 py-1 rounded-full ${isUp ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`}>
-                      {isUp ? <TrendingUp size={9} strokeWidth={3} /> : <TrendingDown size={9} strokeWidth={3} />}
-                      <span>{isUp ? '+' : ''}{pct}%</span>
-                    </div>
-                    <p className="text-base font-black text-black tabular-nums">{formatMoneyShort(currentTotal)}</p>
-                    <ChevronRight size={14} strokeWidth={2} className="text-neutral-300" />
-                  </div>
-                </div>
-
-                {/* 3-month mini bar chart */}
-                <div className="flex items-end gap-1.5 h-8">
-                  {areaVals.map((val, idx) => {
-                const h = Math.round(val / areaMax * 100);
-                return <div key={idx} className="flex-1 rounded-t-sm" style={{
-                  height: `${h}%`,
-                  backgroundColor: idx === areaVals.length - 1 ? colors.primary : colors.primary + '40',
-                  minHeight: 4
-                }} />;
-              })}
-                </div>
-                <div className="flex justify-between mt-1">
-                  {MONTHS_DATA.map(m => <p key={m.shortMonth} className="text-[8px] font-bold text-neutral-300 flex-1 text-center">{m.shortMonth}</p>)}
-                </div>
-              </button>;
-        })}
-        </div>
-      </div>
-
-      <AreaDetailSheet area={selectedArea} isOpen={selectedArea !== null} onClose={() => setSelectedArea(null)} />
-    </motion.div>;
+      <p className="text-base font-black text-neutral-800 leading-tight mb-1">Sin datos todavía</p>
+      <p className="text-sm text-neutral-400 font-medium max-w-[220px] leading-relaxed">
+        Los gastos por área aparecerán aquí cuando tengas pedidos registrados.
+      </p>
+    </div>
+  </motion.div>;
 };
