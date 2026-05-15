@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, ChefHat, Store, Truck, MoreHorizontal, X, Check, User, Lock, Loader2 } from 'lucide-react';
 import { guardarOnboarding } from '../../lib/db';
+import { InsumaLogo } from './InsumaLogo';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -42,7 +43,8 @@ const ProgressBar: React.FC<{ step: number; total: number }> = ({ step, total })
     {Array.from({ length: total }).map((_, i) => (
       <div
         key={i}
-        className={`h-1 flex-1 rounded-full transition-all duration-300 ${i < step ? 'bg-black' : 'bg-neutral-200'}`}
+        className="h-1 flex-1 rounded-full transition-all duration-300"
+        style={{ backgroundColor: i < step ? '#72BDE8' : '#e5e7eb' }}
       />
     ))}
   </div>
@@ -285,37 +287,43 @@ export const OnboardingFlow: React.FC<{ onComplete: () => void }> = ({ onComplet
               animate="center"
               exit="exit"
               transition={{ type: 'spring', damping: 30, stiffness: 340, duration: 0.25 }}
-              className="absolute inset-0 flex flex-col px-5 pt-8 pb-10"
+              className="absolute inset-0 flex flex-col"
             >
-              {/* Logo */}
-              <div className="mb-8">
-                <p className="text-[11px] font-black tracking-[0.3em] text-black uppercase">INSUMA</p>
+              {/* Blue gradient hero */}
+              <div
+                className="flex flex-col items-center justify-center flex-1 px-6"
+                style={{ background: 'linear-gradient(160deg, #72BDE8 0%, #a8d8f0 100%)' }}
+              >
+                <InsumaLogo color="white" size="xl" />
+                <h1 className="text-2xl font-light text-white leading-tight tracking-wide mt-6 text-center">
+                  Bienvenido a Insuma
+                </h1>
+                <p className="text-sm text-white/70 mt-2 text-center">
+                  El sistema de cocina que ordena tu operación.
+                </p>
               </div>
 
-              <h1 className="text-3xl font-light text-black leading-tight tracking-wide mb-2">
-                Bienvenido a<br />Insuma
-              </h1>
-              <p className="text-sm text-neutral-400 mb-10">El sistema de cocina que ordena tu operación.</p>
-
-              <div className="flex-1">
+              {/* Bottom sheet / card blanca */}
+              <div className="bg-white rounded-t-3xl px-5 pt-6 pb-10 shrink-0">
+                <div className="w-10 h-1 bg-neutral-200 rounded-full mx-auto mb-6" />
                 <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-2">Nombre de tu negocio</p>
                 <input
                   type="text"
                   value={nombreNegocio}
                   onChange={e => setNombreNegocio(e.target.value)}
                   placeholder="Ej: El Fuego, La Parrilla…"
-                  className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-3.5 text-base text-black outline-none placeholder-neutral-400 focus:border-neutral-400 transition-colors"
+                  className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-3.5 text-base text-black outline-none placeholder-neutral-400 focus:border-neutral-400 transition-colors mb-5"
                   onKeyDown={e => { if (e.key === 'Enter' && nombreNegocio.trim()) goTo(2); }}
                 />
+                <button
+                  onClick={() => goTo(2)}
+                  disabled={!nombreNegocio.trim()}
+                  className="w-full text-white rounded-2xl py-4 text-sm font-medium active:scale-[0.98] transition-all disabled:opacity-30"
+                  style={{ backgroundColor: '#72BDE8' }}
+                >
+                  Continuar
+                </button>
               </div>
-
-              <button
-                onClick={() => goTo(2)}
-                disabled={!nombreNegocio.trim()}
-                className="w-full bg-black text-white rounded-2xl py-4 text-sm font-medium active:scale-[0.98] transition-all disabled:opacity-30"
-              >
-                Continuar
-              </button>
             </motion.div>
           )}
 
@@ -402,7 +410,8 @@ export const OnboardingFlow: React.FC<{ onComplete: () => void }> = ({ onComplet
               <button
                 onClick={() => goTo(4)}
                 disabled={!canContinueStep3}
-                className="w-full bg-black text-white rounded-2xl py-4 text-sm font-medium active:scale-[0.98] transition-all disabled:opacity-30"
+                className="w-full text-white rounded-2xl py-4 text-sm font-medium active:scale-[0.98] transition-all disabled:opacity-30"
+                style={{ backgroundColor: '#72BDE8' }}
               >
                 Continuar
               </button>
@@ -494,7 +503,8 @@ export const OnboardingFlow: React.FC<{ onComplete: () => void }> = ({ onComplet
               <button
                 onClick={handleEmpezar}
                 disabled={!canEmpezar || guardando}
-                className="w-full bg-black text-white rounded-2xl py-4 text-sm font-medium active:scale-[0.98] transition-all disabled:opacity-30 mt-6 flex items-center justify-center gap-2"
+                className="w-full text-white rounded-2xl py-4 text-sm font-medium active:scale-[0.98] transition-all disabled:opacity-30 mt-6 flex items-center justify-center gap-2"
+                style={{ backgroundColor: '#72BDE8' }}
               >
                 {guardando ? (
                   <><Loader2 size={16} className="animate-spin" /> Guardando...</>

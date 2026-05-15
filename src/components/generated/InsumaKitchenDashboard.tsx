@@ -9,6 +9,7 @@ import { PagosTabEnhanced } from './PagosProveedorSheet';
 import { MetricasTab } from './MetricasTab';
 import { RecetasTab, CATALOG_INSUMOS } from './RecetasTab';
 import { NuevoInsumoModal } from './NuevoInsumoModal';
+import { InsumaLogo } from './InsumaLogo';
 import { loadUsuarios as loadUsuariosDB, loadNegocio, loadInsumos, crearInsumo } from '../../lib/db';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -1203,11 +1204,7 @@ export const InsumaKitchenDashboard = () => {
         <div className="flex justify-between items-center mb-3">
           {/* INSUMA Logo — tapping returns to home */}
           <button onClick={() => setActiveTab('home')} className="flex items-center gap-2.5 active:opacity-70 transition-opacity">
-            <span className="text-[22px] font-black leading-none tracking-tight" style={{
-            color: '#16a34a',
-            fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif",
-            letterSpacing: '-0.02em'
-          }}>INSUMA</span>
+            <InsumaLogo color="#72BDE8" size="sm" />
             <span className="text-[9px] font-normal text-neutral-400 uppercase tracking-[0.18em] mt-1">{negocioNombre}</span>
           </button>
           <div className="flex gap-2">

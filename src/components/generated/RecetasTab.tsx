@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus, X, Search, Camera, ArrowLeft, Edit3, BookOpen, ChefHat,
   TrendingUp, Scale, Package, Utensils, ChevronDown,
-  Eye, EyeOff, Info, Flame, Lock,
+  Eye, EyeOff, Info, Flame, Lock, Calendar, ChevronRight,
 } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -68,6 +68,22 @@ interface Receta {
   horasManoObra?: number;
   rindeGramos?: number;
   createdAt: string;
+}
+
+interface BebidaItem {
+  id: string;
+  tipo: 'receta' | 'insumo';
+  recetaId?: string;
+  nombre: string;
+  costoUnitario?: number;
+  precioVenta: number;
+}
+
+interface MenuMes {
+  id: string;
+  label: string;
+  comidaIds: string[];
+  bebidas: BebidaItem[];
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -205,7 +221,7 @@ export const CATALOG_INSUMOS: Insumo[] = [
   { id: 'apo-07', name: 'Descartable', category: 'Descartables', unit: 'u', pricePerKg: 60, provider: 'Proveedor Descartables' },
 ];
 
-const CATEGORIAS = ['Entradas', 'Principales', 'Pastas', 'Postres', 'Panadería', 'Salsas', 'Fermentos', 'Cocina'];
+const CATEGORIAS = ['Entradas', 'Principales', 'Pastas', 'Postres', 'Panadería', 'Salsas', 'Fermentos', 'Cocina', 'Bebidas'];
 
 const CATEGORIA_COLORS: Record<string, string> = {
   Entradas: '#0ea5e9',
@@ -216,6 +232,7 @@ const CATEGORIA_COLORS: Record<string, string> = {
   Salsas: '#EF4444',
   Fermentos: '#8B5CF6',
   Cocina: '#374151',
+  Bebidas: '#72BDE8',
 };
 
 const INITIAL_SUBRECETAS: SubReceta[] = [
@@ -1710,12 +1727,14 @@ const FoodCostView = ({
   subRecetas,
   onUpdatePrecio,
   onOpenDetail,
+  onRemove,
 }: {
   recetas: Receta[];
   insumos: Insumo[];
   subRecetas: SubReceta[];
   onUpdatePrecio: (recetaId: string, precio: number) => void;
   onOpenDetail: (receta: Receta) => void;
+  onRemove?: (recetaId: string) => void;
 }) => {
   const rows = recetas.map(r => {
     const costo = getRecetaCostoPorPorcion(r, insumos, subRecetas);
@@ -1769,6 +1788,7 @@ const FoodCostView = ({
             pct={pct}
             onPrecioChange={v => onUpdatePrecio(receta.id, v)}
             onOpenDetail={() => onOpenDetail(receta)}
+            onRemove={onRemove ? () => onRemove(receta.id) : undefined}
           />
         ))}
       </div>
@@ -1788,6 +1808,7 @@ const FoodCostRow = ({
   pct,
   onPrecioChange,
   onOpenDetail,
+  onRemove,
 }: {
   receta: Receta;
   costo: number;
@@ -1796,6 +1817,7 @@ const FoodCostRow = ({
   pct: number;
   onPrecioChange: (v: number) => void;
   onOpenDetail: () => void;
+  onRemove?: () => void;
 }) => {
   const [editing, setEditing] = useState(false);
   const color = CATEGORIA_COLORS[receta.categoria] ?? '#6B7280';
@@ -1803,6 +1825,15 @@ const FoodCostRow = ({
   return (
     <div className="px-4 py-3.5 border-b border-neutral-50 last:border-0">
       <div className="grid grid-cols-[1fr_auto_auto_auto] gap-3 items-center">
+        <div className="flex items-center gap-2 min-w-0">
+          {onRemove && (
+            <button
+              onClick={onRemove}
+              className="w-5 h-5 rounded-full bg-neutral-200 flex items-center justify-center text-neutral-500 active:bg-red-100 active:text-red-500 shrink-0 transition-colors"
+            >
+              <X size={10} strokeWidth={2.5} />
+            </button>
+          )}
         <button className="min-w-0 text-left active:opacity-70 transition-opacity" onClick={onOpenDetail}>
           <span
             className="text-[8px] uppercase tracking-widest px-1.5 py-0.5 rounded-full inline-block mb-0.5"
@@ -1813,6 +1844,7 @@ const FoodCostRow = ({
           <p className="text-sm font-medium text-black truncate">{receta.nombre}</p>
           <p className="text-[9px] text-neutral-400 mt-0.5">Ver detalle →</p>
         </button>
+        </div>
         <div className="text-right">
           <p className="text-sm font-medium text-black tabular-nums">{formatMoney(costo)}</p>
           <p className="text-[10px] text-neutral-400">sug. {formatMoney(sugerido)}</p>
@@ -1874,7 +1906,29 @@ export const RecetasTab: React.FC<{ canViewCosts?: boolean; customInsumos?: Insu
   // Search bars
   const [searchRecetario, setSearchRecetario] = useState('');
   const [searchSubrecetas, setSearchSubrecetas] = useState('');
-  const [searchFoodcost, setSearchFoodcost] = useState('');
+  // Food Cost / Menú del mes state
+  const [menusMes, setMenusMes] = useState<MenuMes[]>(() => {
+    try { return JSON.parse(localStorage.getItem('insuma_menus_mes') ?? '[]'); } catch { return []; }
+  });
+  const [selectedMenuId, setSelectedMenuId] = useState<string>('');
+  const [seccionActiva, setSeccionActiva] = useState<'comida' | 'bebidas'>('comida');
+  const [showAgregarComida, setShowAgregarComida] = useState(false);
+  const [showAgregarBebida, setShowAgregarBebida] = useState(false);
+  const [showNuevoMes, setShowNuevoMes] = useState(false);
+  const [nuevoMesLabel, setNuevoMesLabel] = useState('');
+  // Agregar bebida form state
+  const [bebidaTipo, setBebidaTipo] = useState<'receta' | 'insumo'>('receta');
+  const [bebidaRecetaId, setBebidaRecetaId] = useState('');
+  const [bebidaNombre, setBebidaNombre] = useState('');
+  const [bebidaCosto, setBebidaCosto] = useState('');
+  const [bebidaPrecio, setBebidaPrecio] = useState('');
+  const [searchAgregarComida, setSearchAgregarComida] = useState('');
+
+  React.useEffect(() => {
+    localStorage.setItem('insuma_menus_mes', JSON.stringify(menusMes));
+  }, [menusMes]);
+
+  const selectedMenu = menusMes.find(m => m.id === selectedMenuId) ?? menusMes[0] ?? null;
 
   // Receta form state
   const [recetaFormOpen, setRecetaFormOpen] = useState(false);
@@ -2074,6 +2128,7 @@ export const RecetasTab: React.FC<{ canViewCosts?: boolean; customInsumos?: Insu
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 8 }}
               transition={{ duration: 0.15 }}
+              className="relative"
             >
               {!canViewCosts ? (
                 <div className="flex flex-col items-center justify-center py-20 text-center gap-4">
@@ -2085,42 +2140,255 @@ export const RecetasTab: React.FC<{ canViewCosts?: boolean; customInsumos?: Insu
                     <p className="text-xs text-neutral-400 mt-1">Cambiá a perfil Admin para ver el Food Cost</p>
                   </div>
                 </div>
+              ) : menusMes.length === 0 ? (
+                /* ── Empty state: sin menús ── */
+                <div className="flex flex-col items-center justify-center py-20 text-center gap-4">
+                  <div className="w-14 h-14 rounded-2xl bg-neutral-100 flex items-center justify-center">
+                    <Calendar size={24} strokeWidth={1.5} className="text-neutral-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-neutral-700">Sin menús todavía</p>
+                    <p className="text-xs text-neutral-400 mt-1 max-w-[220px]">Creá tu primer menú del mes para analizar food cost</p>
+                  </div>
+                  <button
+                    onClick={() => { setNuevoMesLabel(''); setShowNuevoMes(true); }}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-white text-sm font-medium active:scale-95 transition-transform"
+                    style={{ backgroundColor: '#72BDE8' }}
+                  >
+                    <Plus size={16} strokeWidth={2} />
+                    Crear menú
+                  </button>
+                </div>
               ) : (
                 <>
-                  <div className="mb-4">
-                    <h2 className="text-lg font-medium text-black">Food Cost</h2>
-                    <p className="text-xs text-neutral-400">Toca el precio de venta para editarlo</p>
-                  </div>
-                  {/* Search bar */}
-                  <div className="flex items-center gap-2 bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2.5 mb-4">
-                    <Search size={14} className="text-neutral-400 shrink-0" strokeWidth={1.75} />
-                    <input
-                      value={searchFoodcost}
-                      onChange={e => setSearchFoodcost(e.target.value)}
-                      placeholder="Buscar receta..."
-                      className="flex-1 bg-transparent text-sm text-black outline-none placeholder-neutral-400"
-                    />
-                    {searchFoodcost && (
-                      <button onClick={() => setSearchFoodcost('')} className="text-neutral-300 shrink-0">
-                        <X size={12} strokeWidth={2} />
+                  {/* ── Selector de mes (pills horizontales) ── */}
+                  <div className="flex gap-2 overflow-x-auto pb-1 mb-4 scrollbar-hide">
+                    {menusMes.map(m => (
+                      <button
+                        key={m.id}
+                        onClick={() => { setSelectedMenuId(m.id); setSeccionActiva('comida'); }}
+                        className="shrink-0 px-3.5 py-1.5 rounded-full text-xs font-medium transition-all active:scale-95"
+                        style={
+                          (selectedMenu?.id ?? menusMes[0]?.id) === m.id
+                            ? { backgroundColor: '#000', color: '#fff' }
+                            : { backgroundColor: '#f3f4f6', color: '#374151' }
+                        }
+                      >
+                        {m.label}
                       </button>
-                    )}
+                    ))}
+                    <button
+                      onClick={() => { setNuevoMesLabel(''); setShowNuevoMes(true); }}
+                      className="shrink-0 px-3.5 py-1.5 rounded-full text-xs font-medium bg-neutral-100 text-neutral-500 active:scale-95 transition-transform flex items-center gap-1"
+                    >
+                      <Plus size={12} strokeWidth={2} /> Nuevo mes
+                    </button>
                   </div>
-                  {recetas.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-16 text-center">
-                      <TrendingUp size={32} className="text-neutral-200 mb-3" strokeWidth={1} />
-                      <p className="text-sm text-neutral-400">Sin recetas para analizar</p>
-                      <p className="text-xs text-neutral-300 mt-1">Creá recetas en el Recetario primero</p>
-                    </div>
-                  ) : (
-                    <FoodCostView
-                      recetas={recetas.filter(r => r.nombre.toLowerCase().includes(searchFoodcost.toLowerCase()))}
-                      insumos={insumos}
-                      subRecetas={subRecetas}
-                      onUpdatePrecio={handleUpdatePrecio}
-                      onOpenDetail={openRecetaDetail}
-                    />
-                  )}
+
+                  {selectedMenu && (() => {
+                    const menu = selectedMenu;
+                    const recetasComida = recetas.filter(r => menu.comidaIds.includes(r.id));
+                    const recetasBebidas = recetas.filter(r => r.categoria === 'Bebidas');
+
+                    // Calcular food cost combinado
+                    const allRows = [
+                      ...recetasComida.map(r => {
+                        const costo = getRecetaCostoPorPorcion(r, insumos, subRecetas);
+                        const precio = r.precioVenta ?? 0;
+                        return { nombre: r.nombre, costo, precio, pct: precio > 0 ? costo / precio : 0 };
+                      }),
+                      ...menu.bebidas.map(b => {
+                        if (b.tipo === 'receta' && b.recetaId) {
+                          const rec = recetas.find(r => r.id === b.recetaId);
+                          const costo = rec ? getRecetaCostoPorPorcion(rec, insumos, subRecetas) : 0;
+                          const precio = b.precioVenta;
+                          return { nombre: b.nombre, costo, precio, pct: precio > 0 ? costo / precio : 0 };
+                        }
+                        const costo = b.costoUnitario ?? 0;
+                        const precio = b.precioVenta;
+                        return { nombre: b.nombre, costo, precio, pct: precio > 0 ? costo / precio : 0 };
+                      }),
+                    ].filter(r => r.precio > 0);
+
+                    const avgFoodCost = allRows.length > 0
+                      ? allRows.reduce((s, r) => s + r.pct, 0) / allRows.length
+                      : 0;
+                    const bestRow = [...allRows].sort((a, b) => a.pct - b.pct)[0];
+                    const worstRow = [...allRows].sort((a, b) => b.pct - a.pct)[0];
+
+                    return (
+                      <>
+                        {/* Summary cards */}
+                        {allRows.length > 0 && (
+                          <div className="flex gap-3 mb-4">
+                            <div className={`flex-1 rounded-2xl p-3.5 border ${foodCostBg(avgFoodCost)} border-neutral-100`}>
+                              <p className="text-[9px] uppercase tracking-widest text-neutral-400 mb-1">Food cost promedio</p>
+                              <p className={`text-xl font-medium tabular-nums ${foodCostColor(avgFoodCost)}`}>
+                                {(avgFoodCost * 100).toFixed(1)}%
+                              </p>
+                            </div>
+                            {bestRow && bestRow !== worstRow && (
+                              <div className="flex-1 bg-emerald-50 border border-emerald-100 rounded-2xl p-3.5">
+                                <p className="text-[9px] uppercase tracking-widest text-neutral-400 mb-1">Más rentable</p>
+                                <p className="text-xs font-medium text-emerald-700 truncate">{bestRow.nombre}</p>
+                                <p className="text-[10px] text-emerald-600 tabular-nums">{(bestRow.pct * 100).toFixed(1)}% FC</p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Tabs Comida / Bebidas */}
+                        <div className="flex gap-0 border-b border-neutral-100 mb-4">
+                          {(['comida', 'bebidas'] as const).map(sec => (
+                            <button
+                              key={sec}
+                              onClick={() => setSeccionActiva(sec)}
+                              className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-all border-b-2 -mb-px ${
+                                seccionActiva === sec
+                                  ? 'border-black text-black'
+                                  : 'border-transparent text-neutral-400'
+                              }`}
+                            >
+                              {sec === 'comida' ? '🍽️' : '🥤'}
+                              {sec === 'comida' ? 'Comida' : 'Bebidas'}
+                              <span className="ml-1 text-[10px] font-normal text-neutral-400">
+                                {sec === 'comida' ? recetasComida.length : menu.bebidas.length}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+
+                        {/* Sección Comida */}
+                        {seccionActiva === 'comida' && (
+                          <div className="relative pb-20">
+                            {recetasComida.length === 0 ? (
+                              <div className="flex flex-col items-center justify-center py-14 text-center gap-3">
+                                <p className="text-sm text-neutral-500">Sin platos en este menú</p>
+                                <button
+                                  onClick={() => { setSearchAgregarComida(''); setShowAgregarComida(true); }}
+                                  className="text-xs px-3 py-2 rounded-xl text-white active:scale-95 transition-transform"
+                                  style={{ backgroundColor: '#72BDE8' }}
+                                >
+                                  + Agregar plato
+                                </button>
+                              </div>
+                            ) : (
+                              <FoodCostView
+                                recetas={recetasComida}
+                                insumos={insumos}
+                                subRecetas={subRecetas}
+                                onUpdatePrecio={handleUpdatePrecio}
+                                onOpenDetail={openRecetaDetail}
+                                onRemove={(recetaId) => {
+                                  setMenusMes(prev => prev.map(m =>
+                                    m.id === menu.id
+                                      ? { ...m, comidaIds: m.comidaIds.filter(id => id !== recetaId) }
+                                      : m
+                                  ));
+                                }}
+                              />
+                            )}
+                            {/* Floating button */}
+                            <button
+                              onClick={() => { setSearchAgregarComida(''); setShowAgregarComida(true); }}
+                              className="fixed bottom-24 left-1/2 -translate-x-1/2 flex items-center gap-2 px-5 py-3 rounded-2xl text-white text-sm font-medium shadow-lg active:scale-95 transition-transform z-10"
+                              style={{ backgroundColor: '#72BDE8' }}
+                            >
+                              <Plus size={16} strokeWidth={2} /> Agregar plato al menú
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Sección Bebidas */}
+                        {seccionActiva === 'bebidas' && (
+                          <div className="relative pb-20">
+                            {menu.bebidas.length === 0 ? (
+                              <div className="flex flex-col items-center justify-center py-14 text-center gap-3">
+                                <p className="text-sm text-neutral-500">Sin bebidas en este menú</p>
+                                <button
+                                  onClick={() => { setBebidaTipo('receta'); setBebidaRecetaId(''); setBebidaNombre(''); setBebidaCosto(''); setBebidaPrecio(''); setShowAgregarBebida(true); }}
+                                  className="text-xs px-3 py-2 rounded-xl text-white active:scale-95 transition-transform"
+                                  style={{ backgroundColor: '#72BDE8' }}
+                                >
+                                  + Agregar bebida
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="bg-neutral-50 border border-neutral-100 rounded-2xl overflow-hidden mb-4">
+                                <div className="px-4 py-3 border-b border-neutral-100 grid grid-cols-[1fr_auto_auto_auto] gap-3 items-center">
+                                  <p className="text-[9px] uppercase tracking-widest text-neutral-400">Bebida</p>
+                                  <p className="text-[9px] uppercase tracking-widest text-neutral-400 text-right">Costo</p>
+                                  <p className="text-[9px] uppercase tracking-widest text-neutral-400 text-right">Precio</p>
+                                  <p className="text-[9px] uppercase tracking-widest text-neutral-400 text-right">FC%</p>
+                                </div>
+                                {menu.bebidas.map(beb => {
+                                  let costo = 0;
+                                  if (beb.tipo === 'receta' && beb.recetaId) {
+                                    const rec = recetas.find(r => r.id === beb.recetaId);
+                                    costo = rec ? getRecetaCostoPorPorcion(rec, insumos, subRecetas) : 0;
+                                  } else {
+                                    costo = beb.costoUnitario ?? 0;
+                                  }
+                                  const precio = beb.precioVenta;
+                                  const pct = precio > 0 ? costo / precio : 0;
+                                  return (
+                                    <div key={beb.id} className="px-4 py-3.5 border-b border-neutral-50 last:border-0">
+                                      <div className="grid grid-cols-[1fr_auto_auto_auto] gap-3 items-center">
+                                        <div className="flex items-center gap-2 min-w-0">
+                                          <button
+                                            onClick={() => setMenusMes(prev => prev.map(m =>
+                                              m.id === menu.id
+                                                ? { ...m, bebidas: m.bebidas.filter(b => b.id !== beb.id) }
+                                                : m
+                                            ))}
+                                            className="w-5 h-5 rounded-full bg-neutral-200 flex items-center justify-center text-neutral-500 active:bg-red-100 active:text-red-500 shrink-0 transition-colors"
+                                          >
+                                            <X size={10} strokeWidth={2.5} />
+                                          </button>
+                                          <div className="min-w-0">
+                                            <span
+                                              className="text-[8px] uppercase tracking-widest px-1.5 py-0.5 rounded-full inline-block mb-0.5"
+                                              style={{ backgroundColor: '#72BDE815', color: '#72BDE8' }}
+                                            >
+                                              {beb.tipo === 'receta' ? 'Receta' : 'Insumo'}
+                                            </span>
+                                            <p className="text-sm font-medium text-black truncate">{beb.nombre}</p>
+                                          </div>
+                                        </div>
+                                        <div className="text-right">
+                                          <p className="text-sm font-medium text-black tabular-nums">{costo > 0 ? formatMoney(costo) : '—'}</p>
+                                        </div>
+                                        <div className="text-right">
+                                          <p className="text-sm font-medium text-black tabular-nums">{precio > 0 ? formatMoney(precio) : '—'}</p>
+                                        </div>
+                                        <div className="text-right">
+                                          {precio > 0 ? (
+                                            <span className={`text-sm font-medium tabular-nums ${foodCostColor(pct)}`}>
+                                              {(pct * 100).toFixed(1)}%
+                                            </span>
+                                          ) : (
+                                            <span className="text-sm text-neutral-300">—</span>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                            {/* Floating button */}
+                            <button
+                              onClick={() => { setBebidaTipo('receta'); setBebidaRecetaId(''); setBebidaNombre(''); setBebidaCosto(''); setBebidaPrecio(''); setShowAgregarBebida(true); }}
+                              className="fixed bottom-24 left-1/2 -translate-x-1/2 flex items-center gap-2 px-5 py-3 rounded-2xl text-white text-sm font-medium shadow-lg active:scale-95 transition-transform z-10"
+                              style={{ backgroundColor: '#72BDE8' }}
+                            >
+                              <Plus size={16} strokeWidth={2} /> Agregar bebida
+                            </button>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
                 </>
               )}
             </motion.div>
@@ -2179,6 +2447,263 @@ export const RecetasTab: React.FC<{ canViewCosts?: boolean; customInsumos?: Insu
         onToggleCosts={() => setShowCosts(v => !v)}
         canViewCosts={canViewCosts}
       />
+
+      {/* ── Sheet: Nuevo mes ── */}
+      <AnimatePresence>
+        {showNuevoMes && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/40 z-[60]"
+              onClick={() => setShowNuevoMes(false)}
+            />
+            <motion.div
+              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+              className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white rounded-t-3xl z-[60] px-5 pt-4 pb-10"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="w-10 h-1 bg-neutral-200 rounded-full mx-auto mb-4" />
+              <div className="flex items-center justify-between mb-5">
+                <h3 className="text-base font-medium text-black">Nuevo menú del mes</h3>
+                <button onClick={() => setShowNuevoMes(false)} className="w-8 h-8 rounded-full bg-neutral-100 flex items-center justify-center text-neutral-500">
+                  <X size={14} strokeWidth={2} />
+                </button>
+              </div>
+              <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-2">Nombre del menú</p>
+              <input
+                autoFocus
+                type="text"
+                value={nuevoMesLabel}
+                onChange={e => setNuevoMesLabel(e.target.value)}
+                placeholder="Ej: Mayo 2025, Verano 2025…"
+                className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-3.5 py-3 text-sm text-black outline-none placeholder-neutral-400 mb-5"
+              />
+              <button
+                disabled={!nuevoMesLabel.trim()}
+                onClick={() => {
+                  const id = `mes-${Date.now()}`;
+                  const newMenu: MenuMes = { id, label: nuevoMesLabel.trim(), comidaIds: [], bebidas: [] };
+                  setMenusMes(prev => [...prev, newMenu]);
+                  setSelectedMenuId(id);
+                  setSeccionActiva('comida');
+                  setShowNuevoMes(false);
+                }}
+                className="w-full text-white rounded-2xl py-4 text-sm font-medium active:scale-[0.98] transition-all disabled:opacity-30"
+                style={{ backgroundColor: '#72BDE8' }}
+              >
+                Crear menú
+              </button>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* ── Sheet: Agregar comida al menú ── */}
+      <AnimatePresence>
+        {showAgregarComida && selectedMenu && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/40 z-[60]"
+              onClick={() => setShowAgregarComida(false)}
+            />
+            <motion.div
+              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+              className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white rounded-t-3xl z-[60] px-5 pt-4 pb-10 max-h-[80vh] flex flex-col"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="w-10 h-1 bg-neutral-200 rounded-full mx-auto mb-4 shrink-0" />
+              <div className="flex items-center justify-between mb-4 shrink-0">
+                <h3 className="text-base font-medium text-black">Agregar plato al menú</h3>
+                <button onClick={() => setShowAgregarComida(false)} className="w-8 h-8 rounded-full bg-neutral-100 flex items-center justify-center text-neutral-500">
+                  <X size={14} strokeWidth={2} />
+                </button>
+              </div>
+              <div className="flex items-center gap-2 bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2.5 mb-3 shrink-0">
+                <Search size={14} className="text-neutral-400 shrink-0" strokeWidth={1.75} />
+                <input
+                  autoFocus
+                  value={searchAgregarComida}
+                  onChange={e => setSearchAgregarComida(e.target.value)}
+                  placeholder="Buscar plato..."
+                  className="flex-1 bg-transparent text-sm text-black outline-none placeholder-neutral-400"
+                />
+              </div>
+              <div className="overflow-y-auto flex-1">
+                {recetas
+                  .filter(r => r.categoria !== 'Bebidas' && !selectedMenu.comidaIds.includes(r.id))
+                  .filter(r => r.nombre.toLowerCase().includes(searchAgregarComida.toLowerCase()))
+                  .map(r => (
+                    <button
+                      key={r.id}
+                      onClick={() => {
+                        setMenusMes(prev => prev.map(m =>
+                          m.id === selectedMenu.id
+                            ? { ...m, comidaIds: [...m.comidaIds, r.id] }
+                            : m
+                        ));
+                        setShowAgregarComida(false);
+                      }}
+                      className="w-full flex items-center justify-between px-3 py-3.5 border-b border-neutral-50 last:border-0 active:bg-neutral-50 transition-colors text-left"
+                    >
+                      <div>
+                        <span
+                          className="text-[8px] uppercase tracking-widest px-1.5 py-0.5 rounded-full inline-block mb-0.5"
+                          style={{ backgroundColor: (CATEGORIA_COLORS[r.categoria] ?? '#6B7280') + '15', color: CATEGORIA_COLORS[r.categoria] ?? '#6B7280' }}
+                        >
+                          {r.categoria}
+                        </span>
+                        <p className="text-sm font-medium text-black">{r.nombre}</p>
+                      </div>
+                      <ChevronRight size={16} className="text-neutral-300 shrink-0" />
+                    </button>
+                  ))}
+                {recetas.filter(r => r.categoria !== 'Bebidas' && !selectedMenu.comidaIds.includes(r.id)).length === 0 && (
+                  <p className="text-sm text-neutral-400 text-center py-8">Todos los platos ya están en el menú</p>
+                )}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* ── Sheet: Agregar bebida ── */}
+      <AnimatePresence>
+        {showAgregarBebida && selectedMenu && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/40 z-[60]"
+              onClick={() => setShowAgregarBebida(false)}
+            />
+            <motion.div
+              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+              className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white rounded-t-3xl z-[60] px-5 pt-4 pb-10 max-h-[85vh] overflow-y-auto"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="w-10 h-1 bg-neutral-200 rounded-full mx-auto mb-4" />
+              <div className="flex items-center justify-between mb-5">
+                <h3 className="text-base font-medium text-black">Agregar bebida</h3>
+                <button onClick={() => setShowAgregarBebida(false)} className="w-8 h-8 rounded-full bg-neutral-100 flex items-center justify-center text-neutral-500">
+                  <X size={14} strokeWidth={2} />
+                </button>
+              </div>
+
+              {/* Segmented tipo */}
+              <div className="flex gap-1 bg-neutral-100 rounded-xl p-1 mb-5">
+                {(['receta', 'insumo'] as const).map(t => (
+                  <button
+                    key={t}
+                    onClick={() => { setBebidaTipo(t); setBebidaRecetaId(''); setBebidaNombre(''); setBebidaCosto(''); setBebidaPrecio(''); }}
+                    className={`flex-1 py-2 rounded-lg text-xs font-medium transition-all ${bebidaTipo === t ? 'bg-white text-black shadow-sm' : 'text-neutral-500'}`}
+                  >
+                    {t === 'receta' ? 'Receta de bebida' : 'Insumo directo'}
+                  </button>
+                ))}
+              </div>
+
+              <div className="space-y-4">
+                {bebidaTipo === 'receta' ? (
+                  <div>
+                    <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-2">Receta de bebida</p>
+                    <div className="relative">
+                      <select
+                        value={bebidaRecetaId}
+                        onChange={e => {
+                          const r = recetas.find(rec => rec.id === e.target.value);
+                          setBebidaRecetaId(e.target.value);
+                          if (r) { setBebidaNombre(r.nombre); setBebidaPrecio(String(r.precioVenta ?? '')); }
+                        }}
+                        className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-3.5 py-3 text-sm text-black outline-none appearance-none"
+                      >
+                        <option value="">Seleccioná una receta…</option>
+                        {recetas.filter(r => r.categoria === 'Bebidas').map(r => (
+                          <option key={r.id} value={r.id}>{r.nombre}</option>
+                        ))}
+                      </select>
+                      <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none" />
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div>
+                      <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-2">Nombre</p>
+                      <input
+                        type="text"
+                        value={bebidaNombre}
+                        onChange={e => setBebidaNombre(e.target.value)}
+                        placeholder="Ej: Agua mineral, Gaseosa…"
+                        className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-3.5 py-3 text-sm text-black outline-none placeholder-neutral-400"
+                      />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-2">Costo por unidad</p>
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        value={bebidaCosto}
+                        onChange={e => setBebidaCosto(e.target.value)}
+                        placeholder="0"
+                        className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-3.5 py-3 text-sm text-black outline-none placeholder-neutral-400"
+                      />
+                    </div>
+                  </>
+                )}
+
+                <div>
+                  <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-2">Precio de venta</p>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    value={bebidaPrecio}
+                    onChange={e => setBebidaPrecio(e.target.value)}
+                    placeholder="0"
+                    className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-3.5 py-3 text-sm text-black outline-none placeholder-neutral-400"
+                  />
+                </div>
+
+                <button
+                  disabled={
+                    bebidaTipo === 'receta'
+                      ? !bebidaRecetaId || !bebidaPrecio
+                      : !bebidaNombre.trim() || !bebidaPrecio
+                  }
+                  onClick={() => {
+                    const newBebida: BebidaItem = bebidaTipo === 'receta'
+                      ? {
+                          id: `beb-${Date.now()}`,
+                          tipo: 'receta',
+                          recetaId: bebidaRecetaId,
+                          nombre: bebidaNombre || recetas.find(r => r.id === bebidaRecetaId)?.nombre || '',
+                          precioVenta: parseFloat(bebidaPrecio) || 0,
+                        }
+                      : {
+                          id: `beb-${Date.now()}`,
+                          tipo: 'insumo',
+                          nombre: bebidaNombre.trim(),
+                          costoUnitario: parseFloat(bebidaCosto) || 0,
+                          precioVenta: parseFloat(bebidaPrecio) || 0,
+                        };
+                    setMenusMes(prev => prev.map(m =>
+                      m.id === selectedMenu.id
+                        ? { ...m, bebidas: [...m.bebidas, newBebida] }
+                        : m
+                    ));
+                    setShowAgregarBebida(false);
+                  }}
+                  className="w-full text-white rounded-2xl py-4 text-sm font-medium active:scale-[0.98] transition-all disabled:opacity-30"
+                  style={{ backgroundColor: '#72BDE8' }}
+                >
+                  Agregar
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
