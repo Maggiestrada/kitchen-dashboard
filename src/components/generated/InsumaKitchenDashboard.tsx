@@ -9,15 +9,30 @@ import { PagosTabEnhanced } from './PagosProveedorSheet';
 import { MetricasTab } from './MetricasTab';
 import { RecetasTab, CATALOG_INSUMOS } from './RecetasTab';
 import { NuevoInsumoModal } from './NuevoInsumoModal';
+import { UsuarioConfig } from './OnboardingFlow';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface UserProfile { id: string; name: string; role: 'admin' | 'chef'; }
-const PROFILES: UserProfile[] = [
-  { id: 'admin', name: 'Admin', role: 'admin' },
-  { id: 'chef', name: 'Cocinero', role: 'chef' },
-];
-function getAdminPin(): string { return localStorage.getItem('insuma_pin_admin') ?? '1234'; }
+interface UserProfile { id: string; name: string; role: 'admin' | 'chef'; pin?: string; }
+
+function loadUsuarios(): UserProfile[] {
+  try {
+    const raw: UsuarioConfig[] = JSON.parse(localStorage.getItem('insuma_usuarios') ?? '[]');
+    return raw.map(u => ({
+      id: u.id,
+      name: u.nombre,
+      role: u.rol === 'admin' ? 'admin' : 'chef',
+      pin: u.pin,
+    }));
+  } catch { return []; }
+}
+
+function loadNombreNegocio(): string {
+  try {
+    const raw = JSON.parse(localStorage.getItem('insuma_negocio') ?? 'null');
+    return raw?.nombre ?? 'Cocina';
+  } catch { return 'Cocina'; }
+}
 
 type OrderStatus = 'waiting' | 'on_way' | 'received' | 'discrepancy' | 'paid_cash';
 type PaymentStatus = 'pending' | 'confirmed' | 'paid_digital';
@@ -68,6 +83,8 @@ interface Order {
   hasBillingDiscrepancy?: boolean;
   orderNote?: string;
   receptionNote?: string;
+  creadoPor?: string;
+  recepcionadoPor?: string;
 }
 interface Provider {
   id: string;
@@ -942,6 +959,9 @@ export const InsumaKitchenDashboard = () => {
     try { return JSON.parse(localStorage.getItem('insuma_custom_insumos') ?? '[]'); } catch { return []; }
   });
   const [showRecepcion, setShowRecepcion] = useState(false);
+  // Dynamic users & business
+  const [usuarios] = useState<UserProfile[]>(() => loadUsuarios());
+  const [negocioNombre] = useState<string>(() => loadNombreNegocio());
   const [recepcionOrderId, setRecepcionOrderId] = useState<string | undefined>(undefined);
   const [todayOrders, setTodayOrders] = useState<Order[]>(MOCK_ORDERS);
   const [providers, setProviders] = useState<Provider[]>(INITIAL_PROVIDERS);
@@ -949,11 +969,15 @@ export const InsumaKitchenDashboard = () => {
   const [alertOrderId, setAlertOrderId] = useState<string | null>(null);
   const [showBellPanel, setShowBellPanel] = useState(false);
   const [notifPermission, setNotifPermission] = useState<NotificationPermission>('default');
-  const [activeUser, setActiveUser] = useState<UserProfile>(PROFILES[1]);
+  const [activeUser, setActiveUser] = useState<UserProfile>(() => {
+    const all = loadUsuarios();
+    return all.find(u => u.role === 'chef') ?? all[0] ?? { id: 'chef', name: 'Cocinero', role: 'chef' };
+  });
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showPinModal, setShowPinModal] = useState(false);
   const [pinInput, setPinInput] = useState('');
   const [pinError, setPinError] = useState(false);
+  const [pendingAdmin, setPendingAdmin] = useState<UserProfile | null>(null);
   const swipeStartX = React.useRef<number | null>(null);
   const swipeStartY = React.useRef<number | null>(null);
   useEffect(() => {
@@ -964,7 +988,7 @@ export const InsumaKitchenDashboard = () => {
     if ('Notification' in window) setNotifPermission(Notification.permission);
     sendNotification('INSUMA', '¡Notificaciones activadas! Te avisaremos cuando haya alertas.');
   }, []);
-  const handleOrderCreated = useCallback((providerName?: string, orderNote?: string) => {
+  const handleOrderCreated = useCallback((providerName?: string, orderNote?: string, creadoPor?: string) => {
     setTodayOrders(prev => [{
       id: String(Date.now()),
       provider: providerName ?? 'Nuevo Pedido',
@@ -979,10 +1003,11 @@ export const InsumaKitchenDashboard = () => {
       paymentStatus: 'pending',
       weekLabel: 'Esta semana',
       paymentHistory: [],
-      orderNote: orderNote && orderNote.trim().length > 0 ? orderNote : undefined
+      orderNote: orderNote && orderNote.trim().length > 0 ? orderNote : undefined,
+      creadoPor: creadoPor ?? undefined,
     }, ...prev]);
   }, []);
-  const handleOrderReceived = useCallback((orderId: string, hasCash: boolean, newAlerts?: Alert[], receptionNote?: string) => {
+  const handleOrderReceived = useCallback((orderId: string, hasCash: boolean, newAlerts?: Alert[], receptionNote?: string, recepcionadoPor?: string) => {
     setTodayOrders(prev => prev.map(o => {
       if (o.id !== orderId) return o;
       const now = new Date().toLocaleTimeString('es-AR', {
@@ -1004,7 +1029,8 @@ export const InsumaKitchenDashboard = () => {
         weekLabel: 'Esta semana',
         alerts: newAlerts && newAlerts.length > 0 ? newAlerts : o.alerts,
         paymentHistory: [...(o.paymentHistory ?? []), newHistoryEvent],
-        receptionNote: receptionNote && receptionNote.trim().length > 0 ? receptionNote : o.receptionNote
+        receptionNote: receptionNote && receptionNote.trim().length > 0 ? receptionNote : o.receptionNote,
+        recepcionadoPor: recepcionadoPor ?? o.recepcionadoPor,
       };
     }));
     if (newAlerts && newAlerts.length > 0) {
@@ -1182,7 +1208,7 @@ export const InsumaKitchenDashboard = () => {
             fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif",
             letterSpacing: '-0.02em'
           }}>INSUMA</span>
-            <span className="text-[9px] font-normal text-neutral-400 uppercase tracking-[0.18em] mt-1">Cocina</span>
+            <span className="text-[9px] font-normal text-neutral-400 uppercase tracking-[0.18em] mt-1">{negocioNombre}</span>
           </button>
           <div className="flex gap-2">
             {/* User profile switcher */}
@@ -1438,7 +1464,7 @@ export const InsumaKitchenDashboard = () => {
         customInsumos={customInsumos}
         proveedores={providers.map(p => p.name)}
       />
-      <NuevoPedidoModal isOpen={showNuevoPedido} onClose={() => setShowNuevoPedido(false)} onOrderCreated={handleOrderCreated} />
+      <NuevoPedidoModal isOpen={showNuevoPedido} onClose={() => setShowNuevoPedido(false)} onOrderCreated={handleOrderCreated} creadoPor={activeUser.name} />
       <NuevoProveedorModal isOpen={showNuevoProveedor} onClose={() => setShowNuevoProveedor(false)} onProveedorCreated={handleProveedorCreated} />
       <ProveedorPerfilSheet proveedor={selectedProveedor} isOpen={selectedProveedor !== null} onClose={() => setSelectedProveedor(null)} onNuevoPedido={() => {
       setSelectedProveedor(null);
@@ -1447,7 +1473,7 @@ export const InsumaKitchenDashboard = () => {
       <RecepcionPedidoModal isOpen={showRecepcion} onClose={() => {
       setShowRecepcion(false);
       setRecepcionOrderId(undefined);
-    }} onOrderReceived={handleOrderReceived} initialOrderId={recepcionOrderId} />
+    }} onOrderReceived={handleOrderReceived} initialOrderId={recepcionOrderId} recepcionadoPor={activeUser.name} />
       <AlertDetailSheet order={alertOrder} isOpen={alertOrderId !== null} onClose={() => setAlertOrderId(null)} onResolve={handleResolveAlert} />
 
       {/* User menu sheet */}
@@ -1458,7 +1484,7 @@ export const InsumaKitchenDashboard = () => {
             <div className="w-10 h-1 bg-neutral-200 rounded-full mx-auto mb-5" />
             <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-3">Cambiar perfil</p>
             <div className="space-y-2">
-              {PROFILES.map(profile => {
+              {usuarios.map(profile => {
                 const isActive = activeUser.id === profile.id;
                 return (
                   <button key={profile.id} onClick={() => {
@@ -1466,6 +1492,7 @@ export const InsumaKitchenDashboard = () => {
                       setShowUserMenu(false);
                       setPinInput('');
                       setPinError(false);
+                      setPendingAdmin(profile);
                       setShowPinModal(true);
                     } else {
                       setActiveUser(profile);
@@ -1477,7 +1504,7 @@ export const InsumaKitchenDashboard = () => {
                     </div>
                     <div className="flex-1 text-left">
                       <p className={`text-sm font-medium ${isActive ? 'text-white' : 'text-black'}`}>{profile.name}</p>
-                      <p className={`text-[10px] ${isActive ? 'text-white/60' : 'text-neutral-400'}`}>{profile.role === 'admin' ? 'Acceso completo · requiere PIN' : 'Acceso básico'}</p>
+                      <p className={`text-[10px] ${isActive ? 'text-white/60' : 'text-neutral-400'}`}>{profile.role === 'admin' ? 'Admin · requiere PIN' : 'Cocinero'}</p>
                     </div>
                     {isActive && <span className="w-2 h-2 bg-emerald-400 rounded-full" />}
                   </button>
@@ -1497,8 +1524,8 @@ export const InsumaKitchenDashboard = () => {
               <div className="w-12 h-12 rounded-2xl bg-black flex items-center justify-center mb-1">
                 <Lock size={20} strokeWidth={1.75} className="text-white" />
               </div>
-              <p className="text-base font-medium text-black">Acceso Admin</p>
-              <p className="text-xs text-neutral-400 text-center">Ingresá el PIN de administrador para continuar</p>
+              <p className="text-base font-medium text-black">{pendingAdmin?.name ?? 'Admin'}</p>
+              <p className="text-xs text-neutral-400 text-center">Ingresá el PIN para continuar</p>
             </div>
             <div className="flex justify-center gap-3 mb-4">
               {[0,1,2,3].map(i => (
@@ -1517,10 +1544,12 @@ export const InsumaKitchenDashboard = () => {
                     setPinInput(next);
                     setPinError(false);
                     if (next.length === 4) {
-                      if (next === getAdminPin()) {
-                        setActiveUser(PROFILES[0]);
+                      const expectedPin = pendingAdmin?.pin ?? '1234';
+                      if (next === expectedPin) {
+                        if (pendingAdmin) setActiveUser(pendingAdmin);
                         setShowPinModal(false);
                         setPinInput('');
+                        setPendingAdmin(null);
                       } else {
                         setPinError(true);
                         setTimeout(() => setPinInput(''), 400);

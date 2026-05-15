@@ -596,12 +596,14 @@ const CustomProductPanel = ({
 interface NuevoPedidoModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onOrderCreated: (providerName?: string, orderNote?: string) => void;
+  onOrderCreated: (providerName?: string, orderNote?: string, creadoPor?: string) => void;
+  creadoPor?: string;
 }
 export const NuevoPedidoModal = ({
   isOpen,
   onClose,
-  onOrderCreated
+  onOrderCreated,
+  creadoPor,
 }: NuevoPedidoModalProps) => {
   const [step, setStep] = useState<WizardStep>(1);
   const [search, setSearch] = useState('');
@@ -781,7 +783,7 @@ export const NuevoPedidoModal = ({
     const msg = encodeURIComponent(mensajeEditable || buildRawMessage());
     window.open(`https://wa.me/${selectedProvider?.whatsapp}?text=${msg}`, '_blank');
     setTimeout(() => {
-      onOrderCreated(selectedProvider?.name, orderNote.trim() || undefined);
+      onOrderCreated(selectedProvider?.name, orderNote.trim() || undefined, creadoPor);
       resetAndClose();
     }, 1800);
   };
@@ -1173,6 +1175,11 @@ export const NuevoPedidoModal = ({
                     <div className="bg-white border border-neutral-100 rounded-2xl px-4 py-3">
                       <p className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider mb-2">Nota general (opcional)</p>
                       <textarea value={orderNote} onChange={e => setOrderNote(e.target.value)} placeholder="Ej: entrega antes de las 10am, dejar con el encargado..." rows={2} className="w-full text-sm text-neutral-700 placeholder:text-neutral-300 bg-neutral-50 rounded-xl px-3 py-2.5 outline-none border border-neutral-100 focus:border-black resize-none" />
+                      {creadoPor && (
+                        <p className="text-[10px] text-neutral-400 mt-2 flex items-center gap-1">
+                          <span>👤</span> Pedido por <span className="font-medium text-neutral-600">{creadoPor}</span>
+                        </p>
+                      )}
                     </div>
 
                     {/* Editable WhatsApp message */}

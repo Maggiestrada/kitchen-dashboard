@@ -256,8 +256,9 @@ const QtyInput = ({
 interface RecepcionPedidoModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onOrderReceived: (orderId: string, hasCash: boolean, alerts?: GeneratedAlert[], receptionNote?: string) => void;
+  onOrderReceived: (orderId: string, hasCash: boolean, alerts?: GeneratedAlert[], receptionNote?: string, recepcionadoPor?: string) => void;
   initialOrderId?: string;
+  recepcionadoPor?: string;
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
@@ -266,7 +267,8 @@ export const RecepcionPedidoModal = ({
   isOpen,
   onClose,
   onOrderReceived,
-  initialOrderId
+  initialOrderId,
+  recepcionadoPor,
 }: RecepcionPedidoModalProps) => {
   const [step, setStep] = useState<ReceptionStep>(1);
   const [selectedOrder, setSelectedOrder] = useState<PendingOrder | null>(null);
@@ -372,7 +374,7 @@ export const RecepcionPedidoModal = ({
       })
     }));
     setTimeout(() => {
-      onOrderReceived(selectedOrder?.id ?? '', paidCash, generatedAlerts, generalNote.trim() || undefined);
+      onOrderReceived(selectedOrder?.id ?? '', paidCash, generatedAlerts, generalNote.trim() || undefined, recepcionadoPor);
       resetAndClose();
     }, 1800);
   };

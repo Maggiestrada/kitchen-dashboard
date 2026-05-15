@@ -1,6 +1,7 @@
-import { useMemo } from 'react';
+import { useState } from 'react';
 import { Container, Theme } from './settings/types';
 import { InsumaKitchenDashboard } from './components/generated/InsumaKitchenDashboard';
+import { OnboardingFlow } from './components/generated/OnboardingFlow';
 
 let theme: Theme = 'light';
 // only use 'centered' container for standalone components, never for full page apps or websites.
@@ -17,19 +18,22 @@ function App() {
 
   setTheme(theme);
 
-  const generatedComponent = useMemo(() => {
-    // THIS IS WHERE THE TOP LEVEL GENRATED COMPONENT WILL BE RETURNED!
-    return <InsumaKitchenDashboard />; // %EXPORT_STATEMENT%
-  }, []);
+  const [onboardingDone, setOnboardingDone] = useState(
+    () => localStorage.getItem('insuma_onboarding_ok') === '1'
+  );
+
+  const content = onboardingDone
+    ? <InsumaKitchenDashboard />
+    : <OnboardingFlow onComplete={() => setOnboardingDone(true)} />;
 
   if (container === 'centered') {
     return (
       <div className="h-full w-full flex flex-col items-center justify-center">
-        {generatedComponent}
+        {content}
       </div>
     );
   } else {
-    return generatedComponent;
+    return content;
   }
 }
 
