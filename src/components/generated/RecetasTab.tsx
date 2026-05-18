@@ -108,7 +108,7 @@ function getInsumoPrecioGramo(insumoId: string, insumos: Insumo[]): number {
   if (unit === 'kg') {
     return ins.pricePerKg / 1000; // pricePerKg = price/kg, return price/gram
   }
-  if (unit === 'l') {
+  if (unit === 'l' || unit === 'lt') {
     return ins.pricePerKg / 1000; // pricePerKg = price/liter, return price/ml
   }
   // default: gr, ml, cc → pricePerKg/1000 = price per gram/ml

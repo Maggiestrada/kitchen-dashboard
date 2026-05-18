@@ -1122,7 +1122,6 @@ export const InsumaKitchenDashboard = () => {
   }, []);
   const handleSaveItemPrices = useCallback((items: { nombre: string; precioUnit: number; unit: string }[]) => {
     setCustomInsumos(prev => {
-      const allInsumos = [...CATALOG_INSUMOS, ...prev];
       const updated = [...prev];
       items.forEach(item => {
         const nombre = item.nombre.toLowerCase().trim();

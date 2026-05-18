@@ -14,6 +14,8 @@ interface OrderItem {
   unit: string;
   status: 'ok' | 'discrepancy' | 'pending';
   alertMsg: string;
+  precioUnit?: number;
+  ivaRate?: number;
 }
 interface Alert {
   id: string;
@@ -363,8 +365,8 @@ const AiInvoiceDetailSheet = ({
               {(() => {
                 // precioUnit = precio neto UNITARIO. El input muestra subtotal neto (precioUnit × cant)
                 // y divide por cant al guardar. unitConIva = precioUnit × (1 + ivaRate/100)
-                const totalNeto = orderItems.reduce((s, it) => s + it.cantRecibida * it.precioUnit, 0);
-                const totalIvaSum = orderItems.reduce((s, it) => s + it.cantRecibida * it.precioUnit * (it.ivaRate / 100), 0);
+                const totalNeto = orderItems.reduce((s, it) => s + (it.cantRecibida || it.cantPedida || 1) * it.precioUnit, 0);
+                const totalIvaSum = orderItems.reduce((s, it) => s + (it.cantRecibida || it.cantPedida || 1) * it.precioUnit * (it.ivaRate / 100), 0);
                 const totalFactura = totalNeto + totalIvaSum;
                 const IVA_OPTIONS = [0, 10.5, 21, 27];
                 return (

@@ -514,7 +514,7 @@ const ItemDrillSheet = ({
                   }} />
                       <YAxis hide />
                       <CartesianGrid vertical={false} stroke="#F3F4F6" />
-                      <Tooltip formatter={(value: number) => [formatMoney(value), 'Gasto']} contentStyle={{
+                      <Tooltip formatter={((value: number) => [formatMoney(value ?? 0), 'Gasto']) as any} contentStyle={{
                     border: 'none',
                     borderRadius: 12,
                     boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
@@ -688,7 +688,7 @@ const AreaDetailSheet = ({
                   }} />
                       <YAxis hide />
                       <CartesianGrid vertical={false} stroke="#F3F4F6" />
-                      <Tooltip formatter={(value: number) => [formatMoney(value), area]} contentStyle={{
+                      <Tooltip formatter={((value: number) => [formatMoney(value ?? 0), area]) as any} contentStyle={{
                     border: 'none',
                     borderRadius: 12,
                     boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
