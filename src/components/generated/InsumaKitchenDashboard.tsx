@@ -37,6 +37,7 @@ interface Alert {
   message: string;
   resolved: boolean;
   timestamp: string;
+  orderProvider?: string;
 }
 interface PaymentHistoryEvent {
   id: string;
@@ -687,7 +688,7 @@ const AlertasTab = ({
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-normal text-red-900 leading-tight">{alert.itemName}</p>
                     <p className="text-xs font-normal text-red-600 mt-0.5 leading-snug">{alert.message}</p>
-                    <p className="text-[10px] text-red-400 mt-1 font-normal">{(alert as any).orderProvider} · {alert.timestamp}</p>
+                    <p className="text-[10px] text-red-400 mt-1 font-normal">{alert.orderProvider} · {alert.timestamp}</p>
                   </div>
                 </div>
                 <button onClick={() => onResolve(alert.orderId, alert.id)} className="w-full py-2.5 rounded-xl bg-black text-white text-xs font-normal flex items-center justify-center gap-2 active:scale-95 transition-transform">
@@ -703,7 +704,7 @@ const AlertasTab = ({
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-normal text-neutral-400 line-through leading-tight">{alert.itemName}</p>
                 <p className="text-[10px] font-normal text-neutral-400 mt-0.5 line-through">{alert.message}</p>
-                <p className="text-[10px] text-neutral-300 mt-1 font-normal">{(alert as any).orderProvider}</p>
+                <p className="text-[10px] text-neutral-300 mt-1 font-normal">{alert.orderProvider}</p>
               </div>
               <span className="text-[9px] font-normal text-green-700 bg-green-100 px-1.5 py-0.5 rounded-full uppercase shrink-0">OK</span>
             </div>)}
@@ -825,7 +826,7 @@ const NotificationPanel = ({
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-bold text-black truncate">{alert.itemName}</p>
                     <p className="text-[10px] text-neutral-500 font-medium leading-snug">{alert.message}</p>
-                    <p className="text-[9px] text-neutral-400 mt-1">{(alert as any).orderProvider} · {alert.timestamp}</p>
+                    <p className="text-[9px] text-neutral-400 mt-1">{alert.orderProvider} · {alert.timestamp}</p>
                   </div>
                   <ArrowRight size={13} className="text-neutral-300 shrink-0 mt-0.5" strokeWidth={1.75} />
                 </div>
