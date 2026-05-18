@@ -787,24 +787,25 @@ const AiInvoiceDetailSheet = ({
                 </div>
               </div>
 
-              {/* Guardar precios — sticky al fondo del scroll, siempre visible */}
-              <div className="sticky bottom-0 -mx-5 px-5 py-3 bg-white border-t border-neutral-100">
-                <button
-                  onClick={() => {
-                    const priced = orderItems.filter(it => it.precioUnit > 0);
-                    onSaveItemPrices?.(priced.map(it => ({ nombre: it.nombre, precioUnit: it.precioUnit, unit: it.unit })));
-                    if (order) {
-                      onSaveOrderPrices?.(order.id, orderItems.map(it => ({ id: it.id, precioUnit: it.precioUnit, ivaRate: it.ivaRate })));
-                    }
-                    setPricesSaved(true);
-                    setTimeout(() => setPricesSaved(false), 3000);
-                  }}
-                  className={`w-full py-3.5 rounded-2xl text-sm font-black flex items-center justify-center gap-2 transition-all active:scale-[0.98] ${pricesSaved ? 'bg-green-500 text-white' : 'bg-black text-white'}`}
-                >
-                  {pricesSaved ? <Check size={16} strokeWidth={3} /> : <Package size={16} strokeWidth={2.5} />}
-                  <span>{pricesSaved ? 'Precios guardados en insumos ✓' : 'Guardar precios en insumos'}</span>
-                </button>
-              </div>
+            </div>
+
+            {/* Guardar precios — fijo al fondo del panel, fuera del scroll */}
+            <div className="shrink-0 px-5 py-3 bg-white border-t border-neutral-100">
+              <button
+                onClick={() => {
+                  const priced = orderItems.filter(it => it.precioUnit > 0);
+                  onSaveItemPrices?.(priced.map(it => ({ nombre: it.nombre, precioUnit: it.precioUnit, unit: it.unit })));
+                  if (order) {
+                    onSaveOrderPrices?.(order.id, orderItems.map(it => ({ id: it.id, precioUnit: it.precioUnit, ivaRate: it.ivaRate })));
+                  }
+                  setPricesSaved(true);
+                  setTimeout(() => setPricesSaved(false), 3000);
+                }}
+                className={`w-full py-3.5 rounded-2xl text-sm font-black flex items-center justify-center gap-2 transition-all active:scale-[0.98] ${pricesSaved ? 'bg-green-500 text-white' : 'bg-black text-white'}`}
+              >
+                {pricesSaved ? <Check size={16} strokeWidth={3} /> : <Package size={16} strokeWidth={2.5} />}
+                <span>{pricesSaved ? 'Precios guardados en insumos ✓' : 'Guardar precios en insumos'}</span>
+              </button>
             </div>
           </motion.div>
         </motion.div>}
