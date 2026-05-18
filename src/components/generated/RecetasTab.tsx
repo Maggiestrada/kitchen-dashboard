@@ -1967,7 +1967,11 @@ export const RecetasTab: React.FC<{ canViewCosts?: boolean; customInsumos?: Insu
     } catch { /* ignore */ }
     return INITIAL_SUBRECETAS;
   });
-  const insumos = React.useMemo(() => [...CATALOG_INSUMOS, ...(customInsumos ?? [])], [customInsumos]);
+  const insumos = React.useMemo(() => {
+    const custom = customInsumos ?? [];
+    const customIds = new Set(custom.map(i => i.id));
+    return [...custom, ...CATALOG_INSUMOS.filter(i => !customIds.has(i.id))];
+  }, [customInsumos]);
 
   // Feature 1: Price update notification banner
   const [priceUpdateBanner, setPriceUpdateBanner] = useState(false);
