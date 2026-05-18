@@ -5,6 +5,7 @@ import {
   TrendingUp, Scale, Package, Utensils, ChevronDown,
   Eye, EyeOff, Info, Flame, Lock, Calendar, ChevronRight,
 } from 'lucide-react';
+import { SEED_INSUMOS } from '../../lib/db';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -179,7 +180,14 @@ function foodCostBg(pct: number): string {
 
 // ─── Catalog ──────────────────────────────────────────────────────────────────
 
-export const CATALOG_INSUMOS: Insumo[] = [];
+export const CATALOG_INSUMOS: Insumo[] = SEED_INSUMOS.map(s => ({
+  id: `seed-${s.nombre.toLowerCase().replace(/\s+/g, '-')}`,
+  name: s.nombre,
+  category: s.tipo === 'apoyo' ? 'Descartables' : s.categoria,
+  unit: s.unidad,
+  pricePerKg: 0,
+  provider: '',
+}));
 
 const CATEGORIAS = ['Entradas', 'Principales', 'Pastas', 'Postres', 'Panadería', 'Salsas', 'Fermentos', 'Cocina', 'Bebidas'];
 
@@ -322,59 +330,111 @@ const IngredientePicker = ({
 
 // ─── IngredienteEditRow ───────────────────────────────────────────────────────
 
+const MERMA_SUGERIDA: Record<string, { label: string; values: number[] }> = {
+  Carnes: { label: 'Carnes', values: [20, 25, 30] },
+  Pescados: { label: 'Pescados', values: [25, 30, 35] },
+  Verdulería: { label: 'Verdulería', values: [15, 20, 25] },
+  Lácteos: { label: 'Lácteos', values: [5] },
+  Almacén: { label: 'Almacén', values: [2] },
+  Bebidas: { label: 'Bebidas', values: [0] },
+  Descartables: { label: 'Apoyo', values: [0] },
+};
+
 const IngredienteEditRow = ({
   ing,
   onRemove,
   onChange,
+  insumos = [],
 }: {
   ing: RecetaIngrediente;
   onRemove: () => void;
   onChange: (updated: RecetaIngrediente) => void;
-}) => (
-  <div className="py-3 border-b border-neutral-50 last:border-0">
-    <div className="flex items-center gap-2 mb-2">
-      <div className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 ${ing.tipo === 'subreceta' ? 'bg-violet-100' : 'bg-neutral-100'}`}>
-        {ing.tipo === 'subreceta'
-          ? <ChefHat size={8} className="text-violet-600" />
-          : <Package size={8} className="text-neutral-500" />}
+  insumos?: Insumo[];
+}) => {
+  const [showMermaSuggestions, setShowMermaSuggestions] = useState(false);
+
+  const category = React.useMemo(() => {
+    if (ing.tipo !== 'insumo') return null;
+    return insumos.find(i => i.id === ing.referenciaId)?.category ?? null;
+  }, [ing.referenciaId, ing.tipo, insumos]);
+
+  const suggestions = category ? MERMA_SUGERIDA[category] ?? null : null;
+
+  return (
+    <div className="py-3 border-b border-neutral-50 last:border-0">
+      <div className="flex items-center gap-2 mb-2">
+        <div className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 ${ing.tipo === 'subreceta' ? 'bg-violet-100' : 'bg-neutral-100'}`}>
+          {ing.tipo === 'subreceta'
+            ? <ChefHat size={8} className="text-violet-600" />
+            : <Package size={8} className="text-neutral-500" />}
+        </div>
+        <p className="flex-1 text-sm text-black truncate">{ing.nombre}</p>
+        <button
+          onClick={onRemove}
+          className="w-5 h-5 rounded-full bg-neutral-100 flex items-center justify-center text-neutral-400 active:scale-90 transition-transform shrink-0"
+        >
+          <X size={10} strokeWidth={2.5} />
+        </button>
       </div>
-      <p className="flex-1 text-sm text-black truncate">{ing.nombre}</p>
-      <button
-        onClick={onRemove}
-        className="w-5 h-5 rounded-full bg-neutral-100 flex items-center justify-center text-neutral-400 active:scale-90 transition-transform shrink-0"
-      >
-        <X size={10} strokeWidth={2.5} />
-      </button>
+      <div className="flex items-center gap-2 pl-6">
+        <div className="flex-1 flex items-center gap-1.5 bg-neutral-50 border border-neutral-200 rounded-xl px-2.5 py-2">
+          <Scale size={11} className="text-neutral-400 shrink-0" />
+          <input
+            type="number"
+            inputMode="decimal"
+            value={ing.grams || ''}
+            onChange={e => onChange({ ...ing, grams: parseFloat(e.target.value) || 0 })}
+            placeholder="0"
+            className="flex-1 bg-transparent text-sm font-medium text-black outline-none tabular-nums w-0 min-w-0"
+            style={{ MozAppearance: 'textfield' } as React.CSSProperties}
+          />
+          <span className="text-[10px] text-neutral-400 shrink-0">{ing.unit}</span>
+        </div>
+        <div className="relative">
+          <div className="flex items-center gap-1.5 bg-neutral-50 border border-neutral-200 rounded-xl px-2.5 py-2 w-24" title="Porcentaje de la cantidad que se pierde en preparación (limpieza, cocción, etc.)">
+            <span className="text-[10px] text-neutral-400 shrink-0">merma%</span>
+            <input
+              type="number"
+              inputMode="decimal"
+              value={ing.wastePercent || ''}
+              onChange={e => onChange({ ...ing, wastePercent: Math.min(100, parseFloat(e.target.value) || 0) })}
+              onFocus={() => setShowMermaSuggestions(true)}
+              onBlur={() => setTimeout(() => setShowMermaSuggestions(false), 150)}
+              placeholder="0"
+              className="flex-1 bg-transparent text-sm font-medium text-black outline-none tabular-nums w-0 min-w-0"
+              style={{ MozAppearance: 'textfield' } as React.CSSProperties}
+            />
+          </div>
+          <AnimatePresence>
+            {showMermaSuggestions && suggestions && (
+              <motion.div
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.12 }}
+                className="absolute bottom-full right-0 mb-1.5 bg-white border border-neutral-200 rounded-xl shadow-lg p-2 z-20 min-w-max"
+              >
+                <p className="text-[9px] uppercase tracking-widest text-neutral-400 mb-1.5 px-1">{suggestions.label} · sugerido</p>
+                <div className="flex gap-1.5">
+                  {suggestions.values.map(v => (
+                    <button
+                      key={v}
+                      onMouseDown={e => e.preventDefault()}
+                      onClick={() => { onChange({ ...ing, wastePercent: v }); setShowMermaSuggestions(false); }}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${ing.wastePercent === v ? 'bg-black text-white' : 'bg-neutral-100 text-neutral-600 active:bg-neutral-200'}`}
+                    >
+                      {v}%
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
     </div>
-    <div className="flex items-center gap-2 pl-6">
-      <div className="flex-1 flex items-center gap-1.5 bg-neutral-50 border border-neutral-200 rounded-xl px-2.5 py-2">
-        <Scale size={11} className="text-neutral-400 shrink-0" />
-        <input
-          type="number"
-          inputMode="decimal"
-          value={ing.grams || ''}
-          onChange={e => onChange({ ...ing, grams: parseFloat(e.target.value) || 0 })}
-          placeholder="0"
-          className="flex-1 bg-transparent text-sm font-medium text-black outline-none tabular-nums w-0 min-w-0"
-          style={{ MozAppearance: 'textfield' } as React.CSSProperties}
-        />
-        <span className="text-[10px] text-neutral-400 shrink-0">{ing.unit}</span>
-      </div>
-      <div className="flex items-center gap-1.5 bg-neutral-50 border border-neutral-200 rounded-xl px-2.5 py-2 w-24" title="Porcentaje de la cantidad que se pierde en preparación (limpieza, cocción, etc.)">
-        <span className="text-[10px] text-neutral-400 shrink-0">merma%</span>
-        <input
-          type="number"
-          inputMode="decimal"
-          value={ing.wastePercent || ''}
-          onChange={e => onChange({ ...ing, wastePercent: Math.min(100, parseFloat(e.target.value) || 0) })}
-          placeholder="0"
-          className="flex-1 bg-transparent text-sm font-medium text-black outline-none tabular-nums w-0 min-w-0"
-          style={{ MozAppearance: 'textfield' } as React.CSSProperties}
-        />
-      </div>
-    </div>
-  </div>
-);
+  );
+};
 
 // ─── SubIngredienteEditRow ────────────────────────────────────────────────────
 
@@ -741,6 +801,7 @@ const RecetaForm = ({
                     <IngredienteEditRow
                       key={ing.id}
                       ing={ing}
+                      insumos={insumos}
                       onRemove={() => setIngredientes(prev => prev.filter((_, i) => i !== idx))}
                       onChange={updated => setIngredientes(prev => prev.map((it, i) => i === idx ? updated : it))}
                     />

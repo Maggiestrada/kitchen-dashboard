@@ -39,7 +39,7 @@ export interface InsumoCustom {
 type UnidadInsumo = 'kg' | 'lt' | 'u' | 'paq' | 'atado' | 'otro';
 type TipoInsumo = 'ingrediente' | 'apoyo';
 
-const SEED_INSUMOS: { nombre: string; categoria: string; unidad: UnidadInsumo; tipo: TipoInsumo }[] = [
+export const SEED_INSUMOS: { nombre: string; categoria: string; unidad: UnidadInsumo; tipo: TipoInsumo }[] = [
   // ── Bebidas ────────────────────────────────────────────────────────────────
   { nombre: 'Litro de Vino Malbec - Torrontés', categoria: 'Bebidas', unidad: 'u', tipo: 'ingrediente' },
   { nombre: 'Alto Sur Malbec', categoria: 'Bebidas', unidad: 'u', tipo: 'ingrediente' },
@@ -574,23 +574,38 @@ export async function loadInsumos(): Promise<InsumoCustom[]> {
   const negocioId = getNegocioId();
   if (!negocioId) return [];
 
-  const { data, error } = await supabase
-    .from('insumos')
-    .select('id, nombre, categoria, unidad, costo_por_unidad, proveedor_id')
-    .eq('negocio_id', negocioId)
-    .eq('activo', true)
-    .order('created_at');
+  try {
+    const { data, error } = await supabase
+      .from('insumos')
+      .select('id, nombre, categoria, unidad, costo_por_unidad, proveedor_id')
+      .eq('negocio_id', negocioId)
+      .eq('activo', true)
+      .order('created_at');
 
-  if (error || !data) return [];
+    if (!error && data && data.length > 0) {
+      const result = data.map(i => ({
+        id: i.id,
+        name: i.nombre,
+        category: i.categoria,
+        unit: i.unidad,
+        pricePerKg: i.costo_por_unidad ?? 0,
+        provider: i.proveedor_id ?? '',
+      }));
+      localStorage.setItem('insuma_insumos', JSON.stringify(result));
+      return result;
+    }
+  } catch { /* fallback */ }
 
-  return data.map(i => ({
-    id: i.id,
-    name: i.nombre,
-    category: i.categoria,
-    unit: i.unidad,
-    pricePerKg: i.costo_por_unidad ?? 0,
-    provider: i.proveedor_id ?? '',
-  }));
+  // Fallback a localStorage
+  try {
+    const local = localStorage.getItem('insuma_insumos');
+    if (local) {
+      const arr = JSON.parse(local);
+      if (Array.isArray(arr) && arr.length > 0) return arr as InsumoCustom[];
+    }
+  } catch { /* ignore */ }
+
+  return [];
 }
 
 export async function crearInsumo(insumo: InsumoCustom, tipo: 'ingrediente' | 'apoyo' = 'ingrediente'): Promise<InsumoCustom> {
@@ -615,7 +630,7 @@ export async function crearInsumo(insumo: InsumoCustom, tipo: 'ingrediente' | 'a
 
   if (error || !data) throw new Error(`Error creando insumo: ${error?.message}`);
 
-  return {
+  const result: InsumoCustom = {
     id: data.id,
     name: data.nombre,
     category: data.categoria,
@@ -623,6 +638,16 @@ export async function crearInsumo(insumo: InsumoCustom, tipo: 'ingrediente' | 'a
     pricePerKg: data.costo_por_unidad ?? 0,
     provider: data.proveedor_id ?? '',
   };
+
+  // Persist in localStorage as backup
+  try {
+    const local = localStorage.getItem('insuma_insumos');
+    const arr: InsumoCustom[] = local ? JSON.parse(local) : [];
+    arr.push(result);
+    localStorage.setItem('insuma_insumos', JSON.stringify(arr));
+  } catch { /* ignore */ }
+
+  return result;
 }
 
 // ─── Pedidos ──────────────────────────────────────────────────────────────────

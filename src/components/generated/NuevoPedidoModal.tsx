@@ -156,7 +156,7 @@ interface CustomProductPanelProps {
   areas: string[];
   onAddArea: (area: string) => void;
   onRemoveArea: (area: string) => void;
-  onConfirm: (unit: UnitType, area: string) => void;
+  onConfirm: (unit: UnitType, area: string, name: string) => void;
   onCancel: () => void;
 }
 const CustomProductPanel = ({
@@ -169,6 +169,7 @@ const CustomProductPanel = ({
 }: CustomProductPanelProps) => {
   const [selectedUnit, setSelectedUnit] = useState<UnitType>('kg');
   const [selectedArea, setSelectedArea] = useState<string>(areas[0] ?? '');
+  const [localName, setLocalName] = useState(productName);
   const [newAreaInput, setNewAreaInput] = useState('');
   const [showAddArea, setShowAddArea] = useState(false);
   const handleAddArea = () => {
@@ -204,14 +205,17 @@ const CustomProductPanel = ({
 
       {/* Header */}
       <div className="px-5 pt-2 pb-4 flex items-center justify-between shrink-0">
-        <div>
-          <h3 className="text-base font-black text-black leading-tight">Nuevo insumo</h3>
-          <p className="text-xs text-neutral-400 font-medium mt-0.5 truncate max-w-[220px]">
-            <span className="font-bold text-neutral-600">"{productName}"</span>
-            <span> · Configurar antes de agregar</span>
-          </p>
+        <div className="flex-1 min-w-0 mr-3">
+          <h3 className="text-base font-black text-black leading-tight mb-1.5">Nuevo insumo</h3>
+          <input
+            type="text"
+            value={localName}
+            onChange={e => setLocalName(e.target.value)}
+            placeholder="Nombre del insumo…"
+            className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2 text-sm font-medium text-black outline-none focus:border-neutral-400 transition-colors placeholder-neutral-400"
+          />
         </div>
-        <button onClick={onCancel} className="w-9 h-9 rounded-full border border-neutral-200 flex items-center justify-center text-neutral-500 active:scale-90 transition-transform">
+        <button onClick={onCancel} className="w-9 h-9 rounded-full border border-neutral-200 flex items-center justify-center text-neutral-500 active:scale-90 transition-transform shrink-0">
           <X size={17} strokeWidth={2} />
         </button>
       </div>
@@ -296,7 +300,7 @@ const CustomProductPanel = ({
             <Pencil size={15} strokeWidth={2.5} className="text-white" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-black text-black truncate">{productName}</p>
+            <p className="text-sm font-black text-black truncate">{localName || productName}</p>
             <div className="flex items-center gap-2 mt-0.5">
               {selectedArea && <span className="text-[10px] font-bold text-neutral-500 bg-neutral-200 px-1.5 py-0.5 rounded">{selectedArea}</span>}
               <span className="text-[10px] font-bold text-neutral-400">·</span>
@@ -308,7 +312,7 @@ const CustomProductPanel = ({
 
       {/* CTA */}
       <div className="px-5 pb-8 pt-3 shrink-0 border-t border-neutral-100 bg-white">
-        <button onClick={() => onConfirm(selectedUnit, selectedArea)} disabled={!selectedArea} className="w-full py-4 rounded-2xl font-black text-sm bg-black text-white flex items-center justify-center gap-2 active:scale-[0.98] transition-all disabled:opacity-30">
+        <button onClick={() => onConfirm(selectedUnit, selectedArea, localName.trim() || productName)} disabled={!selectedArea || !localName.trim()} className="w-full py-4 rounded-2xl font-black text-sm bg-black text-white flex items-center justify-center gap-2 active:scale-[0.98] transition-all disabled:opacity-30">
           <Plus size={17} strokeWidth={2.5} />
           <span>Agregar al pedido</span>
         </button>
@@ -449,8 +453,8 @@ export const NuevoPedidoModal = ({
     setPendingCustomName(name);
     setShowCustomPanel(true);
   };
-  const handleCustomConfirm = (unit: UnitType, area: string) => {
-    const trimmed = pendingCustomName.trim();
+  const handleCustomConfirm = (unit: UnitType, area: string, name: string) => {
+    const trimmed = (name || pendingCustomName).trim();
     if (!trimmed) return;
     const customId = `custom-${Date.now()}`;
     setCart(prev => ({
