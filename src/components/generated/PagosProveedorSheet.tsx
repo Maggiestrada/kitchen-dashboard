@@ -356,9 +356,8 @@ const AiInvoiceDetailSheet = ({
 
               {/* Detalle del pedido con costos */}
               {(() => {
-                // precioUnit almacena el PRECIO NETO UNITARIO (como figura en la factura, sin IVA)
-                // Precio unit. c/IVA = neto × (1 + ivaRate/100)
-                // Subtotal = cantRecibida × precio c/IVA
+                // precioUnit = precio neto UNITARIO. El input muestra subtotal neto (precioUnit × cant)
+                // y divide por cant al guardar. unitConIva = precioUnit × (1 + ivaRate/100)
                 const totalNeto = orderItems.reduce((s, it) => s + it.cantRecibida * it.precioUnit, 0);
                 const totalIvaSum = orderItems.reduce((s, it) => s + it.cantRecibida * it.precioUnit * (it.ivaRate / 100), 0);
                 const totalFactura = totalNeto + totalIvaSum;
@@ -401,17 +400,20 @@ const AiInvoiceDetailSheet = ({
                             </div>
 
                             <div className="px-3 py-3 space-y-2.5">
-                              {/* Total del ítem */}
+                              {/* Subtotal neto (usuario ingresa total del renglón, se divide por cant para obtener unitario) */}
                               <div className="flex items-center gap-2">
-                                <p className="text-[10px] font-bold text-neutral-400 w-24 shrink-0">P. neto unit.</p>
+                                <p className="text-[10px] font-bold text-neutral-400 w-24 shrink-0">Subtotal neto</p>
                                 <div className="relative flex-1">
                                   <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400 text-xs">$</span>
                                   <input
                                     type="number"
                                     inputMode="decimal"
                                     placeholder="0"
-                                    value={item.precioUnit || ''}
-                                    onChange={e => setOrderItems(prev => prev.map((it, i) => i === idx ? { ...it, precioUnit: parseFloat(e.target.value) || 0 } : it))}
+                                    value={item.precioUnit > 0 ? Math.round(item.precioUnit * cant * 100) / 100 : ''}
+                                    onChange={e => {
+                                      const totalNeto = parseFloat(e.target.value) || 0;
+                                      setOrderItems(prev => prev.map((it, i) => i === idx ? { ...it, precioUnit: cant > 0 ? totalNeto / cant : totalNeto } : it));
+                                    }}
                                     className="w-full pl-6 pr-2 py-1.5 rounded-lg border border-neutral-200 bg-neutral-50 text-xs font-black text-black text-right outline-none focus:border-black transition-colors tabular-nums"
                                     style={{ MozAppearance: 'textfield' } as React.CSSProperties}
                                   />
@@ -438,15 +440,17 @@ const AiInvoiceDetailSheet = ({
                               {item.precioUnit > 0 && (
                                 <div className="pt-2 border-t border-neutral-100 space-y-1.5">
                                   <div className="flex items-center justify-between">
+                                    <p className="text-[10px] text-neutral-400 font-bold">P. neto unit.</p>
+                                    <p className="text-[11px] font-black text-neutral-700 tabular-nums">{formatMoney(item.precioUnit)}</p>
+                                  </div>
+                                  <div className="flex items-center justify-between">
                                     <p className="text-[10px] text-neutral-400 font-bold">P. unit. c/IVA</p>
                                     <p className="text-[11px] font-black text-neutral-700 tabular-nums">{formatMoney(unitConIva)}</p>
                                   </div>
-                                  {cant > 1 && (
-                                    <div className="flex items-center justify-between">
-                                      <p className="text-[10px] text-neutral-400 font-bold">Subtotal ({cant} {item.unit})</p>
-                                      <p className="text-[11px] font-black text-neutral-700 tabular-nums">{formatMoney(subtotal)}</p>
-                                    </div>
-                                  )}
+                                  <div className="flex items-center justify-between">
+                                    <p className="text-[10px] text-neutral-400 font-bold">Subtotal c/IVA ({cant} {item.unit})</p>
+                                    <p className="text-[11px] font-black text-neutral-700 tabular-nums">{formatMoney(subtotal)}</p>
+                                  </div>
                                 </div>
                               )}
                             </div>
