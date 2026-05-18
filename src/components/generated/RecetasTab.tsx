@@ -645,14 +645,17 @@ const RecetaForm = ({
   const handleAdd = (result: PickerResult) => {
     if (result.tipo === 'insumo') {
       const ins = result.item as Insumo;
+      const u = (ins.unit ?? '').toLowerCase().trim();
+      const ingUnit = u === 'kg' ? 'gr' : (u === 'lt' || u === 'l') ? 'ml' : ins.unit || 'gr';
+      const defaultQty = ['u','unid','und','unidad','unidades'].includes(u) ? 1 : 100;
       setIngredientes(prev => [...prev, {
         id: `ri-${Date.now()}`,
         tipo: 'insumo',
         referenciaId: ins.id,
         nombre: ins.name,
-        grams: 100,
+        grams: defaultQty,
         wastePercent: 0,
-        unit: ins.unit === 'lt' ? 'ml' : 'gr',
+        unit: ingUnit,
       }]);
     } else {
       const sub = result.item as SubReceta;
@@ -955,13 +958,16 @@ const SubRecetaForm = ({
   const handleAdd = (result: PickerResult) => {
     if (result.tipo === 'insumo') {
       const ins = result.item as Insumo;
+      const u = (ins.unit ?? '').toLowerCase().trim();
+      const ingUnit = u === 'kg' ? 'gr' : (u === 'lt' || u === 'l') ? 'ml' : ins.unit || 'gr';
+      const defaultQty = ['u','unid','und','unidad','unidades'].includes(u) ? 1 : 100;
       setIngredientes(prev => [...prev, {
         id: `si-${Date.now()}`,
         tipo: 'insumo',
         referenciaId: ins.id,
         nombre: ins.name,
-        grams: 100,
-        unit: ins.unit === 'lt' ? 'ml' : 'gr',
+        grams: defaultQty,
+        unit: ingUnit,
       }]);
     } else {
       const sub = result.item as SubReceta;
