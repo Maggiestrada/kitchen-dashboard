@@ -373,6 +373,17 @@ const IngredienteEditRow = ({
     return insumos.find(i => i.id === ing.referenciaId)?.category ?? null;
   }, [ing.referenciaId, ing.tipo, insumos]);
 
+  const effectiveUnit = React.useMemo(() => {
+    if (ing.tipo !== 'insumo') return ing.unit;
+    const ins = insumos.find(i => i.id === ing.referenciaId);
+    if (!ins) return ing.unit;
+    const u = (ins.unit ?? '').toLowerCase().trim();
+    if (['u', 'unid', 'und', 'unidad', 'unidades'].includes(u)) return ins.unit;
+    if (u === 'kg') return 'gr';
+    if (u === 'lt' || u === 'l') return 'ml';
+    return ins.unit || ing.unit;
+  }, [ing.referenciaId, ing.tipo, ing.unit, insumos]);
+
   const suggestions = category ? MERMA_SUGERIDA[category] ?? null : null;
 
   return (
@@ -403,7 +414,7 @@ const IngredienteEditRow = ({
             className="flex-1 bg-transparent text-sm font-medium text-black outline-none tabular-nums w-0 min-w-0"
             style={{ MozAppearance: 'textfield' } as React.CSSProperties}
           />
-          <span className="text-[10px] text-neutral-400 shrink-0">{ing.unit}</span>
+          <span className="text-[10px] text-neutral-400 shrink-0">{effectiveUnit}</span>
         </div>
         <div className="relative">
           <div className="flex items-center gap-1.5 bg-neutral-50 border border-neutral-200 rounded-xl px-2.5 py-2 w-24" title="Porcentaje de la cantidad que se pierde en preparación (limpieza, cocción, etc.)">
@@ -1778,8 +1789,6 @@ const FoodCostView = ({
   onOpenDetail: (receta: Receta) => void;
   onRemove?: (recetaId: string) => void;
 }) => {
-  const [simInsumoId, setSimInsumoId] = useState('');
-  const [simDelta, setSimDelta] = useState(20);
 
   const rows = recetas.map(r => {
     const costo = getRecetaCostoPorPorcion(r, insumos, subRecetas);
@@ -1842,66 +1851,6 @@ const FoodCostView = ({
         Precio sugerido = costo × 5 · Verde &lt;25% · Amarillo 25–35% · Rojo &gt;35%
       </p>
 
-      {/* Feature 5: Price impact simulator */}
-      <div className="mt-4">
-        <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-3">Simulador de precios</p>
-        <div className="bg-white border border-neutral-100 rounded-2xl overflow-hidden">
-          <div className="px-4 py-3 border-b border-neutral-50 space-y-2.5">
-            <div>
-              <p className="text-[10px] font-bold text-neutral-400 mb-1.5">Insumo</p>
-              <select
-                value={simInsumoId}
-                onChange={e => setSimInsumoId(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-neutral-200 bg-neutral-50 text-xs font-bold text-black outline-none focus:border-black"
-              >
-                <option value="">Seleccioná un insumo...</option>
-                {insumos.filter(i => i.pricePerKg > 0).map(i => (
-                  <option key={i.id} value={i.id}>{i.name}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <p className="text-[10px] font-bold text-neutral-400 mb-1.5">Variación de precio: {simDelta > 0 ? '+' : ''}{simDelta}%</p>
-              <div className="flex gap-1.5">
-                {[-20, -10, +10, +20, +30, +50].map(d => (
-                  <button
-                    key={d}
-                    onClick={() => setSimDelta(d)}
-                    className={`flex-1 py-1.5 rounded-lg text-[10px] font-black transition-all active:scale-95 ${simDelta === d ? 'bg-black text-white' : d < 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}
-                  >
-                    {d > 0 ? '+' : ''}{d}%
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-          {simInsumoId && (() => {
-            const affected = recetas.map(r => {
-              const costoActual = getRecetaCostoPorPorcion(r, insumos, subRecetas);
-              const insumosSim = insumos.map(i => i.id === simInsumoId ? { ...i, pricePerKg: i.pricePerKg * (1 + simDelta / 100) } : i);
-              const costoSim = getRecetaCostoPorPorcion(r, insumosSim, subRecetas);
-              const diff = costoSim - costoActual;
-              return { receta: r, costoActual, costoSim, diff };
-            }).filter(x => Math.abs(x.diff) > 0.01);
-            if (affected.length === 0) return <div className="px-4 py-3 text-xs text-neutral-400 font-medium">Este insumo no aparece en ninguna receta.</div>;
-            return (
-              <div>
-                {affected.map(({ receta: r, costoActual, costoSim, diff }) => (
-                  <div key={r.id} className="px-4 py-2.5 flex items-center gap-2 border-b border-neutral-50 last:border-0">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-bold text-neutral-800 truncate">{r.nombre}</p>
-                      <p className="text-[10px] text-neutral-400">{formatMoney(costoActual)} → {formatMoney(costoSim)}</p>
-                    </div>
-                    <p className={`text-xs font-black tabular-nums shrink-0 ${diff > 0 ? 'text-red-500' : 'text-green-600'}`}>
-                      {diff > 0 ? '+' : ''}{formatMoney(diff)}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            );
-          })()}
-        </div>
-      </div>
     </div>
   );
 };
