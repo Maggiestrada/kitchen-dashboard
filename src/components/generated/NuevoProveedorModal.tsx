@@ -86,6 +86,9 @@ const PLAZOS_PAGO = [{
 }, {
   id: '60d',
   label: '60 días'
+}, {
+  id: 'otros',
+  label: 'Otros'
 }] as any[];
 const STEP_LABELS: Record<FormStep, {
   title: string;
@@ -384,10 +387,29 @@ export const NuevoProveedorModal = ({
                     {/* Plazo de pago */}
                     <Field label="Plazo de pago" icon={Clock} optional>
                       <div className="grid grid-cols-3 gap-2">
-                        {PLAZOS_PAGO.map(p => <button key={p.id} onClick={() => set('plazoPago', p.id)} className={`py-3 px-2 rounded-xl border text-center text-xs font-black transition-all active:scale-95 ${form.plazoPago === p.id ? 'bg-black text-white border-black' : 'bg-white text-neutral-600 border-neutral-200'}`}>
+                        {PLAZOS_PAGO.map((p: { id: string; label: string }) => {
+                          const isPreset = p.id !== 'otros';
+                          const isSelected = isPreset ? form.plazoPago === p.label : !PLAZOS_PAGO.filter((x: { id: string }) => x.id !== 'otros').map((x: { label: string }) => x.label).includes(form.plazoPago) && form.plazoPago !== '';
+                          return <button key={p.id} onClick={() => { if (p.id === 'otros') { set('plazoPago', '__otros__'); } else { set('plazoPago', p.label); } }} className={`py-3 px-2 rounded-xl border text-center text-xs font-black transition-all active:scale-95 ${isSelected ? 'bg-black text-white border-black' : 'bg-white text-neutral-600 border-neutral-200'}`}>
                             {p.label}
-                          </button>)}
+                          </button>;
+                        })}
                       </div>
+                      {form.plazoPago === '__otros__' || (!PLAZOS_PAGO.filter((p: { id: string }) => p.id !== 'otros').map((p: { label: string }) => p.label).includes(form.plazoPago) && form.plazoPago !== '' && form.plazoPago !== '__otros__') ? (
+                        <div className="mt-2 flex items-center gap-2 bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2.5">
+                          <input
+                            type="number"
+                            inputMode="numeric"
+                            min={1}
+                            placeholder="Ej: 20"
+                            value={form.plazoPago === '__otros__' ? '' : form.plazoPago.replace(' días', '')}
+                            onChange={e => set('plazoPago', e.target.value ? `${e.target.value} días` : '__otros__')}
+                            className="flex-1 bg-transparent text-sm font-bold text-black outline-none w-0 min-w-0"
+                            autoFocus
+                          />
+                          <span className="text-sm text-neutral-400 shrink-0">días</span>
+                        </div>
+                      ) : null}
                     </Field>
                   </div>
 
@@ -457,11 +479,9 @@ export const NuevoProveedorModal = ({
                           <span className="text-xs text-neutral-400 font-medium">Teléfono</span>
                           <span className="text-xs font-black text-black">{form.telefono || '—'}</span>
                         </div>
-                        {form.plazoPago && <div className="flex justify-between items-center">
+                        {form.plazoPago && form.plazoPago !== '__otros__' && <div className="flex justify-between items-center">
                             <span className="text-xs text-neutral-400 font-medium">Plazo de pago</span>
-                            <span className="text-xs font-black text-black">
-                              {PLAZOS_PAGO.find(p => p.id === form.plazoPago)?.label}
-                            </span>
+                            <span className="text-xs font-black text-black">{form.plazoPago}</span>
                           </div>}
                         {form.alias && <div className="flex justify-between items-center">
                             <span className="text-xs text-neutral-400 font-medium">Alias</span>

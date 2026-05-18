@@ -14,6 +14,7 @@ interface Provider {
   isFavorite?: boolean;
   lastOrderDate?: string;
   whatsapp: string;
+  nombreVentas?: string;
 }
 interface Product {
   id: string;
@@ -327,6 +328,7 @@ interface ProviderProp {
   name: string;
   category: string;
   telefono?: string;
+  nombreVentas?: string;
   isOrganic?: boolean;
   isFavorite?: boolean;
   lastOrderDate?: string;
@@ -334,9 +336,10 @@ interface ProviderProp {
 interface NuevoPedidoModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onOrderCreated: (providerName?: string, orderNote?: string, creadoPor?: string) => void;
+  onOrderCreated: (providerName?: string, orderNote?: string, creadoPor?: string, items?: Array<{id: string; name: string; qty: number; unit: string}>, providerPhone?: string) => void;
   creadoPor?: string;
   providers?: ProviderProp[];
+  negocioNombre?: string;
 }
 export const NuevoPedidoModal = ({
   isOpen,
@@ -344,6 +347,7 @@ export const NuevoPedidoModal = ({
   onOrderCreated,
   creadoPor,
   providers: providersProp = [],
+  negocioNombre = '',
 }: NuevoPedidoModalProps) => {
   const [step, setStep] = useState<WizardStep>(1);
   const [search, setSearch] = useState('');
@@ -388,6 +392,7 @@ export const NuevoPedidoModal = ({
     name: p.name,
     category: p.category,
     whatsapp: p.telefono ?? '',
+    nombreVentas: p.nombreVentas,
     isOrganic: p.isOrganic,
     isFavorite: p.isFavorite,
     lastOrderDate: p.lastOrderDate,
@@ -513,14 +518,20 @@ export const NuevoPedidoModal = ({
   };
   const buildRawMessage = () => {
     if (!selectedProvider) return '';
+    const contactName = selectedProvider.nombreVentas || selectedProvider.name;
     const deliveryStr = deliveryOption === 'custom' && customDate ? getDeliveryLabel() : `${selectedDelivery.label} (${selectedDelivery.sublabel()})`;
-    const lines = [`🛒 *Nuevo pedido — INSUMA*`, `📅 Pedido: ${new Date().toLocaleDateString('es-AR', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long'
-    })}`, `🚚 Entrega: *${deliveryStr}*`, ``, ...cartItems.map(i => `• ${i.qty} ${i.unit} de *${i.name}*${i.area ? ` [${i.area}]` : ''}${i.note ? `  _(${i.note})_` : ''}`)];
+    const today = new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
+    const lines = [
+      `Hola ${contactName} como estás? Te envío un pedido nuevo.`,
+      ``,
+      ...(negocioNombre ? [`🍽 "${negocioNombre}"`] : []),
+      `📦 Pedido: ${today}`,
+      `🚚 Entrega: ${deliveryStr}`,
+      ``,
+      ...cartItems.map(i => `• ${i.qty} ${i.unit} de ${i.name}${i.note ? ` _(${i.note})_` : ''}`),
+    ];
     if (orderNote) lines.push(``, `📝 Nota: ${orderNote}`);
-    lines.push(``, `_Enviado desde INSUMA Gestión de Cocina_`);
+    lines.push(``, `Enviado desde INSUMA app.`);
     return lines.join('\n');
   };
   const handleGoToStep3 = () => {
@@ -529,10 +540,13 @@ export const NuevoPedidoModal = ({
   };
   const handleSend = () => {
     setSent(true);
+    const rawPhone = selectedProvider?.whatsapp ?? '';
+    const cleanPhone = rawPhone.replace(/[^0-9]/g, '');
     const msg = encodeURIComponent(mensajeEditable || buildRawMessage());
-    window.open(`https://wa.me/${selectedProvider?.whatsapp}?text=${msg}`, '_blank');
+    window.open(`https://wa.me/${cleanPhone}?text=${msg}`, '_blank');
     setTimeout(() => {
-      onOrderCreated(selectedProvider?.name, orderNote.trim() || undefined, creadoPor);
+      const items = cartItems.map(i => ({ id: i.productId, name: i.name, qty: i.qty, unit: i.unit }));
+      onOrderCreated(selectedProvider?.name, orderNote.trim() || undefined, creadoPor, items, rawPhone);
       resetAndClose();
     }, 1800);
   };

@@ -870,21 +870,32 @@ export const InsumaKitchenDashboard = () => {
     if ('Notification' in window) setNotifPermission(Notification.permission);
     sendNotification('INSUMA', '¡Notificaciones activadas! Te avisaremos cuando haya alertas.');
   }, []);
-  const handleOrderCreated = useCallback((providerName?: string, orderNote?: string, creadoPor?: string) => {
+  const handleOrderCreated = useCallback((providerName?: string, orderNote?: string, creadoPor?: string, cartItems?: Array<{id: string; name: string; qty: number; unit: string}>, providerPhone?: string) => {
+    const orderItems: OrderItem[] = (cartItems ?? []).map(i => ({
+      id: i.id,
+      name: i.name,
+      requestedQty: i.qty,
+      receivedQty: 0,
+      unit: i.unit,
+      status: 'pending' as const,
+      alertMsg: '',
+    }));
     setTodayOrders(prev => [{
       id: String(Date.now()),
       provider: providerName ?? 'Nuevo Pedido',
+      providerPhone: providerPhone,
       category: 'Pedido',
       status: 'waiting' as OrderStatus,
       time: new Date().toLocaleTimeString('es-AR', {
         hour: '2-digit',
         minute: '2-digit'
       }),
-      items: 1,
+      items: orderItems.length || 1,
       total: 0,
       paymentStatus: 'pending',
       weekLabel: 'Esta semana',
       paymentHistory: [],
+      orderItems,
       orderNote: orderNote && orderNote.trim().length > 0 ? orderNote : undefined,
       creadoPor: creadoPor ?? undefined,
     }, ...prev]);
@@ -1347,7 +1358,7 @@ export const InsumaKitchenDashboard = () => {
         customInsumos={customInsumos}
         proveedores={providers.map(p => p.name)}
       />
-      <NuevoPedidoModal isOpen={showNuevoPedido} onClose={() => setShowNuevoPedido(false)} onOrderCreated={handleOrderCreated} creadoPor={activeUser.name} providers={providers} />
+      <NuevoPedidoModal isOpen={showNuevoPedido} onClose={() => setShowNuevoPedido(false)} onOrderCreated={handleOrderCreated} creadoPor={activeUser.name} providers={providers} negocioNombre={negocioNombre} />
       <NuevoProveedorModal isOpen={showNuevoProveedor} onClose={() => setShowNuevoProveedor(false)} onProveedorCreated={handleProveedorCreated} />
       <ProveedorPerfilSheet proveedor={selectedProveedor} isOpen={selectedProveedor !== null} onClose={() => setSelectedProveedor(null)} onNuevoPedido={() => {
       setSelectedProveedor(null);
@@ -1356,7 +1367,7 @@ export const InsumaKitchenDashboard = () => {
       <RecepcionPedidoModal isOpen={showRecepcion} onClose={() => {
       setShowRecepcion(false);
       setRecepcionOrderId(undefined);
-    }} onOrderReceived={handleOrderReceived} initialOrderId={recepcionOrderId} recepcionadoPor={activeUser.name} />
+    }} onOrderReceived={handleOrderReceived} initialOrderId={recepcionOrderId} recepcionadoPor={activeUser.name} orders={pendingReceptionOrders} />
       <AlertDetailSheet order={alertOrder} isOpen={alertOrderId !== null} onClose={() => setAlertOrderId(null)} onResolve={handleResolveAlert} />
 
       {/* User menu sheet */}

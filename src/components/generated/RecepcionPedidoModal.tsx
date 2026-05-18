@@ -40,9 +40,23 @@ interface BillingDiscrepancy {
   notes: string;
 }
 
-// ─── Static Mock Data ─────────────────────────────────────────────────────────
+// ─── Dashboard order shape (subset of what the dashboard passes) ─────────────
 
-const PENDING_ORDERS: PendingOrder[] = [];
+interface DashboardOrder {
+  id: string;
+  provider: string;
+  isOrganic?: boolean;
+  time: string;
+  orderItems?: Array<{
+    id: string;
+    name: string;
+    requestedQty: number;
+    receivedQty: number;
+    unit: string;
+    status: string;
+    alertMsg: string;
+  }>;
+}
 const DISCREPANCY_REASONS = [{
   id: 'dr-1',
   label: 'Faltó cantidad'
@@ -141,6 +155,7 @@ interface RecepcionPedidoModalProps {
   onOrderReceived: (orderId: string, hasCash: boolean, alerts?: GeneratedAlert[], receptionNote?: string, recepcionadoPor?: string) => void;
   initialOrderId?: string;
   recepcionadoPor?: string;
+  orders?: DashboardOrder[];
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
@@ -151,7 +166,25 @@ export const RecepcionPedidoModal = ({
   onOrderReceived,
   initialOrderId,
   recepcionadoPor,
+  orders = [],
 }: RecepcionPedidoModalProps) => {
+  const pendingOrders: PendingOrder[] = orders.map(o => ({
+    id: o.id,
+    provider: o.provider,
+    providerInitial: o.provider.charAt(0).toUpperCase(),
+    category: 'Pedido',
+    isOrganic: o.isOrganic,
+    requestedDate: o.time,
+    items: (o.orderItems ?? []).map(i => ({
+      id: i.id,
+      name: i.name,
+      requestedQty: i.requestedQty,
+      receivedQty: 0,
+      unit: i.unit,
+      status: 'pending' as ItemStatus,
+      alertMsg: '',
+    })),
+  }));
   const [step, setStep] = useState<ReceptionStep>(1);
   const [selectedOrder, setSelectedOrder] = useState<PendingOrder | null>(null);
   const [items, setItems] = useState<OrderItem[]>([]);
@@ -172,18 +205,31 @@ export const RecepcionPedidoModal = ({
   // When the modal opens with an initialOrderId, jump straight to step 2
   React.useEffect(() => {
     if (isOpen && initialOrderId) {
-      const order = PENDING_ORDERS.find(o => o.id === initialOrderId);
-      if (order) {
+      const src = orders.find(o => o.id === initialOrderId);
+      if (src) {
+        const order: PendingOrder = {
+          id: src.id,
+          provider: src.provider,
+          providerInitial: src.provider.charAt(0).toUpperCase(),
+          category: 'Pedido',
+          isOrganic: src.isOrganic,
+          requestedDate: src.time,
+          items: (src.orderItems ?? []).map(i => ({
+            id: i.id,
+            name: i.name,
+            requestedQty: i.requestedQty,
+            receivedQty: 0,
+            unit: i.unit,
+            status: 'pending' as ItemStatus,
+            alertMsg: '',
+          })),
+        };
         setSelectedOrder(order);
-        setItems(order.items.map(i => ({
-          ...i
-        })));
+        setItems(order.items.map(i => ({ ...i })));
         setStep(2);
       }
     }
-    if (!isOpen) {
-      // reset is handled by resetAndClose, but also guard here
-    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, initialOrderId]);
   const resetAndClose = useCallback(() => {
     onClose();
@@ -354,7 +400,7 @@ export const RecepcionPedidoModal = ({
                     <p className="text-[11px] font-bold text-neutral-400 uppercase tracking-widest mb-4">
                       Pedidos pendientes de recepción
                     </p>
-                    {PENDING_ORDERS.map(order => <button key={order.id} onClick={() => selectOrder(order)} className="w-full text-left bg-white border border-neutral-100 rounded-2xl overflow-hidden active:scale-[0.985] transition-transform">
+                    {pendingOrders.map(order => <button key={order.id} onClick={() => selectOrder(order)} className="w-full text-left bg-white border border-neutral-100 rounded-2xl overflow-hidden active:scale-[0.985] transition-transform">
                         <div className="flex">
                           <div className="w-1 shrink-0 rounded-l-2xl bg-yellow-400" />
                           <div className="flex-1 p-4">
@@ -395,7 +441,7 @@ export const RecepcionPedidoModal = ({
                           </div>
                         </div>
                       </button>)}
-                    {PENDING_ORDERS.length === 0 && <div className="py-16 flex flex-col items-center gap-3 text-center">
+                    {pendingOrders.length === 0 && <div className="py-16 flex flex-col items-center gap-3 text-center">
                         <div className="w-14 h-14 rounded-2xl bg-neutral-100 flex items-center justify-center">
                           <CheckCircle2 size={24} className="text-neutral-300" />
                         </div>
