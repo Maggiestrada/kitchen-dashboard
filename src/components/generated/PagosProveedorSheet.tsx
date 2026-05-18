@@ -785,7 +785,9 @@ const AiInvoiceDetailSheet = ({
                 </div>
               </div>
 
-              {/* Guardar precios en insumos — único botón, al final de todo */}
+            </div>
+            {/* Guardar precios — barra fija al fondo, siempre visible */}
+            <div className="px-5 py-3 shrink-0 border-t border-neutral-100 bg-white">
               <button
                 onClick={() => {
                   const priced = orderItems.filter(it => it.precioUnit > 0);
@@ -796,7 +798,7 @@ const AiInvoiceDetailSheet = ({
                   setPricesSaved(true);
                   setTimeout(() => setPricesSaved(false), 3000);
                 }}
-                className={`w-full py-4 rounded-2xl text-sm font-black flex items-center justify-center gap-2 transition-all active:scale-[0.98] ${pricesSaved ? 'bg-green-500 text-white' : 'bg-black text-white'}`}
+                className={`w-full py-3.5 rounded-2xl text-sm font-black flex items-center justify-center gap-2 transition-all active:scale-[0.98] ${pricesSaved ? 'bg-green-500 text-white' : 'bg-black text-white'}`}
               >
                 {pricesSaved ? <Check size={16} strokeWidth={3} /> : <Package size={16} strokeWidth={2.5} />}
                 <span>{pricesSaved ? 'Precios guardados en insumos ✓' : 'Guardar precios en insumos'}</span>
