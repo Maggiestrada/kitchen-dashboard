@@ -197,16 +197,19 @@ const AiInvoiceDetailSheet = ({
   isOpen,
   onClose,
   onUpdateBillingDiscrepancy,
+  onSaveItemPrices,
 }: {
   order: Order | null;
   isOpen: boolean;
   onClose: () => void;
   onUpdateBillingDiscrepancy?: (orderId: string, resolution: string, newAmount?: number) => void;
+  onSaveItemPrices?: (items: { nombre: string; precioUnit: number; unit: string }[]) => void;
 }) => {
   const [aiScanLoading, setAiScanLoading] = useState(false);
   const [aiScanDone, setAiScanDone] = useState(false);
   const [showAiSection, setShowAiSection] = useState(false);
   const [manualTotalInput, setManualTotalInput] = useState('');
+  const [pricesSaved, setPricesSaved] = useState(false);
   const [manualTotalSaved, setManualTotalSaved] = useState(false);
   // Editar circuito de compra state
   const [editingCircuito, setEditingCircuito] = useState(false);
@@ -475,6 +478,31 @@ const AiInvoiceDetailSheet = ({
                           <p className="text-lg font-black text-black tabular-nums">{formatMoney(totalFactura)}</p>
                         </div>
                       </div>
+                    )}
+
+                    {/* Guardar precios en insumos */}
+                    {totalNeto > 0 && (
+                      <button
+                        onClick={() => {
+                          const priced = orderItems.filter(it => it.precioUnit > 0);
+                          onSaveItemPrices?.(priced.map(it => ({ nombre: it.nombre, precioUnit: it.precioUnit, unit: it.unit })));
+                          setPricesSaved(true);
+                          setTimeout(() => setPricesSaved(false), 3000);
+                        }}
+                        className={`mt-3 w-full py-3.5 rounded-2xl text-sm font-black transition-all active:scale-[0.98] flex items-center justify-center gap-2 ${pricesSaved ? 'bg-green-500 text-white' : 'bg-black text-white'}`}
+                      >
+                        {pricesSaved ? (
+                          <>
+                            <Check size={16} strokeWidth={3} />
+                            <span>Precios guardados en insumos</span>
+                          </>
+                        ) : (
+                          <>
+                            <Package size={16} strokeWidth={2.5} />
+                            <span>Guardar precios en insumos</span>
+                          </>
+                        )}
+                      </button>
                     )}
                   </div>
                 );
@@ -785,6 +813,7 @@ const ProviderOrdersSheet = ({
   onConfirmCash,
   onPayDigital,
   onUpdateBillingDiscrepancy,
+  onSaveItemPrices,
 }: {
   group: ProviderPaymentGroup | null;
   isOpen: boolean;
@@ -792,6 +821,7 @@ const ProviderOrdersSheet = ({
   onConfirmCash: (orderId: string) => void;
   onPayDigital: (orderId: string) => void;
   onUpdateBillingDiscrepancy: (orderId: string, resolution: string, newAmount?: number) => void;
+  onSaveItemPrices?: (items: { nombre: string; precioUnit: number; unit: string }[]) => void;
 }) => {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [paying, setPaying] = useState(false);
@@ -1020,7 +1050,7 @@ const ProviderOrdersSheet = ({
           </motion.div>
 
           {/* Order detail sheet */}
-          <AiInvoiceDetailSheet order={selectedOrder} isOpen={selectedOrder !== null} onClose={() => setSelectedOrder(null)} onUpdateBillingDiscrepancy={onUpdateBillingDiscrepancy} />
+          <AiInvoiceDetailSheet order={selectedOrder} isOpen={selectedOrder !== null} onClose={() => setSelectedOrder(null)} onUpdateBillingDiscrepancy={onUpdateBillingDiscrepancy} onSaveItemPrices={onSaveItemPrices} />
         </motion.div>}
     </AnimatePresence>;
 };
@@ -1032,12 +1062,14 @@ export const PagosTabEnhanced = ({
   onConfirmCash,
   onPayDigital,
   onUpdateBillingDiscrepancy,
+  onSaveItemPrices,
   canView = true,
 }: {
   orders: Order[];
   onConfirmCash: (orderId: string) => void;
   onPayDigital: (orderId: string) => void;
   onUpdateBillingDiscrepancy: (orderId: string, resolution: string, newAmount?: number) => void;
+  onSaveItemPrices?: (items: { nombre: string; precioUnit: number; unit: string }[]) => void;
   canView?: boolean;
 }) => {
   const [selectedGroup, setSelectedGroup] = useState<ProviderPaymentGroup | null>(null);
@@ -1317,6 +1349,6 @@ export const PagosTabEnhanced = ({
           <p className="text-xs text-neutral-300">Los pedidos recibidos aparecerán aquí</p>
         </div>}
 
-      <ProviderOrdersSheet group={syncedSelectedGroup} isOpen={selectedGroup !== null} onClose={() => setSelectedGroup(null)} onConfirmCash={onConfirmCash} onPayDigital={onPayDigital} onUpdateBillingDiscrepancy={onUpdateBillingDiscrepancy} />
+      <ProviderOrdersSheet group={syncedSelectedGroup} isOpen={selectedGroup !== null} onClose={() => setSelectedGroup(null)} onConfirmCash={onConfirmCash} onPayDigital={onPayDigital} onUpdateBillingDiscrepancy={onUpdateBillingDiscrepancy} onSaveItemPrices={onSaveItemPrices} />
     </motion.div>;
 };

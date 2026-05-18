@@ -1112,6 +1112,28 @@ export const InsumaKitchenDashboard = () => {
       };
     }));
   }, []);
+  const handleSaveItemPrices = useCallback((items: { nombre: string; precioUnit: number; unit: string }[]) => {
+    setCustomInsumos(prev => {
+      const allInsumos = [...CATALOG_INSUMOS, ...prev];
+      const updated = [...prev];
+      items.forEach(item => {
+        const nombre = item.nombre.toLowerCase().trim();
+        const existingCustomIdx = updated.findIndex(i => i.name.toLowerCase().trim() === nombre);
+        if (existingCustomIdx >= 0) {
+          updated[existingCustomIdx] = { ...updated[existingCustomIdx], pricePerKg: item.precioUnit };
+        } else {
+          const inCatalog = CATALOG_INSUMOS.find(i => i.name.toLowerCase().trim() === nombre);
+          if (inCatalog) {
+            updated.push({ ...inCatalog, pricePerKg: item.precioUnit });
+          } else {
+            updated.push({ id: `custom-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, name: item.nombre, unit: item.unit, category: 'Almacén', pricePerKg: item.precioUnit, provider: '' });
+          }
+        }
+      });
+      return updated;
+    });
+  }, []);
+
   const alertOrder = todayOrders.find(o => o.id === alertOrderId) ?? null;
   const allUnresolvedAlerts = todayOrders.flatMap(o => (o.alerts ?? []).filter(a => !a.resolved));
   const pendingPayments = todayOrders.filter(o => (o.status === 'received' || o.status === 'discrepancy' || o.status === 'paid_cash') && o.paymentStatus !== 'paid_digital' && o.paymentStatus !== 'confirmed').length;
@@ -1354,7 +1376,7 @@ export const InsumaKitchenDashboard = () => {
 
         {activeTab === 'alertas' && <AlertasTab orders={todayOrders} onResolve={handleResolveAlert} />}
         {activeTab === 'recibidos' && <RecibidosTab orders={todayOrders} />}
-        {activeTab === 'pagos' && <PagosTabEnhanced orders={todayOrders} onConfirmCash={handleConfirmCash} onPayDigital={handlePayDigital} onUpdateBillingDiscrepancy={handleUpdateBillingDiscrepancy} canView={activeUser.role === 'admin'} />}
+        {activeTab === 'pagos' && <PagosTabEnhanced orders={todayOrders} onConfirmCash={handleConfirmCash} onPayDigital={handlePayDigital} onUpdateBillingDiscrepancy={handleUpdateBillingDiscrepancy} onSaveItemPrices={handleSaveItemPrices} canView={activeUser.role === 'admin'} />}
         {activeTab === 'recetas' && <RecetasTab canViewCosts={activeUser.role === 'admin'} customInsumos={customInsumos} />}
         {activeTab === 'metricas' && <MetricasTab />}
 
