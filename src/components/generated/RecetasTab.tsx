@@ -2565,14 +2565,51 @@ export const RecetasTab: React.FC<{ canViewCosts?: boolean; customInsumos?: Insu
                 ) : (
                   <>
                     <div>
-                      <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-2">Nombre</p>
-                      <input
-                        type="text"
-                        value={bebidaNombre}
-                        onChange={e => setBebidaNombre(e.target.value)}
-                        placeholder="Ej: Agua mineral, Gaseosa…"
-                        className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-3.5 py-3 text-sm text-black outline-none placeholder-neutral-400"
-                      />
+                      <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-2">Insumo</p>
+                      <div className="flex items-center gap-2 bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2.5 mb-2">
+                        <Search size={14} className="text-neutral-400 shrink-0" strokeWidth={1.75} />
+                        <input
+                          type="text"
+                          value={bebidaNombre}
+                          onChange={e => { setBebidaNombre(e.target.value); setBebidaCosto(''); }}
+                          placeholder="Buscar bebida…"
+                          className="flex-1 bg-transparent text-sm text-black outline-none placeholder-neutral-400"
+                        />
+                        {bebidaNombre && (
+                          <button onClick={() => { setBebidaNombre(''); setBebidaCosto(''); }} className="text-neutral-400">
+                            <X size={13} strokeWidth={2} />
+                          </button>
+                        )}
+                      </div>
+                      {(() => {
+                        const bebidas = insumos.filter(i => i.category === 'Bebidas');
+                        const q = bebidaNombre.trim().toLowerCase();
+                        const opciones = q.length > 0
+                          ? bebidas.filter(i => i.name.toLowerCase().includes(q))
+                          : bebidas;
+                        const exactMatch = bebidas.some(i => i.name.toLowerCase() === q);
+                        if (opciones.length === 0 && q.length === 0) return null;
+                        if (exactMatch) return null;
+                        return (
+                          <div className="bg-white border border-neutral-200 rounded-xl overflow-hidden shadow-sm max-h-48 overflow-y-auto">
+                            {opciones.slice(0, 30).map(ins => (
+                              <button
+                                key={ins.id}
+                                onClick={() => {
+                                  setBebidaNombre(ins.name);
+                                  setBebidaCosto(ins.pricePerKg > 0 ? String(ins.pricePerKg) : '');
+                                }}
+                                className="w-full text-left px-4 py-2.5 text-sm text-black border-b border-neutral-50 last:border-0 active:bg-neutral-50 transition-colors flex items-center justify-between gap-2"
+                              >
+                                <span className="truncate">{ins.name}</span>
+                                {ins.pricePerKg > 0 && (
+                                  <span className="text-[11px] text-neutral-400 shrink-0">${ins.pricePerKg}/u</span>
+                                )}
+                              </button>
+                            ))}
+                          </div>
+                        );
+                      })()}
                     </div>
                     <div>
                       <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-2">Costo por unidad</p>
