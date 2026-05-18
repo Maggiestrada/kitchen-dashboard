@@ -93,6 +93,7 @@ interface OrderLineItem {
   cantRecibida: number;
   unit: string;
   precioUnit: number;
+  ivaRate: number; // 0 | 10.5 | 21 | 27
 }
 
 const MOCK_ORDER_ITEMS: OrderLineItem[] = [];
@@ -224,6 +225,7 @@ const AiInvoiceDetailSheet = ({
         cantRecibida: i.receivedQty ?? i.requestedQty,
         unit: i.unit,
         precioUnit: 0,
+        ivaRate: 21,
       }));
       setOrderItems(realItems.length > 0 ? realItems : MOCK_ORDER_ITEMS);
       setEditingCircuito(false);
@@ -352,98 +354,116 @@ const AiInvoiceDetailSheet = ({
                   </div>}
               </div>
 
-              {/* Detalle del pedido con line items */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">Detalle del pedido</p>
-                  {!editingCircuito ? (
-                    <button
-                      onClick={() => { setEditingCircuito(true); setEditTotal(order.total ?? 0); }}
-                      className="flex items-center gap-1 text-[10px] font-bold text-neutral-600 bg-neutral-100 px-2 py-1 rounded-lg active:scale-95 transition-transform"
-                    >
-                      <Edit3 size={10} strokeWidth={2.5} />
-                      <span>Editar circuito</span>
-                    </button>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <button onClick={() => { setEditingCircuito(false); }} className="text-[10px] font-bold text-neutral-500 px-2 py-1 rounded-lg border border-neutral-200 active:scale-95">Cancelar</button>
-                      <button
-                        onClick={() => {
-                          setEditingCircuito(false);
-                          onUpdateBillingDiscrepancy?.(order.id, 'edited', editTotal);
-                        }}
-                        className="text-[10px] font-black text-white bg-black px-2 py-1 rounded-lg active:scale-95"
-                      >Guardar cambios</button>
+              {/* Detalle del pedido con costos */}
+              {(() => {
+                const totalNeto = orderItems.reduce((s, it) => s + it.cantRecibida * it.precioUnit, 0);
+                const totalIva = orderItems.reduce((s, it) => s + it.cantRecibida * it.precioUnit * (it.ivaRate / 100), 0);
+                const totalFinal = totalNeto + totalIva;
+                const IVA_OPTIONS = [0, 10.5, 21, 27];
+                return (
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">Detalle del pedido</p>
+                      {totalFinal > 0 && (
+                        <button
+                          onClick={() => { onUpdateBillingDiscrepancy?.(order.id, 'manual_detail', totalFinal); }}
+                          className="flex items-center gap-1 text-[10px] font-black text-white bg-black px-2.5 py-1 rounded-lg active:scale-95 transition-transform"
+                        >
+                          <Check size={10} strokeWidth={3} />
+                          <span>Guardar total</span>
+                        </button>
+                      )}
                     </div>
-                  )}
-                </div>
 
-                <div className="bg-white border border-neutral-100 rounded-2xl overflow-hidden">
-                  {/* Table header */}
-                  <div className="px-3 py-2 border-b border-neutral-100 grid grid-cols-[1fr_auto_auto_auto_auto] gap-2 items-center">
-                    <p className="text-[9px] font-bold text-neutral-400 uppercase">Producto</p>
-                    <p className="text-[9px] font-bold text-neutral-400 uppercase text-right">Ped.</p>
-                    <p className="text-[9px] font-bold text-neutral-400 uppercase text-right">Rec.</p>
-                    <p className="text-[9px] font-bold text-neutral-400 uppercase text-right">Precio</p>
-                    <p className="text-[9px] font-bold text-neutral-400 uppercase text-right">Subtotal</p>
-                  </div>
-                  {orderItems.map((item, idx) => {
-                    const hasDiff = item.cantRecibida < item.cantPedida;
-                    return (
-                      <div key={item.id} className={`px-3 py-2.5 grid grid-cols-[1fr_auto_auto_auto_auto] gap-2 items-center border-b border-neutral-50 last:border-0 ${hasDiff ? 'bg-red-50' : ''}`}>
-                        <p className={`text-xs font-bold truncate ${hasDiff ? 'text-red-700' : 'text-neutral-800'}`}>{item.nombre}</p>
-                        <p className="text-[11px] text-neutral-500 tabular-nums text-right">{item.cantPedida}</p>
-                        {editingCircuito ? (
-                          <input
-                            type="number"
-                            inputMode="numeric"
-                            value={item.cantRecibida}
-                            onChange={e => setOrderItems(prev => prev.map((it, i) => i === idx ? { ...it, cantRecibida: parseFloat(e.target.value) || 0 } : it))}
-                            className={`w-10 text-right bg-white border rounded-md px-1.5 py-0.5 text-xs font-black outline-none tabular-nums ${hasDiff ? 'border-red-300 text-red-700' : 'border-neutral-300 text-neutral-800'}`}
-                            style={{ MozAppearance: 'textfield' } as React.CSSProperties}
-                          />
-                        ) : (
-                          <p className={`text-[11px] font-black tabular-nums text-right ${hasDiff ? 'text-red-600' : 'text-neutral-700'}`}>{item.cantRecibida}</p>
-                        )}
-                        <p className="text-[11px] text-neutral-500 tabular-nums text-right">{formatMoney(item.precioUnit)}</p>
-                        <p className="text-[11px] font-black text-neutral-800 tabular-nums text-right">{formatMoney(item.cantRecibida * item.precioUnit)}</p>
+                    <div className="space-y-2">
+                      {orderItems.map((item, idx) => {
+                        const precioConIva = item.precioUnit * (1 + item.ivaRate / 100);
+                        const subtotal = item.cantRecibida * precioConIva;
+                        const hasDiff = item.cantRecibida < item.cantPedida;
+                        return (
+                          <div key={item.id} className={`bg-white border rounded-2xl overflow-hidden ${hasDiff ? 'border-red-200' : 'border-neutral-100'}`}>
+                            {/* Header del ítem */}
+                            <div className={`px-3 py-2.5 flex items-center justify-between ${hasDiff ? 'bg-red-50' : 'bg-neutral-50'} border-b ${hasDiff ? 'border-red-100' : 'border-neutral-100'}`}>
+                              <div className="min-w-0 flex-1">
+                                <p className={`text-xs font-black truncate ${hasDiff ? 'text-red-700' : 'text-neutral-900'}`}>{item.nombre}</p>
+                                <p className="text-[10px] text-neutral-400 font-medium">
+                                  {hasDiff
+                                    ? <span className="text-red-500">Pedido {item.cantPedida}, recibido {item.cantRecibida} {item.unit}</span>
+                                    : <span>{item.cantRecibida} {item.unit} recibidos</span>
+                                  }
+                                </p>
+                              </div>
+                              {subtotal > 0 && <p className="text-sm font-black text-black tabular-nums ml-3">{formatMoney(subtotal)}</p>}
+                            </div>
+
+                            {/* Inputs de precio */}
+                            <div className="px-3 py-3 space-y-2.5">
+                              {/* Precio neto */}
+                              <div className="flex items-center gap-2">
+                                <p className="text-[10px] font-bold text-neutral-400 w-20 shrink-0">P. neto unit.</p>
+                                <div className="relative flex-1">
+                                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400 text-xs">$</span>
+                                  <input
+                                    type="number"
+                                    inputMode="decimal"
+                                    placeholder="0"
+                                    value={item.precioUnit || ''}
+                                    onChange={e => setOrderItems(prev => prev.map((it, i) => i === idx ? { ...it, precioUnit: parseFloat(e.target.value) || 0 } : it))}
+                                    className="w-full pl-6 pr-2 py-1.5 rounded-lg border border-neutral-200 bg-neutral-50 text-xs font-black text-black text-right outline-none focus:border-black transition-colors tabular-nums"
+                                    style={{ MozAppearance: 'textfield' } as React.CSSProperties}
+                                  />
+                                </div>
+                              </div>
+
+                              {/* IVA selector */}
+                              <div className="flex items-center gap-2">
+                                <p className="text-[10px] font-bold text-neutral-400 w-20 shrink-0">Alícuota IVA</p>
+                                <div className="flex gap-1.5 flex-1">
+                                  {IVA_OPTIONS.map(rate => (
+                                    <button
+                                      key={rate}
+                                      onClick={() => setOrderItems(prev => prev.map((it, i) => i === idx ? { ...it, ivaRate: rate } : it))}
+                                      className={`flex-1 py-1.5 rounded-lg text-[10px] font-black transition-all active:scale-95 ${item.ivaRate === rate ? 'bg-black text-white' : 'bg-neutral-100 text-neutral-500'}`}
+                                    >
+                                      {rate === 0 ? 'Exento' : `${rate}%`}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+
+                              {/* Precio con IVA calculado */}
+                              {item.precioUnit > 0 && (
+                                <div className="flex items-center justify-between pt-1 border-t border-neutral-100">
+                                  <p className="text-[10px] font-bold text-neutral-400">P. unit. c/IVA</p>
+                                  <p className="text-xs font-black text-black tabular-nums">{formatMoney(precioConIva)}</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Resumen total */}
+                    {totalFinal > 0 && (
+                      <div className="mt-3 bg-neutral-50 border border-neutral-200 rounded-2xl overflow-hidden">
+                        <div className="px-4 py-2.5 flex items-center justify-between border-b border-neutral-100">
+                          <p className="text-xs text-neutral-500 font-bold">Subtotal neto</p>
+                          <p className="text-xs font-black text-neutral-700 tabular-nums">{formatMoney(totalNeto)}</p>
+                        </div>
+                        <div className="px-4 py-2.5 flex items-center justify-between border-b border-neutral-100">
+                          <p className="text-xs text-neutral-500 font-bold">IVA</p>
+                          <p className="text-xs font-black text-neutral-700 tabular-nums">{formatMoney(totalIva)}</p>
+                        </div>
+                        <div className="px-4 py-3 flex items-center justify-between bg-white">
+                          <p className="text-sm font-black text-black">Total final</p>
+                          <p className="text-lg font-black text-black tabular-nums">{formatMoney(totalFinal)}</p>
+                        </div>
                       </div>
-                    );
-                  })}
-                  {/* Total row */}
-                  <div className="px-3 py-2.5 flex items-center justify-between border-t border-neutral-100 bg-neutral-50">
-                    <p className="text-xs font-bold text-neutral-600">Total</p>
-                    {editingCircuito ? (
-                      <div className="flex items-center gap-1 bg-white border border-neutral-300 rounded-lg px-2 py-1">
-                        <span className="text-xs text-neutral-400">$</span>
-                        <input
-                          type="number"
-                          inputMode="numeric"
-                          value={editTotal || ''}
-                          onChange={e => setEditTotal(parseFloat(e.target.value) || 0)}
-                          className="w-20 text-right text-sm font-black text-black outline-none tabular-nums bg-transparent"
-                          style={{ MozAppearance: 'textfield' } as React.CSSProperties}
-                        />
-                      </div>
-                    ) : (
-                      <p className="text-sm font-black text-black tabular-nums">{formatMoney(order.total ?? 0)}</p>
                     )}
                   </div>
-                </div>
-
-                {/* Re-adjuntar factura */}
-                {editingCircuito && (
-                  <div className="mt-3">
-                    <button
-                      onClick={() => setFotoAdjuntada(true)}
-                      className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border text-xs font-bold transition-all active:scale-95 ${fotoAdjuntada ? 'bg-green-50 border-green-200 text-green-700' : 'bg-neutral-50 border-neutral-200 text-neutral-600'}`}
-                    >
-                      {fotoAdjuntada ? <CheckCircle2 size={13} strokeWidth={2.5} /> : <Camera size={13} strokeWidth={2} />}
-                      <span>{fotoAdjuntada ? 'Foto adjuntada' : 'Re-adjuntar factura'}</span>
-                    </button>
-                  </div>
-                )}
-              </div>
+                );
+              })()}
 
               {/* What was ordered */}
               <div>
