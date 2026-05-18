@@ -369,15 +369,29 @@ const AiInvoiceDetailSheet = ({
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">Detalle del pedido</p>
-                      {totalFactura > 0 && (
+                      <div className="flex items-center gap-2">
+                        {totalFactura > 0 && (
+                          <button
+                            onClick={() => { onUpdateBillingDiscrepancy?.(order.id, 'manual_detail', totalFactura); }}
+                            className="flex items-center gap-1 text-[10px] font-black text-white bg-black px-2.5 py-1 rounded-lg active:scale-95 transition-transform"
+                          >
+                            <Check size={10} strokeWidth={3} />
+                            <span>Guardar total</span>
+                          </button>
+                        )}
                         <button
-                          onClick={() => { onUpdateBillingDiscrepancy?.(order.id, 'manual_detail', totalFactura); }}
-                          className="flex items-center gap-1 text-[10px] font-black text-white bg-black px-2.5 py-1 rounded-lg active:scale-95 transition-transform"
+                          onClick={() => {
+                            const priced = orderItems.filter(it => it.precioUnit > 0);
+                            onSaveItemPrices?.(priced.map(it => ({ nombre: it.nombre, precioUnit: it.precioUnit, unit: it.unit })));
+                            setPricesSaved(true);
+                            setTimeout(() => setPricesSaved(false), 3000);
+                          }}
+                          className={`flex items-center gap-1 text-[10px] font-black px-2.5 py-1 rounded-lg active:scale-95 transition-all ${pricesSaved ? 'bg-green-500 text-white' : 'bg-neutral-900 text-white'}`}
                         >
-                          <Check size={10} strokeWidth={3} />
-                          <span>Guardar total</span>
+                          {pricesSaved ? <Check size={10} strokeWidth={3} /> : <Package size={10} strokeWidth={2.5} />}
+                          <span>{pricesSaved ? 'Guardado' : 'Guardar precios'}</span>
                         </button>
-                      )}
+                      </div>
                     </div>
 
                     <div className="space-y-2">
@@ -480,30 +494,6 @@ const AiInvoiceDetailSheet = ({
                       </div>
                     )}
 
-                    {/* Guardar precios en insumos */}
-                    {totalNeto > 0 && (
-                      <button
-                        onClick={() => {
-                          const priced = orderItems.filter(it => it.precioUnit > 0);
-                          onSaveItemPrices?.(priced.map(it => ({ nombre: it.nombre, precioUnit: it.precioUnit, unit: it.unit })));
-                          setPricesSaved(true);
-                          setTimeout(() => setPricesSaved(false), 3000);
-                        }}
-                        className={`mt-3 w-full py-3.5 rounded-2xl text-sm font-black transition-all active:scale-[0.98] flex items-center justify-center gap-2 ${pricesSaved ? 'bg-green-500 text-white' : 'bg-black text-white'}`}
-                      >
-                        {pricesSaved ? (
-                          <>
-                            <Check size={16} strokeWidth={3} />
-                            <span>Precios guardados en insumos</span>
-                          </>
-                        ) : (
-                          <>
-                            <Package size={16} strokeWidth={2.5} />
-                            <span>Guardar precios en insumos</span>
-                          </>
-                        )}
-                      </button>
-                    )}
                   </div>
                 );
               })()}
