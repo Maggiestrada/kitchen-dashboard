@@ -1107,11 +1107,16 @@ export const InsumaKitchenDashboard = () => {
         timestamp: `Hoy, ${now}`,
         detail: resolution
       };
+      const prevHistory = o.paymentHistory ?? [];
+      const lastIsBillingDisc = prevHistory.length > 0 && prevHistory[prevHistory.length - 1].type === 'billing_discrepancy';
+      const newHistory = lastIsBillingDisc
+        ? [...prevHistory.slice(0, -1), resolveEvent]
+        : [...prevHistory, resolveEvent];
       return {
         ...o,
         total: newAmount !== undefined ? newAmount : o.total,
         hasBillingDiscrepancy: false,
-        paymentHistory: [...(o.paymentHistory ?? []), resolveEvent]
+        paymentHistory: newHistory
       };
     }));
   }, []);
