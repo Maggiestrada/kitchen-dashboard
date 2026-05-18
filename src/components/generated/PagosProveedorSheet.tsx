@@ -623,41 +623,62 @@ const AiInvoiceDetailSheet = ({
                                 <p className="text-[9px] font-bold text-neutral-400 uppercase text-right">Precio unit.</p>
                                 <p className="text-[9px] font-bold text-neutral-400 uppercase text-right">Subtotal</p>
                               </div>
-                              {orderItems.map((item, idx) => (
-                                <div key={item.id} className={`px-3 py-2.5 grid grid-cols-[1fr_auto_auto_auto] gap-2 items-center ${idx < orderItems.length - 1 ? 'border-b border-neutral-50' : ''}`}>
-                                  <div className="min-w-0">
-                                    <p className="text-xs font-bold text-neutral-800 truncate">{item.nombre}</p>
-                                    <p className="text-[10px] text-neutral-400">{item.cantRecibida} {item.unit}</p>
+                              {orderItems.map((item, idx) => {
+                                const cantAI = item.cantRecibida || item.cantPedida || 1;
+                                return (
+                                  <div key={item.id} className={`px-3 py-2.5 grid grid-cols-[1fr_auto_auto_auto] gap-2 items-center ${idx < orderItems.length - 1 ? 'border-b border-neutral-50' : ''}`}>
+                                    <div className="min-w-0">
+                                      <p className="text-xs font-bold text-neutral-800 truncate">{item.nombre}</p>
+                                      <p className="text-[10px] text-neutral-400">{cantAI} {item.unit}</p>
+                                    </div>
+                                    <p className="text-[11px] text-neutral-500 tabular-nums text-right">{cantAI}</p>
+                                    <div className="relative">
+                                      <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-neutral-400 text-[10px]">$</span>
+                                      <input
+                                        type="number"
+                                        inputMode="decimal"
+                                        placeholder="0"
+                                        value={item.precioUnit || ''}
+                                        onChange={e => {
+                                          const val = parseFloat(e.target.value) || 0;
+                                          setOrderItems(prev => {
+                                            const updated = prev.map((it, i) => i === idx ? { ...it, precioUnit: val } : it);
+                                            const newTotal = updated.reduce((s, it) => {
+                                              const c = it.cantRecibida || it.cantPedida || 1;
+                                              return s + c * it.precioUnit;
+                                            }, 0);
+                                            if (newTotal > 0) setManualTotalInput(String(Math.round(newTotal * 100) / 100));
+                                            return updated;
+                                          });
+                                        }}
+                                        className="w-20 pl-5 pr-1.5 py-1 rounded-lg border border-neutral-200 bg-neutral-50 text-[11px] font-black text-black text-right outline-none focus:border-black transition-colors tabular-nums"
+                                        style={{ MozAppearance: 'textfield' } as React.CSSProperties}
+                                      />
+                                    </div>
+                                    <p className="text-[11px] font-black text-neutral-800 tabular-nums text-right">{formatMoney(cantAI * item.precioUnit)}</p>
                                   </div>
-                                  <p className="text-[11px] text-neutral-500 tabular-nums text-right">{item.cantRecibida}</p>
-                                  <div className="relative">
-                                    <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-neutral-400 text-[10px]">$</span>
-                                    <input
-                                      type="number"
-                                      inputMode="decimal"
-                                      placeholder="0"
-                                      value={item.precioUnit || ''}
-                                      onChange={e => {
-                                        const val = parseFloat(e.target.value) || 0;
-                                        setOrderItems(prev => {
-                                          const updated = prev.map((it, i) => i === idx ? { ...it, precioUnit: val } : it);
-                                          const newTotal = updated.reduce((s, it) => s + it.cantRecibida * it.precioUnit, 0);
-                                          if (newTotal > 0) setManualTotalInput(String(Math.round(newTotal * 100) / 100));
-                                          return updated;
-                                        });
-                                      }}
-                                      className="w-20 pl-5 pr-1.5 py-1 rounded-lg border border-neutral-200 bg-neutral-50 text-[11px] font-black text-black text-right outline-none focus:border-black transition-colors tabular-nums"
-                                      style={{ MozAppearance: 'textfield' } as React.CSSProperties}
-                                    />
-                                  </div>
-                                  <p className="text-[11px] font-black text-neutral-800 tabular-nums text-right">{formatMoney(item.cantRecibida * item.precioUnit)}</p>
-                                </div>
-                              ))}
+                                );
+                              })}
                               <div className="px-3 py-2.5 flex items-center justify-between border-t border-neutral-100 bg-neutral-50">
                                 <p className="text-xs font-bold text-neutral-600">Total calculado</p>
                                 <p className="text-sm font-black text-black tabular-nums">
-                                  {formatMoney(orderItems.reduce((s, it) => s + it.cantRecibida * it.precioUnit, 0))}
+                                  {formatMoney(orderItems.reduce((s, it) => s + (it.cantRecibida || it.cantPedida || 1) * it.precioUnit, 0))}
                                 </p>
+                              </div>
+                              {/* Guardar precios en insumos desde la tabla AI */}
+                              <div className="px-3 py-2.5 border-t border-neutral-100">
+                                <button
+                                  onClick={() => {
+                                    const priced = orderItems.filter(it => it.precioUnit > 0);
+                                    onSaveItemPrices?.(priced.map(it => ({ nombre: it.nombre, precioUnit: it.precioUnit, unit: it.unit })));
+                                    setPricesSaved(true);
+                                    setTimeout(() => setPricesSaved(false), 3000);
+                                  }}
+                                  className={`w-full py-2.5 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-all active:scale-[0.98] ${pricesSaved ? 'bg-green-500 text-white' : 'bg-black text-white'}`}
+                                >
+                                  {pricesSaved ? <Check size={12} strokeWidth={3} /> : <Package size={12} strokeWidth={2.5} />}
+                                  <span>{pricesSaved ? 'Guardado en insumos ✓' : 'Guardar precios en insumos'}</span>
+                                </button>
                               </div>
                             </div>
                           )}
