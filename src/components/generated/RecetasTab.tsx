@@ -53,6 +53,7 @@ interface ExtraItem {
   nombre: string;
   insumoId?: string;
   qty: number;
+  unit?: string;
   costo: number;  // cost per unit (from catalog or manual)
 }
 
@@ -75,6 +76,7 @@ interface BebidaItem {
   id: string;
   tipo: 'receta' | 'insumo';
   recetaId?: string;
+  insumoId?: string;
   nombre: string;
   costoUnitario?: number;
   precioVenta: number;
@@ -524,7 +526,7 @@ const InsumosApoyoPicker = ({
     : descartables.slice(0, 6);
 
   const handleSelect = (ins: Insumo) => {
-    onAdd({ id: `ex-${Date.now()}`, nombre: ins.name, insumoId: ins.id, qty: 1, costo: ins.pricePerKg });
+    onAdd({ id: `ex-${Date.now()}`, nombre: ins.name, insumoId: ins.id, qty: 1, unit: ins.unit, costo: ins.pricePerKg });
     setQuery('');
     setOpen(false);
     inputRef.current?.focus();
@@ -831,7 +833,7 @@ const RecetaForm = ({
                           onClick={() => setIngredientesExtra(prev => prev.map((it, i) => i === idx ? { ...it, qty: Math.max(1, (it.qty ?? 1) - 1) } : it))}
                           className="w-7 h-7 flex items-center justify-center text-neutral-400 active:bg-neutral-100"
                         ><span className="text-sm font-light">−</span></button>
-                        <span className="w-6 text-center text-xs font-bold text-black tabular-nums">{item.qty ?? 1}</span>
+                        <span className="min-w-6 px-1 text-center text-xs font-bold text-black tabular-nums">{item.qty ?? 1}{item.unit ? ` ${item.unit}` : ''}</span>
                         <button
                           onClick={() => setIngredientesExtra(prev => prev.map((it, i) => i === idx ? { ...it, qty: (it.qty ?? 1) + 1 } : it))}
                           className="w-7 h-7 flex items-center justify-center text-neutral-400 active:bg-neutral-100"
@@ -1335,7 +1337,7 @@ const RecetaDetailView = ({
                         <div className="w-4 h-4 rounded-full bg-orange-100 flex items-center justify-center shrink-0">
                           <Flame size={8} className="text-orange-500" />
                         </div>
-                        <p className="text-sm text-black">{item.nombre} × {item.qty ?? 1}</p>
+                        <p className="text-sm text-black">{item.nombre} × {item.qty ?? 1}{item.unit ? ` ${item.unit}` : ''}</p>
                       </div>
                       <span className={`text-sm tabular-nums transition-all ${showCosts ? 'text-neutral-500' : 'text-neutral-300 blur-sm select-none'}`}>
                         {showCosts ? `= ${formatMoney((item.qty ?? 1) * item.costo)}` : '••••'}
@@ -1857,6 +1859,7 @@ export const RecetasTab: React.FC<{ canViewCosts?: boolean; customInsumos?: Insu
   const [bebidaNombre, setBebidaNombre] = useState('');
   const [bebidaCosto, setBebidaCosto] = useState('');
   const [bebidaPrecio, setBebidaPrecio] = useState('');
+  const [bebidaInsumoId, setBebidaInsumoId] = useState('');
   const [searchAgregarComida, setSearchAgregarComida] = useState('');
 
   React.useEffect(() => {
@@ -2139,7 +2142,9 @@ export const RecetasTab: React.FC<{ canViewCosts?: boolean; customInsumos?: Insu
                           const precio = b.precioVenta;
                           return { nombre: b.nombre, costo, precio, pct: precio > 0 ? costo / precio : 0 };
                         }
-                        const costo = b.costoUnitario ?? 0;
+                        const costo = b.insumoId
+                          ? (insumos.find(i => i.id === b.insumoId)?.pricePerKg ?? b.costoUnitario ?? 0)
+                          : (b.costoUnitario ?? 0);
                         const precio = b.precioVenta;
                         return { nombre: b.nombre, costo, precio, pct: precio > 0 ? costo / precio : 0 };
                       }),
@@ -2262,7 +2267,9 @@ export const RecetasTab: React.FC<{ canViewCosts?: boolean; customInsumos?: Insu
                                     const rec = recetas.find(r => r.id === beb.recetaId);
                                     costo = rec ? getRecetaCostoPorPorcion(rec, insumos, subRecetas) : 0;
                                   } else {
-                                    costo = beb.costoUnitario ?? 0;
+                                    costo = beb.insumoId
+                                      ? (insumos.find(i => i.id === beb.insumoId)?.pricePerKg ?? beb.costoUnitario ?? 0)
+                                      : (beb.costoUnitario ?? 0);
                                   }
                                   const precio = beb.precioVenta;
                                   const pct = precio > 0 ? costo / precio : 0;
@@ -2532,7 +2539,7 @@ export const RecetasTab: React.FC<{ canViewCosts?: boolean; customInsumos?: Insu
                 {(['receta', 'insumo'] as const).map(t => (
                   <button
                     key={t}
-                    onClick={() => { setBebidaTipo(t); setBebidaRecetaId(''); setBebidaNombre(''); setBebidaCosto(''); setBebidaPrecio(''); }}
+                    onClick={() => { setBebidaTipo(t); setBebidaRecetaId(''); setBebidaNombre(''); setBebidaCosto(''); setBebidaPrecio(''); setBebidaInsumoId(''); }}
                     className={`flex-1 py-2 rounded-lg text-xs font-medium transition-all ${bebidaTipo === t ? 'bg-white text-black shadow-sm' : 'text-neutral-500'}`}
                   >
                     {t === 'receta' ? 'Receta de bebida' : 'Insumo directo'}
@@ -2571,7 +2578,7 @@ export const RecetasTab: React.FC<{ canViewCosts?: boolean; customInsumos?: Insu
                         <input
                           type="text"
                           value={bebidaNombre}
-                          onChange={e => { setBebidaNombre(e.target.value); setBebidaCosto(''); }}
+                          onChange={e => { setBebidaNombre(e.target.value); setBebidaCosto(''); setBebidaInsumoId(''); }}
                           placeholder="Buscar bebida…"
                           className="flex-1 bg-transparent text-sm text-black outline-none placeholder-neutral-400"
                         />
@@ -2598,6 +2605,7 @@ export const RecetasTab: React.FC<{ canViewCosts?: boolean; customInsumos?: Insu
                                 onClick={() => {
                                   setBebidaNombre(ins.name);
                                   setBebidaCosto(ins.pricePerKg > 0 ? String(ins.pricePerKg) : '');
+                                  setBebidaInsumoId(ins.id);
                                 }}
                                 className="w-full text-left px-4 py-2.5 text-sm text-black border-b border-neutral-50 last:border-0 active:bg-neutral-50 transition-colors flex items-center justify-between gap-2"
                               >
@@ -2655,6 +2663,7 @@ export const RecetasTab: React.FC<{ canViewCosts?: boolean; customInsumos?: Insu
                       : {
                           id: `beb-${Date.now()}`,
                           tipo: 'insumo',
+                          insumoId: bebidaInsumoId || undefined,
                           nombre: bebidaNombre.trim(),
                           costoUnitario: parseFloat(bebidaCosto) || 0,
                           precioVenta: parseFloat(bebidaPrecio) || 0,
