@@ -1835,8 +1835,20 @@ const FoodCostRow = ({
 
 export const RecetasTab: React.FC<{ canViewCosts?: boolean; customInsumos?: Insumo[] }> = ({ canViewCosts = true, customInsumos }) => {
   const [activeTab, setActiveTab] = useState<'recetario' | 'subrecetas' | 'foodcost'>('recetario');
-  const [recetas, setRecetas] = useState<Receta[]>(INITIAL_RECETAS);
-  const [subRecetas, setSubRecetas] = useState<SubReceta[]>(INITIAL_SUBRECETAS);
+  const [recetas, setRecetas] = useState<Receta[]>(() => {
+    try {
+      const saved = localStorage.getItem('insuma_recetas');
+      if (saved) { const arr = JSON.parse(saved); if (Array.isArray(arr) && arr.length > 0) return arr; }
+    } catch { /* ignore */ }
+    return INITIAL_RECETAS;
+  });
+  const [subRecetas, setSubRecetas] = useState<SubReceta[]>(() => {
+    try {
+      const saved = localStorage.getItem('insuma_subrecetas');
+      if (saved) { const arr = JSON.parse(saved); if (Array.isArray(arr) && arr.length > 0) return arr; }
+    } catch { /* ignore */ }
+    return INITIAL_SUBRECETAS;
+  });
   const insumos = React.useMemo(() => [...CATALOG_INSUMOS, ...(customInsumos ?? [])], [customInsumos]);
   const [showCosts, setShowCosts] = useState(false);
   const effectiveShowCosts = canViewCosts && showCosts;
@@ -1865,6 +1877,12 @@ export const RecetasTab: React.FC<{ canViewCosts?: boolean; customInsumos?: Insu
   React.useEffect(() => {
     localStorage.setItem('insuma_menus_mes', JSON.stringify(menusMes));
   }, [menusMes]);
+  React.useEffect(() => {
+    try { localStorage.setItem('insuma_recetas', JSON.stringify(recetas)); } catch { /* ignore */ }
+  }, [recetas]);
+  React.useEffect(() => {
+    try { localStorage.setItem('insuma_subrecetas', JSON.stringify(subRecetas)); } catch { /* ignore */ }
+  }, [subRecetas]);
 
   const selectedMenu = menusMes.find(m => m.id === selectedMenuId) ?? menusMes[0] ?? null;
 

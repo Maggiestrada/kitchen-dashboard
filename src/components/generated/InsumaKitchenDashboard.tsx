@@ -853,7 +853,13 @@ export const InsumaKitchenDashboard = () => {
     } catch { /* ignore */ }
     return MOCK_ORDERS;
   });
-  const [providers, setProviders] = useState<Provider[]>(INITIAL_PROVIDERS);
+  const [providers, setProviders] = useState<Provider[]>(() => {
+    try {
+      const saved = localStorage.getItem('insuma_proveedores');
+      if (saved) { const arr = JSON.parse(saved); if (Array.isArray(arr) && arr.length > 0) return arr; }
+    } catch { /* ignore */ }
+    return INITIAL_PROVIDERS;
+  });
   const [selectedProveedor, setSelectedProveedor] = useState<Provider | null>(null);
   const [alertOrderId, setAlertOrderId] = useState<string | null>(null);
   const [cancelOrder, setCancelOrder] = useState<Order | null>(null);
@@ -910,12 +916,13 @@ export const InsumaKitchenDashboard = () => {
     loadInsumos().then(insumos => setCustomInsumos(insumos));
   }, []);
 
-  // Persistir pedidos en localStorage cada vez que cambian
+  // Persistir pedidos y proveedores en localStorage cada vez que cambian
   useEffect(() => {
-    try {
-      localStorage.setItem('insuma_pedidos', JSON.stringify(todayOrders));
-    } catch { /* ignore */ }
+    try { localStorage.setItem('insuma_pedidos', JSON.stringify(todayOrders)); } catch { /* ignore */ }
   }, [todayOrders]);
+  useEffect(() => {
+    try { localStorage.setItem('insuma_proveedores', JSON.stringify(providers)); } catch { /* ignore */ }
+  }, [providers]);
 
   const handleCancelOrder = useCallback((orderId: string) => {
     setTodayOrders(prev => prev.filter(o => o.id !== orderId));
@@ -956,7 +963,7 @@ export const InsumaKitchenDashboard = () => {
       creadoPor: creadoPor ?? undefined,
     }, ...prev]);
   }, []);
-  const handleOrderReceived = useCallback((orderId: string, hasCash: boolean, newAlerts?: Alert[], receptionNote?: string, recepcionadoPor?: string) => {
+  const handleOrderReceived = useCallback((orderId: string, hasCash: boolean, newAlerts?: Alert[], receptionNote?: string, recepcionadoPor?: string, totalFactura?: number) => {
     setTodayOrders(prev => prev.map(o => {
       if (o.id !== orderId) return o;
       const now = new Date().toLocaleTimeString('es-AR', {
@@ -980,6 +987,7 @@ export const InsumaKitchenDashboard = () => {
         paymentHistory: [...(o.paymentHistory ?? []), newHistoryEvent],
         receptionNote: receptionNote && receptionNote.trim().length > 0 ? receptionNote : o.receptionNote,
         recepcionadoPor: recepcionadoPor ?? o.recepcionadoPor,
+        total: totalFactura ?? o.total,
       };
     }));
     if (newAlerts && newAlerts.length > 0) {

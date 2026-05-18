@@ -205,6 +205,8 @@ const AiInvoiceDetailSheet = ({
   const [aiScanLoading, setAiScanLoading] = useState(false);
   const [aiScanDone, setAiScanDone] = useState(false);
   const [showAiSection, setShowAiSection] = useState(false);
+  const [manualTotalInput, setManualTotalInput] = useState('');
+  const [manualTotalSaved, setManualTotalSaved] = useState(false);
   // Editar circuito de compra state
   const [editingCircuito, setEditingCircuito] = useState(false);
   const [orderItems, setOrderItems] = useState<OrderLineItem[]>(MOCK_ORDER_ITEMS);
@@ -217,6 +219,8 @@ const AiInvoiceDetailSheet = ({
       setOrderItems(MOCK_ORDER_ITEMS);
       setEditingCircuito(false);
       setFotoAdjuntada(false);
+      setManualTotalInput(order.total ? String(order.total) : '');
+      setManualTotalSaved(!!order.total);
     }
   }, [isOpen, order?.id]);
   const scan = order ? order.aiInvoiceScan ?? MOCK_AI_SCANS[order.id] ?? null : null;
@@ -539,7 +543,53 @@ const AiInvoiceDetailSheet = ({
                           <p className="text-xs text-neutral-400 font-medium">Sin escaneo disponible</p>
                         </div>}
 
-                      {(aiScanDone || activeScan) && <motion.div initial={{
+                      {/* Scan terminó pero sin total detectado → alerta + ingreso manual */}
+                      {aiScanDone && !activeScan && <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
+                          <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 flex items-start gap-2.5">
+                            <AlertCircle size={15} strokeWidth={2} className="text-amber-500 mt-0.5 shrink-0" />
+                            <div>
+                              <p className="text-[11px] font-black text-amber-800 leading-tight">No se pudo detectar el total</p>
+                              <p className="text-[10px] text-amber-600 font-medium mt-0.5">Ingresalo manualmente para que quede registrado en el circuito de pagos.</p>
+                            </div>
+                          </div>
+                          <div className="bg-white border border-neutral-200 rounded-xl px-3 py-3">
+                            <p className="text-[10px] font-black text-neutral-500 uppercase tracking-widest mb-2">Total de factura</p>
+                            {manualTotalSaved ? (
+                              <div className="flex items-center justify-between">
+                                <span className="text-xl font-black text-black tabular-nums">{formatMoney(parseFloat(manualTotalInput) || 0)}</span>
+                                <button onClick={() => setManualTotalSaved(false)} className="text-[10px] font-bold text-neutral-400 underline underline-offset-2">Editar</button>
+                              </div>
+                            ) : (
+                              <div className="flex gap-2">
+                                <div className="relative flex-1">
+                                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 font-black text-sm">$</span>
+                                  <input
+                                    type="number"
+                                    inputMode="decimal"
+                                    placeholder="0.00"
+                                    value={manualTotalInput}
+                                    onChange={e => setManualTotalInput(e.target.value)}
+                                    className="w-full pl-7 pr-3 py-2.5 rounded-xl border border-neutral-200 bg-neutral-50 text-sm font-black text-black placeholder-neutral-300 focus:outline-none focus:border-black transition-colors"
+                                  />
+                                </div>
+                                <button
+                                  onClick={() => {
+                                    if (parseFloat(manualTotalInput) > 0) {
+                                      setManualTotalSaved(true);
+                                      onUpdateBillingDiscrepancy?.(order.id, 'manual_total', parseFloat(manualTotalInput));
+                                    }
+                                  }}
+                                  disabled={!manualTotalInput || parseFloat(manualTotalInput) <= 0}
+                                  className="px-4 py-2.5 rounded-xl bg-black text-white text-xs font-black active:scale-95 transition-transform disabled:opacity-30"
+                                >
+                                  Guardar
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </motion.div>}
+
+                      {(activeScan) && <motion.div initial={{
                   opacity: 0,
                   y: 6
                 }} animate={{

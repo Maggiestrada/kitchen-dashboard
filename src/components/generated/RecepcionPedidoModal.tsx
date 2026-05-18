@@ -152,7 +152,7 @@ const QtyInput = ({
 interface RecepcionPedidoModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onOrderReceived: (orderId: string, hasCash: boolean, alerts?: GeneratedAlert[], receptionNote?: string, recepcionadoPor?: string) => void;
+  onOrderReceived: (orderId: string, hasCash: boolean, alerts?: GeneratedAlert[], receptionNote?: string, recepcionadoPor?: string, totalFactura?: number) => void;
   initialOrderId?: string;
   recepcionadoPor?: string;
   orders?: DashboardOrder[];
@@ -191,6 +191,7 @@ export const RecepcionPedidoModal = ({
   const [generalNote, setGeneralNote] = useState('');
   const [paidCash, setPaidCash] = useState(false);
   const [photoTaken, setPhotoTaken] = useState(false);
+  const [totalFactura, setTotalFactura] = useState('');
   const [done, setDone] = useState(false);
   const [openAlertId, setOpenAlertId] = useState<string | null>(null);
   const [billingDiscrepancy, setBillingDiscrepancy] = useState<BillingDiscrepancy>({
@@ -240,6 +241,7 @@ export const RecepcionPedidoModal = ({
       setGeneralNote('');
       setPaidCash(false);
       setPhotoTaken(false);
+      setTotalFactura('');
       setDone(false);
       setOpenAlertId(null);
       setBillingDiscrepancy({
@@ -301,8 +303,9 @@ export const RecepcionPedidoModal = ({
         minute: '2-digit'
       })
     }));
+    const parsedTotal = parseFloat(totalFactura.replace(',', '.'));
     setTimeout(() => {
-      onOrderReceived(selectedOrder?.id ?? '', paidCash, generatedAlerts, generalNote.trim() || undefined, recepcionadoPor);
+      onOrderReceived(selectedOrder?.id ?? '', paidCash, generatedAlerts, generalNote.trim() || undefined, recepcionadoPor, isNaN(parsedTotal) ? undefined : parsedTotal);
       resetAndClose();
     }, 1800);
   };
@@ -704,6 +707,30 @@ export const RecepcionPedidoModal = ({
                               </div>
                             </motion.div>}
                         </AnimatePresence>
+                      </div>
+                    </div>
+
+                    {/* ── TOTAL DE FACTURA ── */}
+                    <div className="rounded-2xl border border-neutral-200 bg-white px-4 py-3.5">
+                      <div className="flex items-center gap-2.5 mb-3">
+                        <div className="w-8 h-8 rounded-xl bg-neutral-100 flex items-center justify-center shrink-0">
+                          <FileText size={14} strokeWidth={2} className="text-neutral-500" />
+                        </div>
+                        <div>
+                          <p className="text-[11px] font-black uppercase tracking-widest text-neutral-700 leading-tight">Total de factura</p>
+                          <p className="text-[9px] font-bold text-neutral-400">Ingresá el monto para corroborar en pagos</p>
+                        </div>
+                      </div>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 font-black text-sm">$</span>
+                        <input
+                          type="number"
+                          inputMode="decimal"
+                          placeholder="0.00"
+                          value={totalFactura}
+                          onChange={e => setTotalFactura(e.target.value)}
+                          className="w-full pl-7 pr-3 py-3 rounded-xl border border-neutral-200 bg-neutral-50 text-sm font-black text-black placeholder-neutral-300 focus:outline-none focus:border-black transition-colors"
+                        />
                       </div>
                     </div>
 
