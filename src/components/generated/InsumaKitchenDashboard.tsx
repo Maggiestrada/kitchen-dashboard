@@ -26,6 +26,8 @@ interface OrderItem {
   unit: string;
   status: 'ok' | 'discrepancy' | 'pending';
   alertMsg: string;
+  precioUnit?: number;
+  ivaRate?: number;
 }
 interface Alert {
   id: string;
@@ -1134,6 +1136,17 @@ export const InsumaKitchenDashboard = () => {
     });
   }, []);
 
+  const handleSaveOrderPrices = useCallback((orderId: string, items: { id: string; precioUnit: number; ivaRate: number }[]) => {
+    setTodayOrders(prev => prev.map(o => {
+      if (o.id !== orderId) return o;
+      const updatedItems = (o.orderItems ?? []).map(oi => {
+        const match = items.find(it => it.id === oi.id);
+        return match ? { ...oi, precioUnit: match.precioUnit, ivaRate: match.ivaRate } : oi;
+      });
+      return { ...o, orderItems: updatedItems };
+    }));
+  }, []);
+
   const alertOrder = todayOrders.find(o => o.id === alertOrderId) ?? null;
   const allUnresolvedAlerts = todayOrders.flatMap(o => (o.alerts ?? []).filter(a => !a.resolved));
   const pendingPayments = todayOrders.filter(o => (o.status === 'received' || o.status === 'discrepancy' || o.status === 'paid_cash') && o.paymentStatus !== 'paid_digital' && o.paymentStatus !== 'confirmed').length;
@@ -1376,7 +1389,7 @@ export const InsumaKitchenDashboard = () => {
 
         {activeTab === 'alertas' && <AlertasTab orders={todayOrders} onResolve={handleResolveAlert} />}
         {activeTab === 'recibidos' && <RecibidosTab orders={todayOrders} />}
-        {activeTab === 'pagos' && <PagosTabEnhanced orders={todayOrders} onConfirmCash={handleConfirmCash} onPayDigital={handlePayDigital} onUpdateBillingDiscrepancy={handleUpdateBillingDiscrepancy} onSaveItemPrices={handleSaveItemPrices} canView={activeUser.role === 'admin'} />}
+        {activeTab === 'pagos' && <PagosTabEnhanced orders={todayOrders} onConfirmCash={handleConfirmCash} onPayDigital={handlePayDigital} onUpdateBillingDiscrepancy={handleUpdateBillingDiscrepancy} onSaveItemPrices={handleSaveItemPrices} onSaveOrderPrices={handleSaveOrderPrices} canView={activeUser.role === 'admin'} />}
         {activeTab === 'recetas' && <RecetasTab canViewCosts={activeUser.role === 'admin'} customInsumos={customInsumos} />}
         {activeTab === 'metricas' && <MetricasTab />}
 

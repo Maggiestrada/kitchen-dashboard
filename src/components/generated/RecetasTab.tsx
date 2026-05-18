@@ -99,7 +99,19 @@ const formatGrams = (g: number) =>
 
 function getInsumoPrecioGramo(insumoId: string, insumos: Insumo[]): number {
   const ins = insumos.find(i => i.id === insumoId);
-  return ins ? ins.pricePerKg / 1000 : 0;
+  if (!ins) return 0;
+  const unit = (ins.unit ?? '').toLowerCase().trim();
+  if (['u', 'unid', 'und', 'unidad', 'unidades'].includes(unit)) {
+    return ins.pricePerKg; // price per unit (grams field = qty in units)
+  }
+  if (unit === 'kg') {
+    return ins.pricePerKg / 1000; // pricePerKg = price/kg, return price/gram
+  }
+  if (unit === 'l') {
+    return ins.pricePerKg / 1000; // pricePerKg = price/liter, return price/ml
+  }
+  // default: gr, ml, cc → pricePerKg/1000 = price per gram/ml
+  return ins.pricePerKg / 1000;
 }
 
 function getSubRecetaCostoPorGramo(
@@ -1307,6 +1319,7 @@ const RecetaDetailView = ({
               <div className="space-y-2">
                 {receta.ingredientes.map(ing => {
                   const scaledGrams = ing.grams * multiplicador;
+                  const ingCosto = getIngCosto(ing, insumos, subRecetas) * multiplicador;
                   return (
                     <div key={ing.id} className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
@@ -1317,10 +1330,15 @@ const RecetaDetailView = ({
                         </div>
                         <p className="text-sm text-black truncate">{ing.nombre}</p>
                       </div>
-                      <span className={`text-sm tabular-nums shrink-0 ${multiplicador > 1 ? 'text-amber-600 font-bold' : 'text-neutral-500'}`}>
-                        {scaledGrams} {ing.unit}
-                        {ing.wastePercent > 0 && <span className="text-orange-400 text-xs ml-1">+{ing.wastePercent}%</span>}
-                      </span>
+                      <div className="flex flex-col items-end shrink-0">
+                        <span className={`text-sm tabular-nums ${multiplicador > 1 ? 'text-amber-600 font-bold' : 'text-neutral-500'}`}>
+                          {scaledGrams} {ing.unit}
+                          {ing.wastePercent > 0 && <span className="text-orange-400 text-xs ml-1">+{ing.wastePercent}%</span>}
+                        </span>
+                        {showCosts && ingCosto > 0 && (
+                          <span className="text-[11px] text-neutral-400 tabular-nums">{formatMoney(ingCosto)}</span>
+                        )}
+                      </div>
                     </div>
                   );
                 })}
