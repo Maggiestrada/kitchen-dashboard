@@ -340,6 +340,7 @@ interface NuevoPedidoModalProps {
   creadoPor?: string;
   providers?: ProviderProp[];
   negocioNombre?: string;
+  insumos?: Array<{id: string; name: string; unit: string; category: string}>;
 }
 export const NuevoPedidoModal = ({
   isOpen,
@@ -348,6 +349,7 @@ export const NuevoPedidoModal = ({
   creadoPor,
   providers: providersProp = [],
   negocioNombre = '',
+  insumos = [],
 }: NuevoPedidoModalProps) => {
   const [step, setStep] = useState<WizardStep>(1);
   const [search, setSearch] = useState('');
@@ -407,9 +409,11 @@ export const NuevoPedidoModal = ({
 
   // ── Step 2 helpers ─────────────────────────────────────────────────────────
 
-  const products = selectedProvider ? PRODUCTS_BY_PROVIDER[selectedProvider.id] ?? [] : [];
+  const products: Product[] = insumos.map(i => ({ id: i.id, name: i.name, unit: i.unit }));
   const lastOrder = selectedProvider ? LAST_ORDERS[selectedProvider.id] : null;
-  const filteredProducts = products.filter(p => p.name.toLowerCase().includes(productSearch.toLowerCase()));
+  const filteredProducts = productSearch.trim().length > 0
+    ? products.filter(p => p.name.toLowerCase().includes(productSearch.toLowerCase()))
+    : products;
   const setQty = useCallback((productId: string, name: string, unit: string, qty: number) => {
     if (qty <= 0) {
       setCart(prev => {

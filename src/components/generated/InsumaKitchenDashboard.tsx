@@ -1358,7 +1358,7 @@ export const InsumaKitchenDashboard = () => {
         customInsumos={customInsumos}
         proveedores={providers.map(p => p.name)}
       />
-      <NuevoPedidoModal isOpen={showNuevoPedido} onClose={() => setShowNuevoPedido(false)} onOrderCreated={handleOrderCreated} creadoPor={activeUser.name} providers={providers} negocioNombre={negocioNombre} />
+      <NuevoPedidoModal isOpen={showNuevoPedido} onClose={() => setShowNuevoPedido(false)} onOrderCreated={handleOrderCreated} creadoPor={activeUser.name} providers={providers} negocioNombre={negocioNombre} insumos={[...CATALOG_INSUMOS, ...customInsumos]} />
       <NuevoProveedorModal isOpen={showNuevoProveedor} onClose={() => setShowNuevoProveedor(false)} onProveedorCreated={handleProveedorCreated} />
       <ProveedorPerfilSheet proveedor={selectedProveedor} isOpen={selectedProveedor !== null} onClose={() => setSelectedProveedor(null)} onNuevoPedido={() => {
       setSelectedProveedor(null);
