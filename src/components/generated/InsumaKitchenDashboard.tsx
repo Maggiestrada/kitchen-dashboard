@@ -877,6 +877,7 @@ export const InsumaKitchenDashboard = () => {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showPinModal, setShowPinModal] = useState(false);
   const [pinInput, setPinInput] = useState('');
+  const [lastPriceUpdate, setLastPriceUpdate] = useState<number | undefined>(undefined);
   const [pinError, setPinError] = useState(false);
   const [pendingAdmin, setPendingAdmin] = useState<UserProfile | null>(null);
   const swipeStartX = React.useRef<number | null>(null);
@@ -1134,6 +1135,7 @@ export const InsumaKitchenDashboard = () => {
       });
       return updated;
     });
+    setLastPriceUpdate(Date.now());
   }, []);
 
   const handleSaveOrderPrices = useCallback((orderId: string, items: { id: string; precioUnit: number; ivaRate: number }[]) => {
@@ -1390,7 +1392,7 @@ export const InsumaKitchenDashboard = () => {
         {activeTab === 'alertas' && <AlertasTab orders={todayOrders} onResolve={handleResolveAlert} />}
         {activeTab === 'recibidos' && <RecibidosTab orders={todayOrders} />}
         {activeTab === 'pagos' && <PagosTabEnhanced orders={todayOrders} onConfirmCash={handleConfirmCash} onPayDigital={handlePayDigital} onUpdateBillingDiscrepancy={handleUpdateBillingDiscrepancy} onSaveItemPrices={handleSaveItemPrices} onSaveOrderPrices={handleSaveOrderPrices} canView={activeUser.role === 'admin'} />}
-        {activeTab === 'recetas' && <RecetasTab canViewCosts={activeUser.role === 'admin'} customInsumos={customInsumos} />}
+        {activeTab === 'recetas' && <RecetasTab canViewCosts={activeUser.role === 'admin'} customInsumos={customInsumos} lastPriceUpdate={lastPriceUpdate} />}
         {activeTab === 'metricas' && <MetricasTab />}
 
       </main>

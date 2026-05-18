@@ -1,9 +1,9 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus, X, Search, Camera, ArrowLeft, Edit3, BookOpen, ChefHat,
   TrendingUp, Scale, Package, Utensils, ChevronDown,
-  Eye, EyeOff, Info, Flame, Lock, Calendar, ChevronRight,
+  Eye, EyeOff, Info, Flame, Lock, Calendar, ChevronRight, Check,
 } from 'lucide-react';
 import { SEED_INSUMOS } from '../../lib/db';
 
@@ -70,6 +70,7 @@ interface Receta {
   horasManoObra?: number;
   rindeGramos?: number;
   createdAt: string;
+  costoHistory?: { date: string; costo: number }[];
 }
 
 interface BebidaItem {
@@ -446,6 +447,15 @@ const IngredienteEditRow = ({
           </AnimatePresence>
         </div>
       </div>
+      {/* Feature 6: Merma net quantity feedback */}
+      {ing.wastePercent > 0 && (
+        <div className="flex items-center gap-1.5 mt-1 pl-6">
+          <div className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
+          <p className="text-[10px] text-amber-600 font-medium">
+            {ing.grams} {ing.unit} entrada → {Math.round(ing.grams * (1 - ing.wastePercent / 100) * 10) / 10} {ing.unit} netos
+          </p>
+        </div>
+      )}
     </div>
   );
 };
@@ -625,6 +635,7 @@ const RecetaForm = ({
   const [ingredientesExtra, setIngredientesExtra] = useState<ExtraItem[]>(initial?.ingredientesExtra ?? []);
   const [horasManoObra, setHorasManoObra] = useState(initial?.horasManoObra ?? 0);
   const [rindeGramos, setRindeGramos] = useState<number | ''>(initial?.rindeGramos ?? '');
+  const [precioVenta, setPrecioVenta] = useState(initial?.precioVenta ?? 0);
   const [tarifaHora] = useState(() => getTarifaHora());
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -639,6 +650,7 @@ const RecetaForm = ({
       setIngredientesExtra(initial?.ingredientesExtra ?? []);
       setHorasManoObra(initial?.horasManoObra ?? 0);
       setRindeGramos(initial?.rindeGramos ?? '');
+      setPrecioVenta(initial?.precioVenta ?? 0);
     }
   }, [isOpen]);
 
@@ -689,7 +701,7 @@ const RecetaForm = ({
       ingredientes,
       procedimiento,
       imagenUrl: imagenUrl || undefined,
-      precioVenta: initial?.precioVenta,
+      precioVenta: precioVenta > 0 ? precioVenta : initial?.precioVenta,
       ingredientesExtra,
       horasManoObra,
       rindeGramos: rindeGramos !== '' ? Number(rindeGramos) : undefined,
@@ -807,6 +819,23 @@ const RecetaForm = ({
               {rindeGramos !== '' && porciones > 0 && (
                 <p className="text-[11px] text-neutral-400 mt-1">{Math.round(Number(rindeGramos) / porciones)} g por porción</p>
               )}
+            </div>
+
+            {/* Precio de venta */}
+            <div>
+              <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">Precio de venta</p>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 font-black text-sm">$</span>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  placeholder="0"
+                  value={precioVenta || ''}
+                  onChange={e => setPrecioVenta(parseFloat(e.target.value) || 0)}
+                  className="w-full pl-7 pr-3 py-3 rounded-2xl border border-neutral-200 bg-neutral-50 text-sm font-black text-black outline-none focus:border-black tabular-nums"
+                  style={{MozAppearance: 'textfield'} as React.CSSProperties}
+                />
+              </div>
             </div>
 
             {/* Ingredientes */}
@@ -1157,6 +1186,7 @@ const RecetaDetailView = ({
   const [multiplicador, setMultiplicador] = useState(1);
   const [showScalePanel, setShowScalePanel] = useState(false);
   const [customScale, setCustomScale] = useState('');
+  const [fcObjetivo, setFcObjetivo] = useState(30);
 
   React.useEffect(() => {
     if (!isOpen) { setMultiplicador(1); setShowScalePanel(false); setCustomScale(''); }
@@ -1319,6 +1349,48 @@ const RecetaDetailView = ({
                 </div>
               )}
             </div>
+
+            {/* Feature 3: Precio sugerido */}
+            {showCosts && costo > 0 && (
+              <div className="bg-white border border-neutral-100 rounded-2xl px-4 py-3.5">
+                <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">Precio sugerido</p>
+                <div className="flex items-center gap-3">
+                  <div className="flex-1">
+                    <p className="text-[10px] text-neutral-400 font-medium mb-1">Food cost objetivo</p>
+                    <div className="flex gap-1.5">
+                      {[25, 30, 35, 40].map(pct => (
+                        <button
+                          key={pct}
+                          onClick={() => setFcObjetivo(pct)}
+                          className={`flex-1 py-1.5 rounded-lg text-[10px] font-black transition-all active:scale-95 ${fcObjetivo === pct ? 'bg-black text-white' : 'bg-neutral-100 text-neutral-500'}`}
+                        >
+                          {pct}%
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-2.5 flex items-center justify-between">
+                  <p className="text-xs text-neutral-500 font-bold">Precio mínimo sugerido</p>
+                  <p className="text-lg font-black text-black tabular-nums">{formatMoney(costo / (fcObjetivo / 100))}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Feature 4: Historial de costos */}
+            {showCosts && receta.costoHistory && receta.costoHistory.length > 1 && (
+              <div className="bg-white border border-neutral-100 rounded-2xl px-4 py-3.5">
+                <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-3">Historial de costos</p>
+                <div className="space-y-1.5">
+                  {[...receta.costoHistory].reverse().slice(0, 5).map((entry, i) => (
+                    <div key={i} className="flex items-center justify-between">
+                      <p className="text-[11px] text-neutral-400 font-medium">{entry.date}</p>
+                      <p className="text-[11px] font-black text-neutral-700 tabular-nums">{formatMoney(entry.costo)}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div>
               <p className="text-[10px] uppercase tracking-widest text-neutral-400 mb-3">Ingredientes</p>
@@ -1606,14 +1678,18 @@ const SubRecetaDetailView = ({
 
 // ─── RecetaCard ───────────────────────────────────────────────────────────────
 
-const RecetaCard = ({
-  receta,
-  onClick,
-}: {
+const RecetaCard: React.FC<{
   receta: Receta;
   onClick: () => void;
-}) => {
+  onEdit?: () => void;
+  canViewCosts?: boolean;
+  insumos?: Insumo[];
+  subRecetas?: SubReceta[];
+}> = ({ receta, onClick, onEdit, canViewCosts, insumos = [], subRecetas = [] }) => {
   const color = CATEGORIA_COLORS[receta.categoria] ?? '#6B7280';
+  const costoPorcion = getRecetaCostoPorPorcion(receta, insumos, subRecetas);
+  const fc = receta.precioVenta && receta.precioVenta > 0 ? costoPorcion / receta.precioVenta * 100 : null;
+  const fcColor = fc === null ? null : fc < 30 ? '#22C55E' : fc < 40 ? '#F59E0B' : '#EF4444';
   return (
     <motion.button
       onClick={onClick}
@@ -1630,12 +1706,17 @@ const RecetaCard = ({
         </div>
       )}
       <div className="p-3.5">
-        <span
-          className="text-[8px] font-normal uppercase tracking-widest px-1.5 py-0.5 rounded-full inline-block mb-1.5"
-          style={{ backgroundColor: color + '18', color }}
-        >
-          {receta.categoria}
-        </span>
+        <div className="flex items-start justify-between gap-1 mb-1.5">
+          <span
+            className="text-[8px] font-normal uppercase tracking-widest px-1.5 py-0.5 rounded-full inline-block"
+            style={{ backgroundColor: color + '18', color }}
+          >
+            {receta.categoria}
+          </span>
+          {canViewCosts && fcColor && (
+            <div className="w-2 h-2 rounded-full shrink-0 mt-1" style={{ backgroundColor: fcColor }} />
+          )}
+        </div>
         <p className="text-sm font-medium text-black leading-tight">{receta.nombre}</p>
         <p className="text-[11px] text-neutral-400 mt-1">
           {receta.porciones} {receta.porciones === 1 ? 'porción' : 'porciones'} · {receta.ingredientes.length} ingredientes
@@ -1697,6 +1778,9 @@ const FoodCostView = ({
   onOpenDetail: (receta: Receta) => void;
   onRemove?: (recetaId: string) => void;
 }) => {
+  const [simInsumoId, setSimInsumoId] = useState('');
+  const [simDelta, setSimDelta] = useState(20);
+
   const rows = recetas.map(r => {
     const costo = getRecetaCostoPorPorcion(r, insumos, subRecetas);
     const precio = r.precioVenta ?? 0;
@@ -1757,6 +1841,67 @@ const FoodCostView = ({
       <p className="text-[10px] text-neutral-400 text-center px-4">
         Precio sugerido = costo × 5 · Verde &lt;25% · Amarillo 25–35% · Rojo &gt;35%
       </p>
+
+      {/* Feature 5: Price impact simulator */}
+      <div className="mt-4">
+        <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-3">Simulador de precios</p>
+        <div className="bg-white border border-neutral-100 rounded-2xl overflow-hidden">
+          <div className="px-4 py-3 border-b border-neutral-50 space-y-2.5">
+            <div>
+              <p className="text-[10px] font-bold text-neutral-400 mb-1.5">Insumo</p>
+              <select
+                value={simInsumoId}
+                onChange={e => setSimInsumoId(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl border border-neutral-200 bg-neutral-50 text-xs font-bold text-black outline-none focus:border-black"
+              >
+                <option value="">Seleccioná un insumo...</option>
+                {insumos.filter(i => i.pricePerKg > 0).map(i => (
+                  <option key={i.id} value={i.id}>{i.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-neutral-400 mb-1.5">Variación de precio: {simDelta > 0 ? '+' : ''}{simDelta}%</p>
+              <div className="flex gap-1.5">
+                {[-20, -10, +10, +20, +30, +50].map(d => (
+                  <button
+                    key={d}
+                    onClick={() => setSimDelta(d)}
+                    className={`flex-1 py-1.5 rounded-lg text-[10px] font-black transition-all active:scale-95 ${simDelta === d ? 'bg-black text-white' : d < 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}
+                  >
+                    {d > 0 ? '+' : ''}{d}%
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+          {simInsumoId && (() => {
+            const affected = recetas.map(r => {
+              const costoActual = getRecetaCostoPorPorcion(r, insumos, subRecetas);
+              const insumosSim = insumos.map(i => i.id === simInsumoId ? { ...i, pricePerKg: i.pricePerKg * (1 + simDelta / 100) } : i);
+              const costoSim = getRecetaCostoPorPorcion(r, insumosSim, subRecetas);
+              const diff = costoSim - costoActual;
+              return { receta: r, costoActual, costoSim, diff };
+            }).filter(x => Math.abs(x.diff) > 0.01);
+            if (affected.length === 0) return <div className="px-4 py-3 text-xs text-neutral-400 font-medium">Este insumo no aparece en ninguna receta.</div>;
+            return (
+              <div>
+                {affected.map(({ receta: r, costoActual, costoSim, diff }) => (
+                  <div key={r.id} className="px-4 py-2.5 flex items-center gap-2 border-b border-neutral-50 last:border-0">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold text-neutral-800 truncate">{r.nombre}</p>
+                      <p className="text-[10px] text-neutral-400">{formatMoney(costoActual)} → {formatMoney(costoSim)}</p>
+                    </div>
+                    <p className={`text-xs font-black tabular-nums shrink-0 ${diff > 0 ? 'text-red-500' : 'text-green-600'}`}>
+                      {diff > 0 ? '+' : ''}{formatMoney(diff)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+        </div>
+      </div>
     </div>
   );
 };
@@ -1857,7 +2002,7 @@ const FoodCostRow = ({
 
 // ─── RecetasTab ───────────────────────────────────────────────────────────────
 
-export const RecetasTab: React.FC<{ canViewCosts?: boolean; customInsumos?: Insumo[] }> = ({ canViewCosts = true, customInsumos }) => {
+export const RecetasTab: React.FC<{ canViewCosts?: boolean; customInsumos?: Insumo[]; lastPriceUpdate?: number }> = ({ canViewCosts = true, customInsumos, lastPriceUpdate }) => {
   const [activeTab, setActiveTab] = useState<'recetario' | 'subrecetas' | 'foodcost'>('recetario');
   const [recetas, setRecetas] = useState<Receta[]>(() => {
     try {
@@ -1874,6 +2019,34 @@ export const RecetasTab: React.FC<{ canViewCosts?: boolean; customInsumos?: Insu
     return INITIAL_SUBRECETAS;
   });
   const insumos = React.useMemo(() => [...CATALOG_INSUMOS, ...(customInsumos ?? [])], [customInsumos]);
+
+  // Feature 1: Price update notification banner
+  const [priceUpdateBanner, setPriceUpdateBanner] = useState(false);
+  const prevPriceUpdate = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    if (lastPriceUpdate && lastPriceUpdate !== prevPriceUpdate.current) {
+      prevPriceUpdate.current = lastPriceUpdate;
+      setPriceUpdateBanner(true);
+      setTimeout(() => setPriceUpdateBanner(false), 5000);
+    }
+  }, [lastPriceUpdate]);
+
+  // Feature 4: Cost history snapshots — save snapshot when customInsumos changes
+  const isFirstRender = useRef(true);
+  useEffect(() => {
+    if (isFirstRender.current) { isFirstRender.current = false; return; }
+    const today = new Date().toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit' });
+    setRecetas(prev => prev.map(r => {
+      const costo = getRecetaCostoPorPorcion(r, insumos, subRecetas);
+      if (costo === 0) return r;
+      const history = r.costoHistory ?? [];
+      if (history.length > 0 && history[history.length - 1].date === today) {
+        return { ...r, costoHistory: [...history.slice(0, -1), { date: today, costo }] };
+      }
+      return { ...r, costoHistory: [...history.slice(-9), { date: today, costo }] };
+    }));
+  }, [customInsumos]);
+
   const [showCosts, setShowCosts] = useState(false);
   const effectiveShowCosts = canViewCosts && showCosts;
   // Search bars
@@ -1968,6 +2141,24 @@ export const RecetasTab: React.FC<{ canViewCosts?: boolean; customInsumos?: Insu
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
+      {/* Feature 1: Price update banner */}
+      <AnimatePresence>
+        {priceUpdateBanner && (
+          <motion.div initial={{opacity:0, y:-8}} animate={{opacity:1, y:0}} exit={{opacity:0}} className="mx-4 mt-3 mb-0 bg-green-50 border border-green-200 rounded-2xl px-4 py-3 flex items-center gap-3 shrink-0">
+            <div className="w-7 h-7 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+              <Check size={14} strokeWidth={3} className="text-green-600" />
+            </div>
+            <div className="flex-1">
+              <p className="text-xs font-black text-green-800">Precios actualizados</p>
+              <p className="text-[11px] text-green-600 font-medium">Los costos de recetas se recalcularon con los nuevos precios</p>
+            </div>
+            <button onClick={() => setPriceUpdateBanner(false)} className="text-green-400 active:scale-90 transition-transform">
+              <X size={14} strokeWidth={2.5} />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Tab bar */}
       <div className="px-4 pt-4 pb-1 shrink-0">
         <div className="flex gap-1 bg-neutral-100 rounded-xl p-1">
@@ -2038,7 +2229,7 @@ export const RecetasTab: React.FC<{ canViewCosts?: boolean; customInsumos?: Insu
                 ) : (
                   <div className="grid grid-cols-2 gap-3">
                     {filtered.map(r => (
-                      <RecetaCard key={r.id} receta={r} onClick={() => openRecetaDetail(r)} />
+                      <RecetaCard key={r.id} receta={r} onClick={() => openRecetaDetail(r)} canViewCosts={canViewCosts} insumos={insumos} subRecetas={subRecetas} />
                     ))}
                   </div>
                 );
