@@ -840,7 +840,13 @@ export const InsumaKitchenDashboard = () => {
   const [showNuevoPedido, setShowNuevoPedido] = useState(false);
   const [showNuevoProveedor, setShowNuevoProveedor] = useState(false);
   const [showNuevoInsumo, setShowNuevoInsumo] = useState(false);
-  const [customInsumos, setCustomInsumos] = useState<{ id: string; name: string; category: string; unit: string; pricePerKg: number; provider: string }[]>([]);
+  const [customInsumos, setCustomInsumos] = useState<{ id: string; name: string; category: string; unit: string; pricePerKg: number; provider: string }[]>(() => {
+    try {
+      const saved = localStorage.getItem('insuma_insumos');
+      if (saved) { const arr = JSON.parse(saved); if (Array.isArray(arr)) return arr; }
+    } catch { /* ignore */ }
+    return [];
+  });
   const [showRecepcion, setShowRecepcion] = useState(false);
   // Dynamic users & business (cargado desde Supabase)
   const [usuarios, setUsuarios] = useState<UserProfile[]>([]);
@@ -916,13 +922,16 @@ export const InsumaKitchenDashboard = () => {
     loadInsumos().then(insumos => setCustomInsumos(insumos));
   }, []);
 
-  // Persistir pedidos y proveedores en localStorage cada vez que cambian
+  // Persistir todo en localStorage cada vez que cambian
   useEffect(() => {
     try { localStorage.setItem('insuma_pedidos', JSON.stringify(todayOrders)); } catch { /* ignore */ }
   }, [todayOrders]);
   useEffect(() => {
     try { localStorage.setItem('insuma_proveedores', JSON.stringify(providers)); } catch { /* ignore */ }
   }, [providers]);
+  useEffect(() => {
+    try { localStorage.setItem('insuma_insumos', JSON.stringify(customInsumos)); } catch { /* ignore */ }
+  }, [customInsumos]);
 
   const handleCancelOrder = useCallback((orderId: string) => {
     setTodayOrders(prev => prev.filter(o => o.id !== orderId));
