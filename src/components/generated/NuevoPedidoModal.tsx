@@ -337,6 +337,7 @@ interface NuevoPedidoModalProps {
   isOpen: boolean;
   onClose: () => void;
   onOrderCreated: (providerName?: string, orderNote?: string, creadoPor?: string, items?: Array<{id: string; name: string; qty: number; unit: string}>, providerPhone?: string) => void;
+  onInsumoCreated?: (insumo: {id: string; name: string; unit: string; category: string}) => void;
   creadoPor?: string;
   providers?: ProviderProp[];
   negocioNombre?: string;
@@ -346,6 +347,7 @@ export const NuevoPedidoModal = ({
   isOpen,
   onClose,
   onOrderCreated,
+  onInsumoCreated,
   creadoPor,
   providers: providersProp = [],
   negocioNombre = '',
@@ -478,6 +480,8 @@ export const NuevoPedidoModal = ({
         area
       }
     }));
+    // Guardar como insumo para que aparezca en futuros pedidos
+    onInsumoCreated?.({ id: customId, name: trimmed, unit, category: area || 'Almacén' });
     setShowCustomPanel(false);
     setPendingCustomName('');
     setProductSearch('');
@@ -543,16 +547,14 @@ export const NuevoPedidoModal = ({
     setStep(3);
   };
   const handleSend = () => {
-    setSent(true);
     const rawPhone = selectedProvider?.whatsapp ?? '';
     const cleanPhone = rawPhone.replace(/[^0-9]/g, '');
     const msg = encodeURIComponent(mensajeEditable || buildRawMessage());
+    const items = cartItems.map(i => ({ id: i.productId, name: i.name, qty: i.qty, unit: i.unit }));
+    // Registrar pedido y cerrar ANTES de abrir WhatsApp para evitar que la app se trabe al volver
+    onOrderCreated(selectedProvider?.name, orderNote.trim() || undefined, creadoPor, items, rawPhone);
+    resetAndClose();
     window.open(`https://wa.me/${cleanPhone}?text=${msg}`, '_blank');
-    setTimeout(() => {
-      const items = cartItems.map(i => ({ id: i.productId, name: i.name, qty: i.qty, unit: i.unit }));
-      onOrderCreated(selectedProvider?.name, orderNote.trim() || undefined, creadoPor, items, rawPhone);
-      resetAndClose();
-    }, 1800);
   };
   return <AnimatePresence>
       {isOpen && <motion.div initial={{

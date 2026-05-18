@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { LayoutDashboard, Truck, PackageCheck, Plus, Search, Bell, ChevronRight, Clock, AlertCircle, CheckCircle2, Wallet, Store, CreditCard, Leaf, X, ArrowRight, ChevronDown, Calendar, Banknote, Check, ExternalLink, History, Receipt, Send, MessageSquare, StickyNote, Edit3, Upload, Camera, Package, BarChart2, BookOpen, Lock, User } from 'lucide-react';
+import { LayoutDashboard, Truck, PackageCheck, Plus, Search, Bell, ChevronRight, Clock, AlertCircle, CheckCircle2, Wallet, Store, CreditCard, Leaf, X, ArrowRight, ChevronDown, Calendar, Banknote, Check, ExternalLink, History, Receipt, Send, MessageSquare, StickyNote, Edit3, Upload, Camera, Package, BarChart2, BookOpen, Lock, User, Trash2, MessageCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { NuevoPedidoModal } from './NuevoPedidoModal';
 import { NuevoProveedorModal } from './NuevoProveedorModal';
@@ -279,24 +279,18 @@ const WaIcon = ({
 
 const OrderCard = ({
   order,
-  onAlertClick
+  onAlertClick,
+  onCancelClick,
 }: {
   order: Order;
   onAlertClick?: (orderId: string) => void;
+  onCancelClick?: (order: Order) => void;
 }) => {
   const cfg = STATUS_CONFIG[order.status];
   const alertCount = order.alerts?.filter(a => !a.resolved).length ?? 0;
-  return <motion.article initial={{
-    opacity: 0,
-    y: 6
-  }} animate={{
-    opacity: 1,
-    y: 0
-  }} className="bg-white rounded-xl border border-neutral-100 active:scale-[0.985] transition-transform cursor-pointer overflow-hidden">
+  return <motion.article initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-xl border border-neutral-100 overflow-hidden">
       <div className="flex">
-        <div className="w-1 shrink-0 rounded-l-xl" style={{
-        backgroundColor: cfg.dot
-      }} />
+        <div className="w-1 shrink-0 rounded-l-xl" style={{ backgroundColor: cfg.dot }} />
         <div className="flex-1 px-3 py-2.5">
           <div className="flex justify-between items-center gap-2">
             <div className="min-w-0 flex-1">
@@ -308,20 +302,63 @@ const OrderCard = ({
               </div>
               <p className="text-neutral-400 text-[11px] font-normal">{order.category} · {order.items} items{order.total ? ` · ${formatMoney(order.total)}` : ''}</p>
             </div>
-            <div className="flex flex-col items-end gap-1 shrink-0">
-              <StatusBadge status={order.status} />
-              {alertCount > 0 && <button onClick={e => {
-              e.stopPropagation();
-              onAlertClick?.(order.id);
-            }} className="flex items-center gap-0.5 text-[9px] font-normal text-red-600 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded-full active:scale-95 transition-transform">
-                  <AlertCircle size={8} strokeWidth={2} />
-                  <span>{alertCount} alerta{alertCount > 1 ? 's' : ''}</span>
-                </button>}
+            <div className="flex items-center gap-2 shrink-0">
+              <div className="flex flex-col items-end gap-1">
+                <StatusBadge status={order.status} />
+                {alertCount > 0 && <button onClick={e => { e.stopPropagation(); onAlertClick?.(order.id); }} className="flex items-center gap-0.5 text-[9px] font-normal text-red-600 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded-full active:scale-95 transition-transform">
+                    <AlertCircle size={8} strokeWidth={2} />
+                    <span>{alertCount} alerta{alertCount > 1 ? 's' : ''}</span>
+                  </button>}
+              </div>
+              <button onClick={e => { e.stopPropagation(); onCancelClick?.(order); }} className="w-7 h-7 flex items-center justify-center rounded-full text-neutral-300 hover:text-red-400 hover:bg-red-50 active:scale-90 transition-all">
+                <Trash2 size={13} strokeWidth={1.75} />
+              </button>
             </div>
           </div>
         </div>
       </div>
     </motion.article>;
+};
+
+// ─── CancelOrderSheet ─────────────────────────────────────────────────────────
+
+const CancelOrderSheet = ({
+  order,
+  isOpen,
+  onClose,
+  onConfirmCancel,
+}: {
+  order: Order | null;
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirmCancel: (orderId: string) => void;
+}) => {
+  if (!order) return null;
+  const phone = order.providerPhone?.replace(/[^0-9]/g, '') ?? '';
+  const waMsg = encodeURIComponent(`Hola, quería avisarte que cancelamos el pedido que hicimos hoy. Disculpá las molestias.`);
+  return <AnimatePresence>
+    {isOpen && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex flex-col justify-end" style={{ maxWidth: 448, margin: '0 auto' }}>
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <motion.div initial={{ y: 60, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 60, opacity: 0 }} transition={{ type: 'spring', stiffness: 340, damping: 30 }} className="relative bg-white rounded-t-3xl px-4 pt-5 pb-8 z-10">
+        <div className="w-10 h-1 bg-neutral-200 rounded-full mx-auto mb-5" />
+        <p className="text-xs text-neutral-400 uppercase tracking-widest font-normal mb-1">Pedido a</p>
+        <h3 className="text-base font-normal text-neutral-900 mb-5">{order.provider}</h3>
+        <div className="space-y-2">
+          {phone && <button onClick={() => { window.open(`https://wa.me/${phone}?text=${waMsg}`, '_blank'); onClose(); }} className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-[#22C55E]/10 text-[#16a34a] active:scale-[0.98] transition-transform">
+            <MessageCircle size={18} strokeWidth={1.75} />
+            <span className="text-sm font-normal">Contactar proveedor por WhatsApp</span>
+          </button>}
+          <button onClick={() => { onConfirmCancel(order.id); onClose(); }} className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-red-50 text-red-600 active:scale-[0.98] transition-transform">
+            <Trash2 size={18} strokeWidth={1.75} />
+            <span className="text-sm font-normal">Cancelar pedido</span>
+          </button>
+          <button onClick={onClose} className="w-full py-3.5 text-sm font-normal text-neutral-400 active:scale-[0.98] transition-transform">
+            Volver
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>}
+  </AnimatePresence>;
 };
 
 // ─── AlertDetailSheet ─────────────────────────────────────────────────────────
@@ -809,10 +846,17 @@ export const InsumaKitchenDashboard = () => {
   const [usuarios, setUsuarios] = useState<UserProfile[]>([]);
   const [negocioNombre, setNegocioNombre] = useState<string>('Cocina');
   const [recepcionOrderId, setRecepcionOrderId] = useState<string | undefined>(undefined);
-  const [todayOrders, setTodayOrders] = useState<Order[]>(MOCK_ORDERS);
+  const [todayOrders, setTodayOrders] = useState<Order[]>(() => {
+    try {
+      const saved = localStorage.getItem('insuma_pedidos');
+      if (saved) return JSON.parse(saved) as Order[];
+    } catch { /* ignore */ }
+    return MOCK_ORDERS;
+  });
   const [providers, setProviders] = useState<Provider[]>(INITIAL_PROVIDERS);
   const [selectedProveedor, setSelectedProveedor] = useState<Provider | null>(null);
   const [alertOrderId, setAlertOrderId] = useState<string | null>(null);
+  const [cancelOrder, setCancelOrder] = useState<Order | null>(null);
   const [showBellPanel, setShowBellPanel] = useState(false);
   const [notifPermission, setNotifPermission] = useState<NotificationPermission>('default');
   const [activeUser, setActiveUser] = useState<UserProfile>({ id: 'chef', name: 'Operador', role: 'chef' });
@@ -865,6 +909,18 @@ export const InsumaKitchenDashboard = () => {
     // Cargar insumos custom
     loadInsumos().then(insumos => setCustomInsumos(insumos));
   }, []);
+
+  // Persistir pedidos en localStorage cada vez que cambian
+  useEffect(() => {
+    try {
+      localStorage.setItem('insuma_pedidos', JSON.stringify(todayOrders));
+    } catch { /* ignore */ }
+  }, [todayOrders]);
+
+  const handleCancelOrder = useCallback((orderId: string) => {
+    setTodayOrders(prev => prev.filter(o => o.id !== orderId));
+  }, []);
+
   const handleRequestNotifications = useCallback(async () => {
     await requestNotificationPermission();
     if ('Notification' in window) setNotifPermission(Notification.permission);
@@ -1188,7 +1244,7 @@ export const InsumaKitchenDashboard = () => {
                 <button className="text-black text-[11px] font-bold uppercase tracking-wide">Ver todo</button>
               </div>
               <div className="space-y-1.5">
-                {todayOrders.map(order => <OrderCard key={order.id} order={order} onAlertClick={id => setAlertOrderId(id)} />)}
+                {todayOrders.map(order => <OrderCard key={order.id} order={order} onAlertClick={id => setAlertOrderId(id)} onCancelClick={o => setCancelOrder(o)} />)}
               </div>
             </section>
           </motion.div>}
@@ -1358,7 +1414,24 @@ export const InsumaKitchenDashboard = () => {
         customInsumos={customInsumos}
         proveedores={providers.map(p => p.name)}
       />
-      <NuevoPedidoModal isOpen={showNuevoPedido} onClose={() => setShowNuevoPedido(false)} onOrderCreated={handleOrderCreated} creadoPor={activeUser.name} providers={providers} negocioNombre={negocioNombre} insumos={[...CATALOG_INSUMOS, ...customInsumos]} />
+      <NuevoPedidoModal
+        isOpen={showNuevoPedido}
+        onClose={() => setShowNuevoPedido(false)}
+        onOrderCreated={handleOrderCreated}
+        onInsumoCreated={async insumo => {
+          const newInsumo = { ...insumo, pricePerKg: 0, provider: '' };
+          try {
+            const saved = await crearInsumo(newInsumo, 'ingrediente');
+            setCustomInsumos(prev => [...prev, saved]);
+          } catch {
+            setCustomInsumos(prev => [...prev, newInsumo]);
+          }
+        }}
+        creadoPor={activeUser.name}
+        providers={providers}
+        negocioNombre={negocioNombre}
+        insumos={[...CATALOG_INSUMOS, ...customInsumos]}
+      />
       <NuevoProveedorModal isOpen={showNuevoProveedor} onClose={() => setShowNuevoProveedor(false)} onProveedorCreated={handleProveedorCreated} />
       <ProveedorPerfilSheet proveedor={selectedProveedor} isOpen={selectedProveedor !== null} onClose={() => setSelectedProveedor(null)} onNuevoPedido={() => {
       setSelectedProveedor(null);
@@ -1369,6 +1442,7 @@ export const InsumaKitchenDashboard = () => {
       setRecepcionOrderId(undefined);
     }} onOrderReceived={handleOrderReceived} initialOrderId={recepcionOrderId} recepcionadoPor={activeUser.name} orders={pendingReceptionOrders} />
       <AlertDetailSheet order={alertOrder} isOpen={alertOrderId !== null} onClose={() => setAlertOrderId(null)} onResolve={handleResolveAlert} />
+      <CancelOrderSheet order={cancelOrder} isOpen={cancelOrder !== null} onClose={() => setCancelOrder(null)} onConfirmCancel={handleCancelOrder} />
 
       {/* User menu sheet */}
       <AnimatePresence>
