@@ -356,17 +356,20 @@ const AiInvoiceDetailSheet = ({
 
               {/* Detalle del pedido con costos */}
               {(() => {
-                const totalNeto = orderItems.reduce((s, it) => s + it.cantRecibida * it.precioUnit, 0);
-                const totalIva = orderItems.reduce((s, it) => s + it.cantRecibida * it.precioUnit * (it.ivaRate / 100), 0);
-                const totalFinal = totalNeto + totalIva;
+                // precioUnit almacena el TOTAL del ítem (lo que pagaste por todas las unidades)
+                // Precio unit. c/IVA = totalItem / cantRecibida
+                // Precio unit. neto  = (totalItem / cantRecibida) / (1 + ivaRate/100)
+                const totalFactura = orderItems.reduce((s, it) => s + it.precioUnit, 0);
+                const totalNeto = orderItems.reduce((s, it) => s + (it.ivaRate === 0 ? it.precioUnit : it.precioUnit / (1 + it.ivaRate / 100)), 0);
+                const totalIvaSum = totalFactura - totalNeto;
                 const IVA_OPTIONS = [0, 10.5, 21, 27];
                 return (
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">Detalle del pedido</p>
-                      {totalFinal > 0 && (
+                      {totalFactura > 0 && (
                         <button
-                          onClick={() => { onUpdateBillingDiscrepancy?.(order.id, 'manual_detail', totalFinal); }}
+                          onClick={() => { onUpdateBillingDiscrepancy?.(order.id, 'manual_detail', totalFactura); }}
                           className="flex items-center gap-1 text-[10px] font-black text-white bg-black px-2.5 py-1 rounded-lg active:scale-95 transition-transform"
                         >
                           <Check size={10} strokeWidth={3} />
@@ -377,30 +380,30 @@ const AiInvoiceDetailSheet = ({
 
                     <div className="space-y-2">
                       {orderItems.map((item, idx) => {
-                        const precioConIva = item.precioUnit * (1 + item.ivaRate / 100);
-                        const subtotal = item.cantRecibida * precioConIva;
+                        const cant = item.cantRecibida || item.cantPedida || 1;
+                        const unitConIva = item.precioUnit > 0 ? item.precioUnit / cant : 0;
+                        const unitNeto = item.ivaRate === 0 ? unitConIva : unitConIva / (1 + item.ivaRate / 100);
                         const hasDiff = item.cantRecibida < item.cantPedida;
                         return (
                           <div key={item.id} className={`bg-white border rounded-2xl overflow-hidden ${hasDiff ? 'border-red-200' : 'border-neutral-100'}`}>
-                            {/* Header del ítem */}
+                            {/* Header */}
                             <div className={`px-3 py-2.5 flex items-center justify-between ${hasDiff ? 'bg-red-50' : 'bg-neutral-50'} border-b ${hasDiff ? 'border-red-100' : 'border-neutral-100'}`}>
                               <div className="min-w-0 flex-1">
                                 <p className={`text-xs font-black truncate ${hasDiff ? 'text-red-700' : 'text-neutral-900'}`}>{item.nombre}</p>
-                                <p className="text-[10px] text-neutral-400 font-medium">
+                                <p className="text-[10px] font-medium mt-0.5">
                                   {hasDiff
                                     ? <span className="text-red-500">Pedido {item.cantPedida}, recibido {item.cantRecibida} {item.unit}</span>
-                                    : <span>{item.cantRecibida} {item.unit} recibidos</span>
+                                    : <span className="text-neutral-400">{cant} {item.unit}</span>
                                   }
                                 </p>
                               </div>
-                              {subtotal > 0 && <p className="text-sm font-black text-black tabular-nums ml-3">{formatMoney(subtotal)}</p>}
+                              {item.precioUnit > 0 && <p className="text-sm font-black text-black tabular-nums ml-3">{formatMoney(item.precioUnit)}</p>}
                             </div>
 
-                            {/* Inputs de precio */}
                             <div className="px-3 py-3 space-y-2.5">
-                              {/* Precio neto */}
+                              {/* Total del ítem */}
                               <div className="flex items-center gap-2">
-                                <p className="text-[10px] font-bold text-neutral-400 w-20 shrink-0">P. neto unit.</p>
+                                <p className="text-[10px] font-bold text-neutral-400 w-24 shrink-0">Total del ítem</p>
                                 <div className="relative flex-1">
                                   <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400 text-xs">$</span>
                                   <input
@@ -417,7 +420,7 @@ const AiInvoiceDetailSheet = ({
 
                               {/* IVA selector */}
                               <div className="flex items-center gap-2">
-                                <p className="text-[10px] font-bold text-neutral-400 w-20 shrink-0">Alícuota IVA</p>
+                                <p className="text-[10px] font-bold text-neutral-400 w-24 shrink-0">Alícuota IVA</p>
                                 <div className="flex gap-1.5 flex-1">
                                   {IVA_OPTIONS.map(rate => (
                                     <button
@@ -431,11 +434,17 @@ const AiInvoiceDetailSheet = ({
                                 </div>
                               </div>
 
-                              {/* Precio con IVA calculado */}
+                              {/* Resultados calculados */}
                               {item.precioUnit > 0 && (
-                                <div className="flex items-center justify-between pt-1 border-t border-neutral-100">
-                                  <p className="text-[10px] font-bold text-neutral-400">P. unit. c/IVA</p>
-                                  <p className="text-xs font-black text-black tabular-nums">{formatMoney(precioConIva)}</p>
+                                <div className="pt-2 border-t border-neutral-100 space-y-1.5">
+                                  <div className="flex items-center justify-between">
+                                    <p className="text-[10px] text-neutral-400 font-bold">P. unit. c/IVA</p>
+                                    <p className="text-[11px] font-black text-neutral-700 tabular-nums">{formatMoney(unitConIva)}</p>
+                                  </div>
+                                  <div className="flex items-center justify-between">
+                                    <p className="text-[10px] text-neutral-400 font-bold">P. unit. neto <span className="text-neutral-300">(para costear)</span></p>
+                                    <p className="text-sm font-black text-black tabular-nums">{formatMoney(unitNeto)}</p>
+                                  </div>
                                 </div>
                               )}
                             </div>
@@ -444,20 +453,20 @@ const AiInvoiceDetailSheet = ({
                       })}
                     </div>
 
-                    {/* Resumen total */}
-                    {totalFinal > 0 && (
+                    {/* Resumen */}
+                    {totalFactura > 0 && (
                       <div className="mt-3 bg-neutral-50 border border-neutral-200 rounded-2xl overflow-hidden">
                         <div className="px-4 py-2.5 flex items-center justify-between border-b border-neutral-100">
-                          <p className="text-xs text-neutral-500 font-bold">Subtotal neto</p>
-                          <p className="text-xs font-black text-neutral-700 tabular-nums">{formatMoney(totalNeto)}</p>
+                          <p className="text-xs text-neutral-500 font-bold">Total factura (c/IVA)</p>
+                          <p className="text-xs font-black text-neutral-700 tabular-nums">{formatMoney(totalFactura)}</p>
                         </div>
                         <div className="px-4 py-2.5 flex items-center justify-between border-b border-neutral-100">
                           <p className="text-xs text-neutral-500 font-bold">IVA</p>
-                          <p className="text-xs font-black text-neutral-700 tabular-nums">{formatMoney(totalIva)}</p>
+                          <p className="text-xs font-black text-neutral-700 tabular-nums">{formatMoney(totalIvaSum)}</p>
                         </div>
                         <div className="px-4 py-3 flex items-center justify-between bg-white">
-                          <p className="text-sm font-black text-black">Total final</p>
-                          <p className="text-lg font-black text-black tabular-nums">{formatMoney(totalFinal)}</p>
+                          <p className="text-sm font-black text-black">Total neto</p>
+                          <p className="text-lg font-black text-black tabular-nums">{formatMoney(totalNeto)}</p>
                         </div>
                       </div>
                     )}
