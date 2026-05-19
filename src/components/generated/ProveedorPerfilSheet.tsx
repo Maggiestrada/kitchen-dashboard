@@ -963,7 +963,7 @@ export const ProveedorPerfilSheet = ({
         };
       })
     : [];
-  const monthStats = MOCK_MONTH_STATS[proveedor.id] ?? FALLBACK_STATS;
+  const monthStats: MonthStat[] = [];
   const totalAlertsActive = history.filter(o => o.hasAlert && !o.alertResolved).length;
   const totalAlertsAll = history.filter(o => o.hasAlert).length;
   const totalAlerts = totalAlertsActive; // used for showing alert sheet (only active)
