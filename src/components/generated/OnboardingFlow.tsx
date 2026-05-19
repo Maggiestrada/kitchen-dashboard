@@ -226,7 +226,11 @@ export const OnboardingFlow: React.FC<{ onComplete: () => void }> = ({ onComplet
   const [authError, setAuthError] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
   const [showEmailForm, setShowEmailForm] = useState(false);
-  // Step 4 — Plan
+  // Step 3 — Código de acceso
+  const [accessCode, setAccessCode] = useState('');
+  const [codeError, setCodeError] = useState('');
+  const [codeLoading, setCodeLoading] = useState(false);
+  // Step 4 — Plan (was 3)
   const [plan, setPlan] = useState<Plan>('trial');
   // Step 5 — Equipo
   const [usuarios, setUsuarios] = useState<UsuarioConfig[]>([]);
@@ -235,6 +239,32 @@ export const OnboardingFlow: React.FC<{ onComplete: () => void }> = ({ onComplet
   const [errorGuardar, setErrorGuardar] = useState<string | null>(null);
 
   const goTo = (next: number) => { setDirection(next > step ? 1 : -1); setStep(next); };
+
+  // Si el usuario volvió de Google OAuth y tiene un código pendiente, salteamos al Plan
+  React.useEffect(() => {
+    const code = localStorage.getItem('insuma_invite_code');
+    if (!code) return;
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) { setStep(5); setDirection(1); }
+    });
+  }, []);
+
+  // ── Validar código de acceso ──
+  const handleValidateCode = async () => {
+    setCodeError('');
+    setCodeLoading(true);
+    const code = accessCode.trim().toUpperCase();
+    const { data } = await supabase
+      .from('invite_codes')
+      .select('id, used_by')
+      .eq('code', code)
+      .maybeSingle();
+    setCodeLoading(false);
+    if (!data) { setCodeError('Código inválido. Verificá que esté bien escrito.'); return; }
+    if (data.used_by) { setCodeError('Este código ya fue utilizado.'); return; }
+    localStorage.setItem('insuma_invite_code', code);
+    goTo(4);
+  };
 
   const cocineros = usuarios.filter(u => u.rol === 'cocinero');
   const admins = usuarios.filter(u => u.rol === 'admin');
@@ -249,7 +279,12 @@ export const OnboardingFlow: React.FC<{ onComplete: () => void }> = ({ onComplet
     const { error } = await supabase.auth.signUp({ email: email.trim(), password });
     setAuthLoading(false);
     if (error) { setAuthError(error.message); return; }
-    goTo(4);
+    const code = localStorage.getItem('insuma_invite_code');
+    if (code) {
+      await supabase.from('invite_codes').update({ used_by: email.trim(), used_at: new Date().toISOString() }).eq('code', code);
+      localStorage.removeItem('insuma_invite_code');
+    }
+    goTo(5);
   };
 
   // ── Auth: Google OAuth ──
@@ -269,6 +304,14 @@ export const OnboardingFlow: React.FC<{ onComplete: () => void }> = ({ onComplet
         { nombre: nombreNegocio.trim(), tipo: tipoNegocio as NegocioConfig['tipo'], pais: 'Argentina', email: email.trim() },
         usuarios
       );
+      const code = localStorage.getItem('insuma_invite_code');
+      if (code) {
+        const { data: { user } } = await supabase.auth.getUser();
+        await supabase.from('invite_codes')
+          .update({ used_by: user?.email ?? 'oauth', used_at: new Date().toISOString() })
+          .eq('code', code).is('used_by', null);
+        localStorage.removeItem('insuma_invite_code');
+      }
       localStorage.setItem('insuma_plan', plan);
       onComplete();
     } catch (err) {
@@ -323,7 +366,7 @@ export const OnboardingFlow: React.FC<{ onComplete: () => void }> = ({ onComplet
           <motion.div key="step2" custom={direction} variants={slide} initial="enter" animate="center" exit="exit"
             transition={{ type: 'spring', damping: 30, stiffness: 340 }}
             className="absolute inset-0">
-            <BlueScreen step={1} total={4} title="¿Qué tipo de negocio tenés?" subtitle="Personalizamos tu experiencia según tu operación."
+            <BlueScreen step={1} total={5} title="¿Qué tipo de negocio tenés?" subtitle="Personalizamos tu experiencia según tu operación."
               onBack={() => goTo(1)}>
               <div className="grid grid-cols-2 gap-3 pb-4">
                 {TIPOS_NEGOCIO.map(tipo => (
@@ -345,13 +388,47 @@ export const OnboardingFlow: React.FC<{ onComplete: () => void }> = ({ onComplet
           </motion.div>
         )}
 
-        {/* ── Paso 3: Crear cuenta ── */}
+        {/* ── Paso 3: Código de acceso ── */}
         {step === 3 && (
           <motion.div key="step3" custom={direction} variants={slide} initial="enter" animate="center" exit="exit"
             transition={{ type: 'spring', damping: 30, stiffness: 340 }}
             className="absolute inset-0">
-            <BlueScreen step={2} total={4} title="Creá tu cuenta" subtitle="Con estos datos entrás como administrador."
+            <BlueScreen step={2} total={5} title="Código de acceso" subtitle="Ingresá el código que te enviamos para activar tu cuenta."
               onBack={() => goTo(2)}
+              footer={
+                <div className="space-y-3">
+                  {codeError && <p className="text-xs text-center" style={{ color: '#ffd5d5' }}>{codeError}</p>}
+                  <WhiteBtn onClick={handleValidateCode} loading={codeLoading} disabled={accessCode.trim().length < 4}>
+                    Validar código →
+                  </WhiteBtn>
+                </div>
+              }>
+              <div className="py-2">
+                <BlueInput
+                  label="Código de invitación"
+                  value={accessCode}
+                  onChange={e => { setAccessCode(e.target.value.toUpperCase()); setCodeError(''); }}
+                  onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter' && accessCode.trim().length >= 4) handleValidateCode(); }}
+                  placeholder="Ej: INSUMA-2024"
+                  autoCapitalize="characters"
+                  autoCorrect="off"
+                  spellCheck={false}
+                />
+                <p className="text-xs mt-4 text-center" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                  ¿No tenés un código? Escribinos a hola@insuma.app
+                </p>
+              </div>
+            </BlueScreen>
+          </motion.div>
+        )}
+
+        {/* ── Paso 4: Crear cuenta ── */}
+        {step === 4 && (
+          <motion.div key="step4" custom={direction} variants={slide} initial="enter" animate="center" exit="exit"
+            transition={{ type: 'spring', damping: 30, stiffness: 340 }}
+            className="absolute inset-0">
+            <BlueScreen step={3} total={5} title="Creá tu cuenta" subtitle="Con estos datos entrás como administrador."
+              onBack={() => goTo(3)}
               footer={
                 <div className="space-y-3">
                   {authError && <p className="text-xs text-center" style={{ color: '#ffd5d5' }}>{authError}</p>}
@@ -413,14 +490,14 @@ export const OnboardingFlow: React.FC<{ onComplete: () => void }> = ({ onComplet
           </motion.div>
         )}
 
-        {/* ── Paso 4: Plan ── */}
-        {step === 4 && (
-          <motion.div key="step4" custom={direction} variants={slide} initial="enter" animate="center" exit="exit"
+        {/* ── Paso 5: Plan ── */}
+        {step === 5 && (
+          <motion.div key="step5" custom={direction} variants={slide} initial="enter" animate="center" exit="exit"
             transition={{ type: 'spring', damping: 30, stiffness: 340 }}
             className="absolute inset-0">
-            <BlueScreen step={3} total={4} title="Elegí tu plan" subtitle="Podés cambiar o cancelar cuando quieras."
-              onBack={() => goTo(3)}
-              footer={<WhiteBtn onClick={() => goTo(5)}>Continuar →</WhiteBtn>}>
+            <BlueScreen step={4} total={5} title="Elegí tu plan" subtitle="Podés cambiar o cancelar cuando quieras."
+              onBack={() => goTo(4)}
+              footer={<WhiteBtn onClick={() => goTo(6)}>Continuar →</WhiteBtn>}>
               <div className="space-y-3 py-2">
                 {/* Prueba gratis */}
                 <button onClick={() => setPlan('trial')}
@@ -489,13 +566,13 @@ export const OnboardingFlow: React.FC<{ onComplete: () => void }> = ({ onComplet
           </motion.div>
         )}
 
-        {/* ── Paso 5: Equipo ── */}
-        {step === 5 && (
-          <motion.div key="step5" custom={direction} variants={slide} initial="enter" animate="center" exit="exit"
+        {/* ── Paso 6: Equipo ── */}
+        {step === 6 && (
+          <motion.div key="step6" custom={direction} variants={slide} initial="enter" animate="center" exit="exit"
             transition={{ type: 'spring', damping: 30, stiffness: 340 }}
             className="absolute inset-0">
-            <BlueScreen step={4} total={4} title="Configurá tu equipo" subtitle="Agregá los usuarios que van a usar Insuma."
-              onBack={() => goTo(4)}
+            <BlueScreen step={5} total={5} title="Configurá tu equipo" subtitle="Agregá los usuarios que van a usar Insuma."
+              onBack={() => goTo(5)}
               footer={
                 <div>
                   {errorGuardar && <p className="text-xs text-center mb-2" style={{ color: '#ffd5d5' }}>{errorGuardar}</p>}
