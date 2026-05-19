@@ -685,10 +685,10 @@ export const RecepcionPedidoModal = ({
                                 <div className="w-12 h-12 rounded-2xl bg-black flex items-center justify-center">
                                   <Camera size={22} className="text-white" strokeWidth={2} />
                                 </div>
-                                <p className="text-sm font-black text-black">Sacar foto al remito</p>
-                                <p className="text-xs text-neutral-400 font-medium">Tocá para abrir la cámara</p>
+                                <p className="text-sm font-black text-black">Adjuntar remito o factura</p>
+                                <p className="text-xs text-neutral-400 font-medium">Foto, imagen o PDF</p>
                               </button>
-                              <input ref={fileInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={() => setPhotoTaken(true)} />
+                              <input ref={fileInputRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={() => setPhotoTaken(true)} />
                             </motion.div> : <motion.div key="photo-taken" initial={{
                       opacity: 0,
                       scale: 0.95
@@ -700,9 +700,9 @@ export const RecepcionPedidoModal = ({
                                 <div className="w-12 h-12 rounded-2xl bg-green-500 flex items-center justify-center">
                                   <Check size={22} className="text-white" strokeWidth={3} />
                                 </div>
-                                <p className="text-sm font-black text-green-700">Foto guardada</p>
+                                <p className="text-sm font-black text-green-700">Archivo adjuntado</p>
                                 <button onClick={() => setPhotoTaken(false)} className="text-xs font-bold text-neutral-400 underline underline-offset-2">
-                                  Sacar otra foto
+                                  Cambiar archivo
                                 </button>
                               </div>
                             </motion.div>}
@@ -881,7 +881,7 @@ export const RecepcionPedidoModal = ({
                   {/* Confirm CTA */}
                   <div className="px-5 pb-8 pt-3 shrink-0 border-t border-neutral-100 bg-white">
                     {!photoTaken && <p className="text-center text-[11px] font-bold text-red-500 mb-2">
-                        <span>Necesitás sacar la foto del remito para cerrar</span>
+                        <span>Necesitás adjuntar el remito o factura para cerrar</span>
                       </p>}
                     {billingDiscrepancy.hasDifference && photoTaken && <div className="flex items-center gap-1.5 justify-center mb-2">
                         <Receipt size={11} className="text-orange-500" strokeWidth={2.5} />

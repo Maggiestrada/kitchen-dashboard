@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, AlertCircle, CheckCircle2, Clock, Truck, Wallet, TrendingUp, Package, ArrowRight, Leaf, Phone, MessageCircle, RotateCcw, Tag, Calendar, CalendarClock, Check, Repeat2, ChevronRight, Plus, Package2, Info, CreditCard, User, ArrowLeft, Edit3 } from 'lucide-react';
+import { X, AlertCircle, CheckCircle2, Clock, Truck, Wallet, TrendingUp, Package, ArrowRight, Leaf, Phone, MessageCircle, RotateCcw, Tag, Calendar, CalendarClock, Check, Repeat2, ChevronRight, Plus, Package2, Info, CreditCard, User, ArrowLeft, Edit3, Search, Camera, Banknote, Receipt } from 'lucide-react';
 import { ProgramarPedidoModal } from './ProgramarPedidoModal';
 import type { ScheduledOrderPayload, ScheduledCartItem } from './ProgramarPedidoModal';
 
@@ -17,6 +17,34 @@ interface OrderLineItem {
   precioUnit: number;
 }
 
+// Shape of real orders passed from the dashboard
+interface DashboardOrder {
+  id: string;
+  provider: string;
+  status: OrderStatus;
+  time: string;
+  items: number;
+  total?: number;
+  orderItems?: Array<{
+    id: string;
+    name: string;
+    requestedQty: number;
+    receivedQty: number;
+    unit: string;
+    precioUnit?: number;
+    status: 'ok' | 'discrepancy' | 'pending';
+    alertMsg: string;
+  }>;
+  alerts?: Array<{ id: string; itemName: string; message: string; resolved: boolean; timestamp: string }>;
+  paymentStatus?: string;
+  receivedAt?: string;
+  orderNote?: string;
+  receptionNote?: string;
+  creadoPor?: string;
+  deliveryDate?: string;
+  hasBillingDiscrepancy?: boolean;
+}
+
 interface HistoryOrder {
   id: string;
   date: string;
@@ -27,6 +55,16 @@ interface HistoryOrder {
   alertMsg?: string;
   receptionNote?: string;
   lineItems?: OrderLineItem[];
+  hasRemito?: boolean;
+  paymentStatus?: 'paid' | 'pending';
+  paymentDate?: string;
+  paymentMethod?: 'cash' | 'transfer' | 'check';
+  // real order fields preserved for detail view
+  orderNote?: string;
+  creadoPor?: string;
+  deliveryDate?: string;
+  alertResolved?: boolean;
+  rawAlerts?: Array<{ id: string; itemName: string; message: string; resolved: boolean; timestamp: string }>;
 }
 interface MonthStat {
   id: string;
@@ -581,6 +619,7 @@ interface ProveedorPerfilSheetProps {
   isOpen: boolean;
   onClose: () => void;
   onNuevoPedido?: (providerId: string) => void;
+  orders?: DashboardOrder[];
 }
 
 // ─── Ficha Overlay ────────────────────────────────────────────────────────────
@@ -866,7 +905,8 @@ export const ProveedorPerfilSheet = ({
   proveedor,
   isOpen,
   onClose,
-  onNuevoPedido
+  onNuevoPedido,
+  orders = []
 }: ProveedorPerfilSheetProps) => {
   const [activeSection, setActiveSection] = useState<'historial' | 'stats' | 'programados'>('historial');
   const [showProgramarModal, setShowProgramarModal] = useState(false);
@@ -877,6 +917,7 @@ export const ProveedorPerfilSheet = ({
   const [selectedHistoryOrder, setSelectedHistoryOrder] = useState<HistoryOrder | null>(null);
   const [showProveedorInfo, setShowProveedorInfo] = useState(false);
   const [showOrderDetail, setShowOrderDetail] = useState(false);
+  const [historialSearch, setHistorialSearch] = useState('');
 
   // Ficha editable state
   const [showFicha, setShowFicha] = useState(false);
@@ -887,16 +928,57 @@ export const ProveedorPerfilSheet = ({
 
   const proveedorFull: ProveedorPerfil = proveedorData ?? { ...proveedor };
 
-  const history = (MOCK_HISTORY[proveedor.id] ?? FALLBACK_HISTORY).map(order => ({
-    ...order,
-    lineItems: MOCK_LINE_ITEMS[proveedor.id]?.[order.id] ?? order.lineItems,
-  }));
+  const providerRealOrders = orders.filter(o => o.provider === proveedor.name);
+  const history: HistoryOrder[] = providerRealOrders.length > 0
+    ? providerRealOrders.map(o => {
+        const lineItems = (o.orderItems ?? []).map(it => ({
+          id: it.id,
+          nombre: it.name,
+          cantPedida: it.requestedQty,
+          cantRecibida: it.receivedQty > 0 ? it.receivedQty : it.requestedQty,
+          unit: it.unit,
+          precioUnit: it.precioUnit ?? 0,
+        }));
+        // Total = suma de (cantidad recibida × precio unitario)
+        const computedTotal = lineItems.some(li => li.precioUnit > 0)
+          ? lineItems.reduce((s, li) => s + li.cantRecibida * li.precioUnit, 0)
+          : (o.total ?? 0);
+        return {
+          id: o.id,
+          date: o.receivedAt ?? o.time,
+          items: o.items,
+          status: o.status,
+          total: computedTotal,
+          hasAlert: (o.alerts ?? []).length > 0,
+          alertMsg: (o.alerts ?? []).find(a => !a.resolved)?.message ?? (o.alerts ?? [])[0]?.message,
+          receptionNote: o.receptionNote,
+          hasRemito: o.status === 'received' || o.status === 'discrepancy' || o.status === 'paid_cash',
+          paymentStatus: (o.status === 'paid_cash' || o.paymentStatus === 'paid_digital' || o.paymentStatus === 'confirmed') ? 'paid' : 'pending',
+          orderNote: o.orderNote,
+          creadoPor: o.creadoPor,
+          deliveryDate: o.deliveryDate,
+          alertResolved: (o.alerts ?? []).length > 0 && (o.alerts ?? []).every(a => a.resolved),
+          rawAlerts: o.alerts,
+          lineItems,
+        };
+      })
+    : [];
   const monthStats = MOCK_MONTH_STATS[proveedor.id] ?? FALLBACK_STATS;
-  const totalAlerts = history.filter(o => o.hasAlert).length;
-  const thisMonthStat = monthStats[0];
-  const lastMonthStat = monthStats[1];
+  const totalAlertsActive = history.filter(o => o.hasAlert && !o.alertResolved).length;
+  const totalAlertsAll = history.filter(o => o.hasAlert).length;
+  const totalAlerts = totalAlertsActive; // used for showing alert sheet (only active)
+
+  // Real stats derived from actual orders
+  const realThisMonthAmount = history.reduce((s, o) => s + (o.total ?? 0), 0);
+  const realThisMonthOrders = history.length;
+  const thisMonthStat = providerRealOrders.length > 0
+    ? { amount: realThisMonthAmount, orders: realThisMonthOrders }
+    : (monthStats[0] ?? { amount: 0, orders: 0 });
+  const lastMonthStat = providerRealOrders.length > 0 ? null : (monthStats[1] ?? null);
   const monthDelta = lastMonthStat ? Math.round((thisMonthStat.amount - lastMonthStat.amount) / lastMonthStat.amount * 100) : 0;
-  const maxAmount = Math.max(...monthStats.map(m => m.amount));
+  const maxAmount = providerRealOrders.length > 0
+    ? Math.max(realThisMonthAmount, 1)
+    : Math.max(...monthStats.map(m => m.amount));
   const lastOrder = history[0] ?? null;
   const providerSchedules = scheduledOrders.filter(s => s.providerId === proveedor.id);
   const takenDays = providerSchedules.map(s => s.dayOfWeek);
@@ -1048,25 +1130,23 @@ export const ProveedorPerfilSheet = ({
                   </p>
                 </div>
                 <button onClick={() => {
-              if (totalAlerts > 0) setShowAlertSheet(true);
-            }} className={`rounded-xl px-3 py-2.5 border text-left transition-all ${totalAlerts > 0 ? 'active:scale-95' : ''}`} style={{
-              backgroundColor: totalAlerts > 0 ? '#FEE2E2' : '#DCFCE7',
-              borderColor: totalAlerts > 0 ? '#FECACA' : '#BBF7D0'
+              if (totalAlertsAll > 0) setShowAlertSheet(true);
+            }} className={`rounded-xl px-3 py-2.5 border text-left transition-all ${totalAlertsAll > 0 ? 'active:scale-95' : ''}`} style={{
+              backgroundColor: totalAlertsAll > 0 ? '#FEE2E2' : '#DCFCE7',
+              borderColor: totalAlertsAll > 0 ? '#FECACA' : '#BBF7D0'
             }}>
                   <p className="text-[9px] font-bold uppercase tracking-wide mb-1" style={{
-                color: totalAlerts > 0 ? '#991B1B' : '#14532D'
+                color: totalAlertsAll > 0 ? '#991B1B' : '#14532D'
               }}>
                     Alertas
                   </p>
                   <div className="flex items-center justify-between">
                     <p className="text-base font-black leading-none tabular-nums" style={{
-                  color: totalAlerts > 0 ? '#EF4444' : '#22C55E'
+                  color: totalAlertsAll > 0 ? '#EF4444' : '#22C55E'
                 }}>
-                      {totalAlerts}
+                      {totalAlertsAll}
                     </p>
-                    {totalAlerts > 0 && <ArrowRight size={12} strokeWidth={2.5} style={{
-                  color: '#EF4444'
-                }} />}
+                    {totalAlertsAll > 0 && <ArrowRight size={12} strokeWidth={2.5} style={{ color: '#EF4444' }} />}
                   </div>
                 </button>
               </div>
@@ -1149,8 +1229,33 @@ export const ProveedorPerfilSheet = ({
               x: -12
             }} transition={{
               duration: 0.18
-            }} className="space-y-2">
-                    {history.map(order => {
+            }} className="space-y-3">
+                    {/* Search bar */}
+                    <div className="flex items-center gap-2 bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2.5">
+                      <Search size={14} className="text-neutral-400 shrink-0" strokeWidth={2} />
+                      <input
+                        type="text"
+                        value={historialSearch}
+                        onChange={e => setHistorialSearch(e.target.value)}
+                        placeholder="Buscar por fecha (ej: semana, hoy...)"
+                        className="flex-1 bg-transparent text-sm text-neutral-700 placeholder:text-neutral-300 outline-none font-medium"
+                      />
+                      {historialSearch && <button onClick={() => setHistorialSearch('')} className="text-neutral-300 active:text-neutral-500"><X size={13} strokeWidth={2.5} /></button>}
+                    </div>
+                    {history.length === 0 && (
+                      <div className="py-12 flex flex-col items-center gap-2 text-center">
+                        <Package size={24} className="text-neutral-300" strokeWidth={1.5} />
+                        <p className="text-sm font-medium text-neutral-400">Todavía no hay pedidos realizados</p>
+                        <p className="text-xs text-neutral-300">Los pedidos aparecerán aquí una vez que los hagas</p>
+                      </div>
+                    )}
+                    {history.length > 0 && history.filter(o => !historialSearch || o.date.toLowerCase().includes(historialSearch.toLowerCase())).length === 0 && (
+                      <div className="py-10 flex flex-col items-center gap-2 text-center">
+                        <Calendar size={22} className="text-neutral-300" strokeWidth={1.5} />
+                        <p className="text-sm font-medium text-neutral-400">Sin resultados para "{historialSearch}"</p>
+                      </div>
+                    )}
+                    {history.filter(o => !historialSearch || o.date.toLowerCase().includes(historialSearch.toLowerCase())).map(order => {
                 const cfg = STATUS_CFG[order.status];
                 const Icon = cfg.icon;
                 return <div key={order.id} className="bg-white border border-neutral-100 rounded-2xl overflow-hidden">
@@ -1183,10 +1288,18 @@ export const ProveedorPerfilSheet = ({
                                 </div>
                               </div>
 
-                              {order.hasAlert && order.alertMsg && <div className="mt-2 flex items-start gap-2 bg-red-50 border border-red-100 rounded-xl px-3 py-2">
-                                  <AlertCircle size={12} className="text-red-400 shrink-0 mt-0.5" strokeWidth={2.5} />
-                                  <p className="text-[11px] text-red-600 font-medium leading-tight">{order.alertMsg}</p>
-                                </div>}
+                              {order.hasAlert && order.alertMsg && (
+                                order.alertResolved
+                                  ? <div className="mt-2 flex items-center gap-2 bg-green-50 border border-green-100 rounded-xl px-3 py-2">
+                                      <CheckCircle2 size={12} className="text-green-500 shrink-0" strokeWidth={2.5} />
+                                      <p className="text-[11px] text-green-700 font-medium leading-tight line-through opacity-70">{order.alertMsg}</p>
+                                      <span className="text-[9px] font-bold text-green-600 uppercase tracking-wide shrink-0">Resuelta</span>
+                                    </div>
+                                  : <div className="mt-2 flex items-start gap-2 bg-red-50 border border-red-100 rounded-xl px-3 py-2">
+                                      <AlertCircle size={12} className="text-red-400 shrink-0 mt-0.5" strokeWidth={2.5} />
+                                      <p className="text-[11px] text-red-600 font-medium leading-tight">{order.alertMsg}</p>
+                                    </div>
+                              )}
 
                               <div className="flex justify-end mt-2">
                                 <button onClick={() => { setSelectedHistoryOrder(order); setShowOrderDetail(true); }} className="text-[11px] font-bold text-neutral-400 flex items-center gap-0.5 active:text-black transition-colors">
@@ -1476,16 +1589,40 @@ export const ProveedorPerfilSheet = ({
                 </div>
 
                 <div className="flex-1 overflow-y-auto px-5 pt-4 pb-10 space-y-5">
-                  {/* Total */}
-                  <div className="flex items-center justify-between bg-neutral-50 border border-neutral-100 rounded-2xl px-4 py-4">
-                    <div>
-                      <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">Fecha</p>
-                      <p className="text-sm font-bold text-black">{selectedHistoryOrder.date}</p>
+                  {/* Total + meta */}
+                  <div className="bg-neutral-50 border border-neutral-100 rounded-2xl px-4 py-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">Fecha</p>
+                        <p className="text-sm font-bold text-black">{selectedHistoryOrder.date}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-0.5">Total</p>
+                        <p className="text-2xl font-black text-black tabular-nums leading-none">{formatMoney(selectedHistoryOrder.total)}</p>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-0.5">Total</p>
-                      <p className="text-2xl font-black text-black tabular-nums leading-none">{formatMoney(selectedHistoryOrder.total)}</p>
-                    </div>
+                    {(selectedHistoryOrder.creadoPor || selectedHistoryOrder.deliveryDate) && (
+                      <div className="flex gap-3 pt-2 border-t border-neutral-200">
+                        {selectedHistoryOrder.creadoPor && (
+                          <div className="flex-1">
+                            <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest mb-0.5">Pedido por</p>
+                            <p className="text-xs font-bold text-neutral-700">{selectedHistoryOrder.creadoPor}</p>
+                          </div>
+                        )}
+                        {selectedHistoryOrder.deliveryDate && (
+                          <div className="flex-1">
+                            <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest mb-0.5">Entrega</p>
+                            <p className="text-xs font-bold text-neutral-700">🚚 {selectedHistoryOrder.deliveryDate}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {selectedHistoryOrder.orderNote && (
+                      <div className="pt-2 border-t border-neutral-200">
+                        <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest mb-0.5">Nota del pedido</p>
+                        <p className="text-xs text-neutral-600 font-medium">"{selectedHistoryOrder.orderNote}"</p>
+                      </div>
+                    )}
                   </div>
 
                   {/* Line items table */}
@@ -1520,36 +1657,99 @@ export const ProveedorPerfilSheet = ({
                             </div>
                           );
                         })}
-                        {/* Subtotal row */}
+                        {/* Subtotal row — calculated from received qty × price */}
                         <div className="px-3 py-2.5 flex items-center justify-between border-t border-neutral-100 bg-neutral-50">
-                          <p className="text-xs font-bold text-neutral-600">Total</p>
-                          <p className="text-sm font-black text-black tabular-nums">{formatMoney(selectedHistoryOrder.total)}</p>
+                          <p className="text-xs font-bold text-neutral-600">Total recibido</p>
+                          <p className="text-sm font-black text-black tabular-nums">
+                            {formatMoney(selectedHistoryOrder.lineItems!.reduce((s, li) => s + li.cantRecibida * li.precioUnit, 0))}
+                          </p>
                         </div>
                       </div>
                     </div>
                   )}
 
-                  {/* Alert if any */}
-                  {selectedHistoryOrder.hasAlert && selectedHistoryOrder.alertMsg && (
+                  {/* ── RECEPCIÓN ── */}
+                  {(selectedHistoryOrder.status === 'received' || selectedHistoryOrder.status === 'discrepancy' || selectedHistoryOrder.status === 'paid_cash') && (
                     <div>
-                      <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">Alerta registrada</p>
-                      <div className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 flex items-start gap-2">
-                        <AlertCircle size={13} strokeWidth={2} className="text-red-500 shrink-0 mt-0.5" />
-                        <div>
-                          <p className="text-sm font-black text-red-900 leading-tight">{selectedHistoryOrder.alertMsg}</p>
-                          <p className="text-[10px] text-red-500 mt-1 font-medium">Registrado en recepción · {selectedHistoryOrder.date}</p>
+                      <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">Recepción</p>
+                      <div className="bg-white border border-neutral-100 rounded-2xl overflow-hidden divide-y divide-neutral-50">
+                        {/* Remito */}
+                        <div className="flex items-center gap-3 px-4 py-3">
+                          <div className="w-10 h-10 rounded-xl bg-neutral-100 flex items-center justify-center shrink-0">
+                            <Camera size={16} className="text-neutral-400" strokeWidth={1.5} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-black text-neutral-700">{selectedHistoryOrder.hasRemito !== false ? `remito_${selectedHistoryOrder.id}.jpg` : 'Sin remito adjunto'}</p>
+                            {selectedHistoryOrder.hasRemito !== false && (
+                              <div className="flex items-center gap-1 mt-1">
+                                <CheckCircle2 size={9} className="text-green-500" strokeWidth={2.5} />
+                                <span className="text-[9px] font-bold text-green-600 uppercase tracking-wide">Verificado · {selectedHistoryOrder.date}</span>
+                              </div>
+                            )}
+                          </div>
                         </div>
+                        {/* Alerts — all, with resolved state */}
+                        {(selectedHistoryOrder.rawAlerts ?? []).map(alert => (
+                          <div key={alert.id} className={`px-4 py-3 flex items-start gap-2 ${alert.resolved ? 'bg-green-50' : 'bg-red-50'}`}>
+                            {alert.resolved
+                              ? <CheckCircle2 size={12} strokeWidth={2} className="text-green-500 shrink-0 mt-0.5" />
+                              : <AlertCircle size={12} strokeWidth={2} className="text-red-500 shrink-0 mt-0.5" />}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <p className={`text-xs font-black leading-tight ${alert.resolved ? 'text-green-800 line-through opacity-60' : 'text-red-900'}`}>{alert.message}</p>
+                                {alert.resolved && <span className="text-[9px] font-bold text-green-600 uppercase tracking-wide shrink-0">Resuelta</span>}
+                              </div>
+                              <p className={`text-[10px] mt-0.5 font-medium ${alert.resolved ? 'text-green-500' : 'text-red-400'}`}>
+                                {alert.resolved ? `Resuelta · ${alert.timestamp}` : `Diferencia detectada · ${alert.timestamp}`}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                        {/* Reception note */}
+                        {selectedHistoryOrder.receptionNote && (
+                          <div className="px-4 py-3 bg-amber-50">
+                            <p className="text-[9px] font-bold text-amber-500 uppercase tracking-widest mb-0.5">Nota del receptor</p>
+                            <p className="text-xs text-amber-900 font-medium">{selectedHistoryOrder.receptionNote}</p>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
 
-                  {/* Reception note */}
-                  {selectedHistoryOrder.receptionNote && (
-                    <div className="bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3">
-                      <p className="text-[10px] font-bold text-amber-500 uppercase tracking-widest mb-1">Nota de recepción</p>
-                      <p className="text-sm text-amber-900">{selectedHistoryOrder.receptionNote}</p>
+                  {/* ── PAGOS ── */}
+                  <div>
+                    <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">Pagos</p>
+                    <div className="bg-white border border-neutral-100 rounded-2xl overflow-hidden">
+                      {selectedHistoryOrder.paymentStatus === 'paid' || selectedHistoryOrder.status === 'paid_cash' ? (
+                        <div className="px-4 py-3 flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center shrink-0">
+                            <CheckCircle2 size={16} className="text-green-500" strokeWidth={2} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-black text-green-700">Pagado</p>
+                            {selectedHistoryOrder.paymentDate && <p className="text-[10px] text-neutral-400 font-medium mt-0.5">{selectedHistoryOrder.paymentDate}</p>}
+                            {selectedHistoryOrder.paymentMethod && (
+                              <div className="flex items-center gap-1 mt-1">
+                                {selectedHistoryOrder.paymentMethod === 'cash' ? <Banknote size={9} strokeWidth={2.5} className="text-neutral-400" /> : selectedHistoryOrder.paymentMethod === 'transfer' ? <CreditCard size={9} strokeWidth={2.5} className="text-neutral-400" /> : <Receipt size={9} strokeWidth={2.5} className="text-neutral-400" />}
+                                <span className="text-[9px] font-bold text-neutral-400 uppercase tracking-wide">{selectedHistoryOrder.paymentMethod === 'cash' ? 'Efectivo' : selectedHistoryOrder.paymentMethod === 'transfer' ? 'Transferencia' : 'Cheque'}</span>
+                              </div>
+                            )}
+                          </div>
+                          <p className="text-base font-black text-black tabular-nums">{formatMoney(selectedHistoryOrder.total)}</p>
+                        </div>
+                      ) : (
+                        <div className="px-4 py-3 flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center shrink-0">
+                            <Clock size={16} className="text-orange-400" strokeWidth={2} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-black text-orange-700">Pago pendiente</p>
+                            <p className="text-[10px] text-neutral-400 font-medium mt-0.5">{formatMoney(selectedHistoryOrder.total)} por pagar</p>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  )}
+                  </div>
                 </div>
               </motion.div>
             )}

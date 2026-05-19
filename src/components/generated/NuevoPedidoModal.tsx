@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ChevronRight, ChevronLeft, Search, Check, Plus, Minus, MessageCircle, Leaf, Star, Trash2, Calendar, RotateCcw, Package, Clock, Scale, Tag, Pencil } from 'lucide-react';
 
@@ -336,7 +336,7 @@ interface ProviderProp {
 interface NuevoPedidoModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onOrderCreated: (providerName?: string, orderNote?: string, creadoPor?: string, items?: Array<{id: string; name: string; qty: number; unit: string}>, providerPhone?: string) => void;
+  onOrderCreated: (providerName?: string, orderNote?: string, creadoPor?: string, items?: Array<{id: string; name: string; qty: number; unit: string}>, providerPhone?: string, deliveryDate?: string) => void;
   onInsumoCreated?: (insumo: {id: string; name: string; unit: string; category: string}) => void;
   creadoPor?: string;
   providers?: ProviderProp[];
@@ -546,13 +546,20 @@ export const NuevoPedidoModal = ({
     setMensajeEditable(buildRawMessage());
     setStep(3);
   };
+
+  // Regenerar el mensaje cuando cambia la fecha estando en el paso 3
+  useEffect(() => {
+    if (step === 3) {
+      setMensajeEditable(buildRawMessage());
+    }
+  }, [deliveryOption, customDate]);
   const handleSend = () => {
     const rawPhone = selectedProvider?.whatsapp ?? '';
     const cleanPhone = rawPhone.replace(/[^0-9]/g, '');
     const msg = encodeURIComponent(mensajeEditable || buildRawMessage());
     const items = cartItems.map(i => ({ id: i.productId, name: i.name, qty: i.qty, unit: i.unit }));
     // Registrar pedido y cerrar ANTES de abrir WhatsApp para evitar que la app se trabe al volver
-    onOrderCreated(selectedProvider?.name, orderNote.trim() || undefined, creadoPor, items, rawPhone);
+    onOrderCreated(selectedProvider?.name, orderNote.trim() || undefined, creadoPor, items, rawPhone, getDeliveryLabel());
     resetAndClose();
     window.open(`https://wa.me/${cleanPhone}?text=${msg}`, '_blank');
   };

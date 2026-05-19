@@ -2,6 +2,9 @@ import { useState } from 'react';
 import { Container, Theme } from './settings/types';
 import { InsumaKitchenDashboard } from './components/generated/InsumaKitchenDashboard';
 import { OnboardingFlow } from './components/generated/OnboardingFlow';
+import DesignMockup from './components/generated/DesignMockup';
+
+const SHOW_DESIGN_MOCKUP = false;
 
 let theme: Theme = 'light';
 // only use 'centered' container for standalone components, never for full page apps or websites.
@@ -21,6 +24,8 @@ function App() {
   const [onboardingDone, setOnboardingDone] = useState(
     () => localStorage.getItem('insuma_onboarding_ok') === '1'
   );
+
+  if (SHOW_DESIGN_MOCKUP) return <DesignMockup />;
 
   const content = onboardingDone
     ? <InsumaKitchenDashboard />

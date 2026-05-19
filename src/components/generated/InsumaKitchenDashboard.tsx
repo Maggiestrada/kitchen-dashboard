@@ -284,14 +284,16 @@ const OrderCard = ({
   order,
   onAlertClick,
   onCancelClick,
+  onDetailClick,
 }: {
   order: Order;
   onAlertClick?: (orderId: string) => void;
   onCancelClick?: (order: Order) => void;
+  onDetailClick?: (order: Order) => void;
 }) => {
   const cfg = STATUS_CONFIG[order.status];
   const alertCount = order.alerts?.filter(a => !a.resolved).length ?? 0;
-  return <motion.article initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-xl border border-neutral-100 overflow-hidden">
+  return <motion.article initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-xl border border-neutral-100 overflow-hidden active:scale-[0.99] transition-transform cursor-pointer" onClick={() => onDetailClick?.(order)}>
       <div className="flex">
         <div className="w-1 shrink-0 rounded-l-xl" style={{ backgroundColor: cfg.dot }} />
         <div className="flex-1 px-3 py-2.5">
@@ -303,7 +305,8 @@ const OrderCard = ({
                     <Leaf size={8} /><span>Org</span>
                   </span>}
               </div>
-              <p className="text-neutral-400 text-[11px] font-normal">{order.category} · {order.items} items{order.total ? ` · ${formatMoney(order.total)}` : ''}</p>
+              <p className="text-neutral-400 text-[11px] font-normal">{order.items} items{order.total ? ` · ${formatMoney(order.total)}` : ''}{order.deliveryDate ? ` · 🚚 ${order.deliveryDate}` : ''}</p>
+              {order.creadoPor && <p className="text-neutral-300 text-[10px] font-normal mt-0.5">por {order.creadoPor}</p>}
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <div className="flex flex-col items-end gap-1">
@@ -321,6 +324,67 @@ const OrderCard = ({
         </div>
       </div>
     </motion.article>;
+};
+
+// ─── OrderDetailSheet ─────────────────────────────────────────────────────────
+
+const OrderDetailSheet = ({ order, isOpen, onClose }: { order: Order | null; isOpen: boolean; onClose: () => void }) => {
+  if (!order) return null;
+  const cfg = STATUS_CONFIG[order.status];
+  return <AnimatePresence>
+    {isOpen && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex flex-col justify-end" style={{ maxWidth: 448, margin: '0 auto' }}>
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', damping: 30, stiffness: 320 }} className="relative bg-white rounded-t-3xl z-10 max-h-[85vh] flex flex-col">
+        <div className="flex justify-center pt-3 pb-1 shrink-0"><div className="w-9 h-1 rounded-full bg-neutral-200" /></div>
+        <div className="px-5 pt-2 pb-4 flex items-start justify-between shrink-0">
+          <div>
+            <h2 className="text-base font-black text-black">{order.provider}</h2>
+            <p className="text-[11px] text-neutral-400 font-medium mt-0.5">#{order.id}</p>
+          </div>
+          <button onClick={onClose} className="w-9 h-9 rounded-full border border-neutral-200 flex items-center justify-center text-neutral-500 active:scale-90 transition-transform"><X size={17} strokeWidth={2} /></button>
+        </div>
+        <div className="h-px bg-neutral-100 mx-5 shrink-0" />
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+          {/* Info rápida */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="bg-neutral-50 rounded-2xl px-3 py-2.5">
+              <p className="text-[9px] font-black text-neutral-400 uppercase tracking-widest mb-1">Estado</p>
+              <div className="flex items-center gap-1 text-[11px] font-bold" style={{ color: cfg.text }}>
+                <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: cfg.dot }} />
+                {cfg.label}
+              </div>
+              {order.deliveryDate && <p className="text-[10px] font-medium text-neutral-400 mt-1">🚚 {order.deliveryDate}</p>}
+            </div>
+            <div className="bg-neutral-50 rounded-2xl px-3 py-2.5">
+              <p className="text-[9px] font-black text-neutral-400 uppercase tracking-widest mb-1">Pedido por</p>
+              <p className="text-[11px] font-bold text-neutral-700">{order.creadoPor ?? '—'}</p>
+            </div>
+            {order.time && <div className="bg-neutral-50 rounded-2xl px-3 py-2.5">
+              <p className="text-[9px] font-black text-neutral-400 uppercase tracking-widest mb-1">Hora del pedido</p>
+              <p className="text-[11px] font-bold text-neutral-700">{order.time}</p>
+            </div>}
+          </div>
+          {/* Items */}
+          {(order.orderItems ?? []).length > 0 && <div>
+            <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">Productos ({order.orderItems!.length})</p>
+            <div className="bg-white border border-neutral-100 rounded-2xl overflow-hidden">
+              {order.orderItems!.map((item, idx) => <div key={item.id} className={`px-4 py-2.5 flex items-center justify-between gap-3 ${idx < order.orderItems!.length - 1 ? 'border-b border-neutral-50' : ''}`}>
+                <p className="text-xs font-bold text-neutral-800 truncate">{item.name}</p>
+                <p className="text-xs font-black text-neutral-500 tabular-nums shrink-0">{item.requestedQty} {item.unit}</p>
+              </div>)}
+            </div>
+          </div>}
+          {/* Nota */}
+          {order.orderNote && <div>
+            <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">Nota</p>
+            <div className="bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3">
+              <p className="text-xs text-amber-800 font-medium">"{order.orderNote}"</p>
+            </div>
+          </div>}
+        </div>
+      </motion.div>
+    </motion.div>}
+  </AnimatePresence>;
 };
 
 // ─── CancelOrderSheet ─────────────────────────────────────────────────────────
@@ -872,6 +936,7 @@ export const InsumaKitchenDashboard = () => {
   const [selectedProveedor, setSelectedProveedor] = useState<Provider | null>(null);
   const [alertOrderId, setAlertOrderId] = useState<string | null>(null);
   const [cancelOrder, setCancelOrder] = useState<Order | null>(null);
+  const [selectedDetailOrder, setSelectedDetailOrder] = useState<Order | null>(null);
   const [showBellPanel, setShowBellPanel] = useState(false);
   const [notifPermission, setNotifPermission] = useState<NotificationPermission>('default');
   const [activeUser, setActiveUser] = useState<UserProfile>({ id: 'chef', name: 'Operador', role: 'chef' });
@@ -946,7 +1011,7 @@ export const InsumaKitchenDashboard = () => {
     if ('Notification' in window) setNotifPermission(Notification.permission);
     sendNotification('INSUMA', '¡Notificaciones activadas! Te avisaremos cuando haya alertas.');
   }, []);
-  const handleOrderCreated = useCallback((providerName?: string, orderNote?: string, creadoPor?: string, cartItems?: Array<{id: string; name: string; qty: number; unit: string}>, providerPhone?: string) => {
+  const handleOrderCreated = useCallback((providerName?: string, orderNote?: string, creadoPor?: string, cartItems?: Array<{id: string; name: string; qty: number; unit: string}>, providerPhone?: string, deliveryDate?: string) => {
     const orderItems: OrderItem[] = (cartItems ?? []).map(i => ({
       id: i.id,
       name: i.name,
@@ -974,6 +1039,7 @@ export const InsumaKitchenDashboard = () => {
       orderItems,
       orderNote: orderNote && orderNote.trim().length > 0 ? orderNote : undefined,
       creadoPor: creadoPor ?? undefined,
+      deliveryDate: deliveryDate ?? undefined,
     }, ...prev]);
   }, []);
   const handleOrderReceived = useCallback((orderId: string, hasCash: boolean, newAlerts?: Alert[], receptionNote?: string, recepcionadoPor?: string, totalFactura?: number) => {
@@ -1303,7 +1369,7 @@ export const InsumaKitchenDashboard = () => {
                 <button className="text-black text-[11px] font-bold uppercase tracking-wide">Ver todo</button>
               </div>
               <div className="space-y-1.5">
-                {todayOrders.map(order => <OrderCard key={order.id} order={order} onAlertClick={id => setAlertOrderId(id)} onCancelClick={o => setCancelOrder(o)} />)}
+                {todayOrders.map(order => <OrderCard key={order.id} order={order} onAlertClick={id => setAlertOrderId(id)} onCancelClick={o => setCancelOrder(o)} onDetailClick={o => setSelectedDetailOrder(o)} />)}
               </div>
             </section>
           </motion.div>}
@@ -1492,7 +1558,7 @@ export const InsumaKitchenDashboard = () => {
         insumos={[...customInsumos, ...CATALOG_INSUMOS.filter(i => !customInsumos.some(c => c.id === i.id))]}
       />
       <NuevoProveedorModal isOpen={showNuevoProveedor} onClose={() => setShowNuevoProveedor(false)} onProveedorCreated={handleProveedorCreated} />
-      <ProveedorPerfilSheet proveedor={selectedProveedor} isOpen={selectedProveedor !== null} onClose={() => setSelectedProveedor(null)} onNuevoPedido={() => {
+      <ProveedorPerfilSheet proveedor={selectedProveedor} isOpen={selectedProveedor !== null} onClose={() => setSelectedProveedor(null)} orders={todayOrders} onNuevoPedido={() => {
       setSelectedProveedor(null);
       setShowNuevoPedido(true);
     }} />
@@ -1502,6 +1568,7 @@ export const InsumaKitchenDashboard = () => {
     }} onOrderReceived={handleOrderReceived} initialOrderId={recepcionOrderId} recepcionadoPor={activeUser.name} orders={pendingReceptionOrders} />
       <AlertDetailSheet order={alertOrder} isOpen={alertOrderId !== null} onClose={() => setAlertOrderId(null)} onResolve={handleResolveAlert} />
       <CancelOrderSheet order={cancelOrder} isOpen={cancelOrder !== null} onClose={() => setCancelOrder(null)} onConfirmCancel={handleCancelOrder} />
+      <OrderDetailSheet order={selectedDetailOrder} isOpen={selectedDetailOrder !== null} onClose={() => setSelectedDetailOrder(null)} />
 
       {/* User menu sheet */}
       <AnimatePresence>

@@ -355,6 +355,66 @@ const MERMA_SUGERIDA: Record<string, { label: string; values: number[] }> = {
   Descartables: { label: 'Apoyo', values: [0] },
 };
 
+// Merma por ingrediente específico — tiene prioridad sobre la categoría
+const MERMA_POR_INGREDIENTE: Record<string, number[]> = {
+  // Carnes vacunas
+  'bife de chorizo': [20, 25],
+  'bife ancho': [22, 28],
+  'bife angosto': [20, 25],
+  'lomo': [15, 20],
+  'entraña': [25, 30],
+  'asado': [25, 30],
+  'vacío': [20, 25],
+  'matambre': [20, 25],
+  'tapa de cuadril': [18, 22],
+  'cuadril': [18, 22],
+  'paleta': [22, 28],
+  'osobuco': [25, 30],
+  'picada': [5, 10],
+  'carne picada': [5, 10],
+  // Cerdo
+  'bondiola': [25, 30],
+  'panceta': [15, 20],
+  'pechito de cerdo': [25, 30],
+  'lomo de cerdo': [15, 20],
+  // Pollo
+  'pollo entero': [35, 40],
+  'pechuga': [15, 20],
+  'muslo': [20, 25],
+  'suprema': [15, 20],
+  // Pescados
+  'salmón': [30, 35],
+  'merluza': [30, 35],
+  'lenguado': [35, 40],
+  'trucha': [30, 35],
+  // Verduras
+  'cebolla': [20, 25],
+  'zanahoria': [20, 25],
+  'papa': [20, 25],
+  'zapallo': [30, 35],
+  'lechuga': [15, 20],
+  'tomate': [10, 15],
+  'morrón': [20, 25],
+  'brócoli': [25, 30],
+  'coliflor': [30, 35],
+  'espinaca': [20, 30],
+  'acelga': [20, 30],
+  'puerro': [20, 25],
+  'apio': [25, 30],
+  'hinojo': [25, 30],
+  'remolacha': [20, 25],
+  'berenjena': [15, 20],
+  'calabaza': [30, 35],
+};
+
+function getMermaSugerida(nombre: string, category: string | null): { label: string; values: number[] } | null {
+  const key = nombre.toLowerCase().trim();
+  for (const [pattern, values] of Object.entries(MERMA_POR_INGREDIENTE)) {
+    if (key.includes(pattern)) return { label: nombre, values };
+  }
+  return category ? MERMA_SUGERIDA[category] ?? null : null;
+}
+
 const IngredienteEditRow = ({
   ing,
   onRemove,
@@ -384,7 +444,7 @@ const IngredienteEditRow = ({
     return ins.unit || ing.unit;
   }, [ing.referenciaId, ing.tipo, ing.unit, insumos]);
 
-  const suggestions = category ? MERMA_SUGERIDA[category] ?? null : null;
+  const suggestions = getMermaSugerida(ing.nombre, category);
 
   return (
     <div className="py-3 border-b border-neutral-50 last:border-0">
@@ -832,23 +892,6 @@ const RecetaForm = ({
               )}
             </div>
 
-            {/* Precio de venta */}
-            <div>
-              <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">Precio de venta</p>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 font-black text-sm">$</span>
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  placeholder="0"
-                  value={precioVenta || ''}
-                  onChange={e => setPrecioVenta(parseFloat(e.target.value) || 0)}
-                  className="w-full pl-7 pr-3 py-3 rounded-2xl border border-neutral-200 bg-neutral-50 text-sm font-black text-black outline-none focus:border-black tabular-nums"
-                  style={{MozAppearance: 'textfield'} as React.CSSProperties}
-                />
-              </div>
-            </div>
-
             {/* Ingredientes */}
             <div>
               <label className="text-[10px] uppercase tracking-widest text-neutral-400 font-normal block mb-2">Ingredientes</label>
@@ -882,17 +925,19 @@ const RecetaForm = ({
                         <Flame size={8} className="text-orange-500" />
                       </div>
                       <p className="flex-1 text-sm text-black truncate min-w-0">{item.nombre}</p>
-                      {/* qty stepper */}
+                      {/* qty input */}
                       <div className="flex items-center border border-neutral-200 bg-white rounded-lg overflow-hidden shrink-0">
-                        <button
-                          onClick={() => setIngredientesExtra(prev => prev.map((it, i) => i === idx ? { ...it, qty: Math.max(1, (it.qty ?? 1) - 1) } : it))}
-                          className="w-7 h-7 flex items-center justify-center text-neutral-400 active:bg-neutral-100"
-                        ><span className="text-sm font-light">−</span></button>
-                        <span className="min-w-6 px-1 text-center text-xs font-bold text-black tabular-nums">{item.qty ?? 1}{item.unit ? ` ${item.unit}` : ''}</span>
-                        <button
-                          onClick={() => setIngredientesExtra(prev => prev.map((it, i) => i === idx ? { ...it, qty: (it.qty ?? 1) + 1 } : it))}
-                          className="w-7 h-7 flex items-center justify-center text-neutral-400 active:bg-neutral-100"
-                        ><span className="text-sm font-light">+</span></button>
+                        <input
+                          type="number"
+                          inputMode="decimal"
+                          min="0"
+                          step="0.1"
+                          value={item.qty ?? 1}
+                          onChange={e => setIngredientesExtra(prev => prev.map((it, i) => i === idx ? { ...it, qty: parseFloat(e.target.value) || 0 } : it))}
+                          className="w-14 text-center text-xs font-bold text-black outline-none bg-transparent tabular-nums px-1 py-1.5"
+                          style={{ MozAppearance: 'textfield' } as React.CSSProperties}
+                        />
+                        {item.unit && <span className="text-[10px] text-neutral-400 pr-2 font-medium">{item.unit}</span>}
                       </div>
                       <span className="text-[10px] text-neutral-400 shrink-0">{formatMoney(item.costo)}/u</span>
                       <button
@@ -926,7 +971,17 @@ const RecetaForm = ({
                     <button onClick={() => setHorasManoObra(h => Math.max(0, +(h - 0.5).toFixed(1)))} className="w-9 h-10 flex items-center justify-center text-neutral-400 active:bg-neutral-100">
                       <span className="text-base font-light">−</span>
                     </button>
-                    <span className="w-10 text-center text-sm font-medium text-black tabular-nums">{horasManoObra}</span>
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      min="0"
+                      step="0.5"
+                      value={horasManoObra || ''}
+                      placeholder="0"
+                      onChange={e => setHorasManoObra(parseFloat(e.target.value) || 0)}
+                      className="w-14 text-center text-sm font-medium text-black outline-none bg-transparent tabular-nums"
+                      style={{ MozAppearance: 'textfield' } as React.CSSProperties}
+                    />
                     <button onClick={() => setHorasManoObra(h => +(h + 0.5).toFixed(1))} className="w-9 h-10 flex items-center justify-center text-neutral-400 active:bg-neutral-100">
                       <span className="text-base font-light">+</span>
                     </button>
@@ -2015,6 +2070,7 @@ export const RecetasTab: React.FC<{ canViewCosts?: boolean; customInsumos?: Insu
   const [showAgregarBebida, setShowAgregarBebida] = useState(false);
   const [showNuevoMes, setShowNuevoMes] = useState(false);
   const [nuevoMesLabel, setNuevoMesLabel] = useState('');
+  const [confirmDeleteMenuId, setConfirmDeleteMenuId] = useState<string | null>(null);
   // Agregar bebida form state
   const [bebidaTipo, setBebidaTipo] = useState<'receta' | 'insumo'>('receta');
   const [bebidaRecetaId, setBebidaRecetaId] = useState('');
@@ -2287,20 +2343,48 @@ export const RecetasTab: React.FC<{ canViewCosts?: boolean; customInsumos?: Insu
                 <>
                   {/* ── Selector de mes (pills horizontales) ── */}
                   <div className="flex gap-2 overflow-x-auto pb-1 mb-4 scrollbar-hide">
-                    {menusMes.map(m => (
-                      <button
-                        key={m.id}
-                        onClick={() => { setSelectedMenuId(m.id); setSeccionActiva('comida'); }}
-                        className="shrink-0 px-3.5 py-1.5 rounded-full text-xs font-medium transition-all active:scale-95"
-                        style={
-                          (selectedMenu?.id ?? menusMes[0]?.id) === m.id
-                            ? { backgroundColor: '#000', color: '#fff' }
-                            : { backgroundColor: '#f3f4f6', color: '#374151' }
-                        }
-                      >
-                        {m.label}
-                      </button>
-                    ))}
+                    {menusMes.map(m => {
+                      const isActive = (selectedMenu?.id ?? menusMes[0]?.id) === m.id;
+                      const isConfirming = confirmDeleteMenuId === m.id;
+                      return (
+                        <div key={m.id} className="shrink-0 flex items-center gap-1">
+                          {isConfirming ? (
+                            <div className="flex items-center gap-1 bg-red-50 border border-red-200 rounded-full px-2 py-1">
+                              <span className="text-[10px] font-bold text-red-700">¿Eliminar?</span>
+                              <button
+                                onClick={() => {
+                                  setMenusMes(prev => prev.filter(x => x.id !== m.id));
+                                  if (selectedMenuId === m.id) setSelectedMenuId('');
+                                  setConfirmDeleteMenuId(null);
+                                }}
+                                className="text-[10px] font-black text-red-600 px-1.5 py-0.5 rounded-full bg-red-100 active:bg-red-200"
+                              >Sí</button>
+                              <button
+                                onClick={() => setConfirmDeleteMenuId(null)}
+                                className="text-[10px] font-bold text-neutral-500 px-1.5 py-0.5 rounded-full bg-neutral-100 active:bg-neutral-200"
+                              >No</button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center rounded-full overflow-hidden" style={{ backgroundColor: isActive ? '#000' : '#f3f4f6' }}>
+                              <button
+                                onClick={() => { setSelectedMenuId(m.id); setSeccionActiva('comida'); setConfirmDeleteMenuId(null); }}
+                                className="px-3.5 py-1.5 text-xs font-medium transition-all active:opacity-70"
+                                style={{ color: isActive ? '#fff' : '#374151' }}
+                              >
+                                {m.label}
+                              </button>
+                              <button
+                                onClick={e => { e.stopPropagation(); setConfirmDeleteMenuId(m.id); }}
+                                className="pr-2 pl-0.5 flex items-center justify-center active:opacity-70 transition-opacity"
+                                style={{ color: isActive ? 'rgba(255,255,255,0.5)' : '#9ca3af' }}
+                              >
+                                <X size={11} strokeWidth={2.5} />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                     <button
                       onClick={() => { setNuevoMesLabel(''); setShowNuevoMes(true); }}
                       className="shrink-0 px-3.5 py-1.5 rounded-full text-xs font-medium bg-neutral-100 text-neutral-500 active:scale-95 transition-transform flex items-center gap-1"
