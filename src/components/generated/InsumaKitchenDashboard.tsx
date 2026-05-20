@@ -1013,6 +1013,103 @@ const NotificationPanel = ({
     </AnimatePresence>;
 };
 
+// ─── AllOrdersSheet ──────────────────────────────────────────────────────────
+
+const STATUS_FILTERS: { id: OrderStatus | 'all'; label: string }[] = [
+  { id: 'all', label: 'Todos' },
+  { id: 'waiting', label: 'En espera' },
+  { id: 'on_way', label: 'En camino' },
+  { id: 'received', label: 'Recibidos' },
+  { id: 'discrepancy', label: 'Diferencias' },
+  { id: 'paid_cash', label: 'Pago efectivo' },
+];
+
+const AllOrdersSheet = ({
+  isOpen, onClose, orders, onDetailClick, onAlertClick, onCancelClick,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  orders: Order[];
+  onDetailClick: (o: Order) => void;
+  onAlertClick: (id: string) => void;
+  onCancelClick: (o: Order) => void;
+}) => {
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<OrderStatus | 'all'>('all');
+
+  const filtered = orders.filter(o => {
+    const q = search.toLowerCase();
+    const matchSearch = !q ||
+      o.provider.toLowerCase().includes(q) ||
+      (o.deliveryDate ?? '').toLowerCase().includes(q) ||
+      (o.time ?? '').includes(q) ||
+      (o.weekLabel ?? '').toLowerCase().includes(q) ||
+      (o.creadoPor ?? '').toLowerCase().includes(q);
+    const matchStatus = statusFilter === 'all' || o.status === statusFilter;
+    return matchSearch && matchStatus;
+  });
+
+  const groupedByDate: Record<string, Order[]> = {};
+  filtered.forEach(o => {
+    const key = o.deliveryDate ?? o.weekLabel ?? 'Sin fecha';
+    if (!groupedByDate[key]) groupedByDate[key] = [];
+    groupedByDate[key].push(o);
+  });
+
+  return <AnimatePresence>
+    {isOpen && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex flex-col justify-end" style={{ maxWidth: 448, margin: '0 auto' }}>
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', damping: 30, stiffness: 320 }} className="relative bg-white rounded-t-3xl z-10 flex flex-col" style={{ height: '92vh' }}>
+        <div className="flex justify-center pt-3 pb-1 shrink-0"><div className="w-9 h-1 rounded-full bg-neutral-200" /></div>
+        {/* Header */}
+        <div className="px-5 pt-2 pb-3 flex items-center justify-between shrink-0">
+          <div>
+            <h2 className="text-base font-black text-black">Todos los pedidos</h2>
+            <p className="text-[11px] text-neutral-400 font-medium mt-0.5">{filtered.length} de {orders.length} pedidos</p>
+          </div>
+          <button onClick={onClose} className="w-9 h-9 rounded-full border border-neutral-200 flex items-center justify-center text-neutral-500 active:scale-90 transition-transform"><X size={17} strokeWidth={2} /></button>
+        </div>
+        {/* Search */}
+        <div className="px-5 pb-2 shrink-0">
+          <div className="flex items-center gap-3 bg-neutral-50 border border-neutral-200 rounded-2xl px-4 py-3">
+            <Search size={16} className="text-neutral-400 shrink-0" strokeWidth={2} />
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar por proveedor, fecha, estado..." className="flex-1 bg-transparent text-sm text-black placeholder:text-neutral-400 outline-none font-medium" />
+            {search && <button onClick={() => setSearch('')} className="text-neutral-400"><X size={14} /></button>}
+          </div>
+        </div>
+        {/* Status filter chips */}
+        <div className="px-5 pb-3 shrink-0 overflow-x-auto">
+          <div className="flex gap-2 w-max">
+            {STATUS_FILTERS.map(f => {
+              const active = statusFilter === f.id;
+              const cfg = f.id !== 'all' ? STATUS_CONFIG[f.id] : null;
+              return <button key={f.id} onClick={() => setStatusFilter(f.id)} className={`px-3 py-1.5 rounded-full text-[11px] font-bold whitespace-nowrap transition-all ${active ? 'bg-black text-white' : 'bg-neutral-100 text-neutral-500'}`} style={active && cfg ? { backgroundColor: cfg.bg, color: cfg.text } : undefined}>
+                {f.label}
+                {f.id !== 'all' && orders.filter(o => o.status === f.id).length > 0 && <span className="ml-1 opacity-60">{orders.filter(o => o.status === f.id).length}</span>}
+              </button>;
+            })}
+          </div>
+        </div>
+        <div className="h-px bg-neutral-100 mx-5 shrink-0" />
+        {/* List */}
+        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
+          {filtered.length === 0 && <div className="py-16 flex flex-col items-center gap-3 text-center">
+            <div className="w-12 h-12 rounded-2xl bg-neutral-100 flex items-center justify-center"><Package size={22} className="text-neutral-400" strokeWidth={1.5} /></div>
+            <p className="text-sm font-bold text-neutral-400">Sin resultados</p>
+            <p className="text-xs text-neutral-300">Probá otro filtro o búsqueda</p>
+          </div>}
+          {Object.entries(groupedByDate).map(([date, dateOrders]) => <div key={date}>
+            <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-2">{date}</p>
+            <div className="space-y-1.5">
+              {dateOrders.map(order => <OrderCard key={order.id} order={order} onAlertClick={onAlertClick} onCancelClick={onCancelClick} onDetailClick={onDetailClick} />)}
+            </div>
+          </div>)}
+        </div>
+      </motion.div>
+    </motion.div>}
+  </AnimatePresence>;
+};
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export const InsumaKitchenDashboard = () => {
@@ -1052,6 +1149,7 @@ export const InsumaKitchenDashboard = () => {
   const [cancelOrder, setCancelOrder] = useState<Order | null>(null);
   const [selectedDetailOrder, setSelectedDetailOrder] = useState<Order | null>(null);
   const [providerSearch, setProviderSearch] = useState('');
+  const [showAllOrders, setShowAllOrders] = useState(false);
   const [showBellPanel, setShowBellPanel] = useState(false);
   const [notifPermission, setNotifPermission] = useState<NotificationPermission>('default');
   const [activeUser, setActiveUser] = useState<UserProfile>({ id: 'chef', name: 'Operador', role: 'chef' });
@@ -1502,7 +1600,7 @@ export const InsumaKitchenDashboard = () => {
             <section>
               <div className="flex justify-between items-center mb-2">
                 <p className="text-[9px] font-normal text-neutral-400 uppercase tracking-[0.18em]">Pedidos de hoy</p>
-                <button onClick={() => setActiveTab('orders')} className="text-black text-[11px] font-bold uppercase tracking-wide active:opacity-60 transition-opacity">Ver todo</button>
+                <button onClick={() => setShowAllOrders(true)} className="text-black text-[11px] font-bold uppercase tracking-wide active:opacity-60 transition-opacity">Ver todo</button>
               </div>
               <div className="space-y-1.5">
                 {todayOrders.map(order => <OrderCard key={order.id} order={order} onAlertClick={id => setAlertOrderId(id)} onCancelClick={o => setCancelOrder(o)} onDetailClick={o => setSelectedDetailOrder(o)} />)}
@@ -1708,6 +1806,7 @@ export const InsumaKitchenDashboard = () => {
       setShowRecepcion(false);
       setRecepcionOrderId(undefined);
     }} onOrderReceived={handleOrderReceived} initialOrderId={recepcionOrderId} recepcionadoPor={activeUser.name} orders={pendingReceptionOrders} />
+      <AllOrdersSheet isOpen={showAllOrders} onClose={() => setShowAllOrders(false)} orders={todayOrders} onDetailClick={o => { setShowAllOrders(false); setSelectedDetailOrder(o); }} onAlertClick={id => { setShowAllOrders(false); setAlertOrderId(id); }} onCancelClick={o => { setShowAllOrders(false); setCancelOrder(o); }} />
       <AlertDetailSheet order={alertOrder} isOpen={alertOrderId !== null} onClose={() => setAlertOrderId(null)} onResolve={handleResolveAlert} />
       <CancelOrderSheet order={cancelOrder} isOpen={cancelOrder !== null} onClose={() => setCancelOrder(null)} onConfirmCancel={handleCancelOrder} />
       <OrderDetailSheet order={selectedDetailOrder} isOpen={selectedDetailOrder !== null} onClose={() => setSelectedDetailOrder(null)} onUpdateOrder={handleUpdateOrder} insumos={[...customInsumos, ...CATALOG_INSUMOS.filter(i => !customInsumos.some(c => c.id === i.id))]} />
