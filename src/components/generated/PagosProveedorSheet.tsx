@@ -873,10 +873,10 @@ const ProviderOrdersSheet = ({
   const handlePayAll = () => setShowMpConfirm(true);
 
   const handleConfirmMp = () => {
-    const mpUrl = group.providerMpAlias
-      ? `https://link.mercadopago.com.ar/${group.providerMpAlias}`
-      : 'https://www.mercadopago.com.ar/';
-    window.open(mpUrl, '_blank');
+    if (group.providerAlias) {
+      navigator.clipboard.writeText(group.providerAlias).catch(() => {});
+    }
+    window.open('https://www.mercadopago.com.ar/', '_blank');
     setShowMpConfirm(false);
     setMpOpened(true);
   };
@@ -1400,8 +1400,8 @@ const MpConfirmModal: React.FC<{
   onConfirm: () => void;
   onCancel: () => void;
 }> = ({ isOpen, providerName, alias, mpAlias, cbu, amount, onConfirm, onCancel }) => {
-  const [copied, setCopied] = React.useState<'alias' | 'cbu' | null>(null);
-  const copy = (text: string, type: 'alias' | 'cbu') => {
+  const [copied, setCopied] = React.useState<'alias' | 'cbu' | 'amount' | null>(null);
+  const copy = (text: string, type: 'alias' | 'cbu' | 'amount') => {
     navigator.clipboard.writeText(text).catch(() => {});
     setCopied(type);
     setTimeout(() => setCopied(null), 2000);
@@ -1422,14 +1422,14 @@ const MpConfirmModal: React.FC<{
           <div className="bg-neutral-50 rounded-2xl p-4 mb-5 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-sm text-neutral-500">Monto</span>
-              <span className="text-xl font-black text-black tabular-nums">{fmt(amount)}</span>
+              <button onClick={() => copy(String(Math.round(amount)), 'amount')}
+                className="flex items-center gap-2 bg-white border border-neutral-200 rounded-xl px-3 py-1.5 active:scale-95 transition-transform">
+                <span className="text-xl font-black text-black tabular-nums">{fmt(amount)}</span>
+                {copied === 'amount'
+                  ? <Check size={13} strokeWidth={3} className="text-green-500" />
+                  : <Copy size={13} strokeWidth={2} className="text-neutral-400" />}
+              </button>
             </div>
-            {mpAlias && (
-              <div className="flex items-center justify-between border-t border-neutral-100 pt-3">
-                <span className="text-sm text-neutral-500">Link MP</span>
-                <span className="text-sm font-bold text-blue-600 font-mono">{mpAlias}</span>
-              </div>
-            )}
             {alias && (
               <div className="flex items-center justify-between border-t border-neutral-100 pt-3">
                 <span className="text-sm text-neutral-500">Alias bancario</span>
@@ -1461,15 +1461,15 @@ const MpConfirmModal: React.FC<{
             )}
           </div>
 
-          {/* Botón principal: directo si tiene mpAlias, genérico si no */}
+          {/* Botón principal: abre MP y copia alias automáticamente */}
           <button onClick={onConfirm}
             className="w-full bg-black text-white rounded-2xl py-4 font-black text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-transform mb-2">
             <ExternalLink size={16} strokeWidth={2.5} />
-            {mpAlias ? `Pagar directo por Mercado Pago` : 'Abrir Mercado Pago'}
+            Abrir Mercado Pago
           </button>
-          {!mpAlias && (alias || cbu) && (
+          {(alias || cbu) && (
             <p className="text-[11px] text-neutral-400 text-center mb-2">
-              Copiá el alias y pegalo en Mercado Pago al abrirse.
+              El alias se copia solo. Pegalo en MP → Transferir.
             </p>
           )}
           <button onClick={onCancel}
