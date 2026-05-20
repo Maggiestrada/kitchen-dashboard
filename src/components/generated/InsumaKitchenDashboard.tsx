@@ -81,6 +81,7 @@ interface Provider {
   nombreVentas?: string;
   email?: string;
   alias?: string;
+  mpAlias?: string;
   cbu?: string;
   cuit?: string;
   diasEntrega?: string[];
@@ -96,7 +97,7 @@ const INITIAL_PROVIDERS: Provider[] = [
   { id: 'prov2', name: 'Santo berraco', category: 'Carnes', telefono: '+5491122506002', nombreVentas: 'Santo berraco', email: 'santoberraco@gmail.com', cbu: '0070028320000009570717', cuit: '30716480719', diasEntrega: ['Lun', 'Mié'], plazoPago: '7 días' },
   { id: 'prov3', name: 'Cocorokeen', category: 'Bebidas', telefono: '+5491170040501', cuit: '30-71421721-2', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'] },
   { id: 'prov4', name: 'Patricia Graffer', category: 'Verduras', telefono: '+5492226472711', nombreVentas: 'Patricia Graffer', diasEntrega: ['Mié'] },
-  { id: 'prov5', name: 'The grocery', category: 'Verduras', telefono: '+5491167083458', nombreVentas: 'Daniel central', email: 'thegrocerypalermo@gmail.com', alias: 'thegrocery-distribu', cbu: '000003100020299695455', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'], plazoPago: '7 días' },
+  { id: 'prov5', name: 'The grocery', category: 'Verduras', telefono: '+5491167083458', nombreVentas: 'Daniel central', email: 'thegrocerypalermo@gmail.com', mpAlias: 'thegrocery-distribu', cbu: '000003100020299695455', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'], plazoPago: '7 días' },
   { id: 'a4eb5955', name: '4 estaciones', category: 'Verduras', telefono: '+5491150496176', nombreVentas: 'Pablo bonano', email: 'bolsonorganicoentucasa@gmail.com', alias: '4estaciones.producto', cbu: '0720084788000002275404', cuit: '20-27282431-3', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'], plazoPago: '7 días' },
   { id: 'prov6', name: 'Gabi verduleria', category: 'Verduras', telefono: '+5491136294534' },
   { id: 'prov7', name: 'Barrio chino', category: 'Verduras', telefono: '+5491140969494', nombreVentas: 'Mari', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'] },
@@ -125,7 +126,7 @@ const INITIAL_PROVIDERS: Provider[] = [
   { id: 'prov30', name: 'kamado', category: 'Otros', telefono: '+5491158539717', nombreVentas: 'luciana', cuit: '30-70959917-4', plazoPago: '30 días' },
   { id: 'prov31', name: 'JMS', category: 'Almacén', telefono: '+5491166797241', nombreVentas: 'JMS', alias: 'ARROYO.MUSA.CENTRO', cbu: '0070007820000014273188', cuit: '30-70298442-0', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'] },
   { id: 'prov32', name: 'Moop', category: 'Almacén', telefono: '+5491169703452', nombreVentas: 'Ann', cuit: '20-23678865-3', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'], plazoPago: '15 días' },
-  { id: 'prov33', name: 'Casa thames', category: 'Almacén', telefono: '+5491166541474', nombreVentas: 'Greta', alias: 'CLPLimpieza1', cbu: '1910006355000606806332', cuit: '3069 45 92 526', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'], plazoPago: '7 días' },
+  { id: 'prov33', name: 'Casa thames', category: 'Almacén', telefono: '+5491166541474', nombreVentas: 'Greta', mpAlias: 'CLPLimpieza1', cbu: '1910006355000606806332', cuit: '3069 45 92 526', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'], plazoPago: '7 días' },
   { id: 'prov34', name: 'Morgade', category: 'Bebidas', diasEntrega: ['Lun'] },
   { id: 'prov35', name: 'Coca cola', category: 'Bebidas' },
   { id: 'prov36', name: 'AQA', category: 'Bebidas', telefono: '+5491133972317', nombreVentas: 'Nicolas Portillo' },
@@ -1012,6 +1013,7 @@ export const InsumaKitchenDashboard = () => {
     sendNotification('INSUMA', '¡Notificaciones activadas! Te avisaremos cuando haya alertas.');
   }, []);
   const handleOrderCreated = useCallback((providerName?: string, orderNote?: string, creadoPor?: string, cartItems?: Array<{id: string; name: string; qty: number; unit: string}>, providerPhone?: string, deliveryDate?: string) => {
+    const prov = providers.find(p => p.name === providerName);
     const orderItems: OrderItem[] = (cartItems ?? []).map(i => ({
       id: i.id,
       name: i.name,
@@ -1024,7 +1026,9 @@ export const InsumaKitchenDashboard = () => {
     setTodayOrders(prev => [{
       id: String(Date.now()),
       provider: providerName ?? 'Nuevo Pedido',
-      providerPhone: providerPhone,
+      providerPhone: providerPhone ?? prov?.telefono,
+      providerAlias: prov?.alias,
+      providerCbu: prov?.cbu,
       category: 'Pedido',
       status: 'waiting' as OrderStatus,
       time: new Date().toLocaleTimeString('es-AR', {
@@ -1041,7 +1045,7 @@ export const InsumaKitchenDashboard = () => {
       creadoPor: creadoPor ?? undefined,
       deliveryDate: deliveryDate ?? undefined,
     }, ...prev]);
-  }, []);
+  }, [providers]);
   const handleOrderReceived = useCallback((orderId: string, hasCash: boolean, newAlerts?: Alert[], receptionNote?: string, recepcionadoPor?: string, totalFactura?: number) => {
     setTodayOrders(prev => prev.map(o => {
       if (o.id !== orderId) return o;
@@ -1086,6 +1090,9 @@ export const InsumaKitchenDashboard = () => {
       category: 'Nuevo',
       lastOrderDate: undefined
     }, ...prev]);
+  }, []);
+  const handleUpdateProveedor = useCallback((data: Provider) => {
+    setProviders(prev => prev.map(p => p.id === data.id ? { ...p, ...data } : p));
   }, []);
   const handleResolveAlert = useCallback((orderId: string, alertId: string) => {
     setTodayOrders(prev => prev.map(o => {
@@ -1462,7 +1469,7 @@ export const InsumaKitchenDashboard = () => {
 
         {activeTab === 'alertas' && <AlertasTab orders={todayOrders} onResolve={handleResolveAlert} />}
         {activeTab === 'recibidos' && <RecibidosTab orders={todayOrders} />}
-        {activeTab === 'pagos' && <PagosTabEnhanced orders={todayOrders} onConfirmCash={handleConfirmCash} onPayDigital={handlePayDigital} onUpdateBillingDiscrepancy={handleUpdateBillingDiscrepancy} onSaveItemPrices={handleSaveItemPrices} onSaveOrderPrices={handleSaveOrderPrices} canView={activeUser.role === 'admin'} />}
+        {activeTab === 'pagos' && <PagosTabEnhanced orders={todayOrders} providers={providers} onConfirmCash={handleConfirmCash} onPayDigital={handlePayDigital} onUpdateBillingDiscrepancy={handleUpdateBillingDiscrepancy} onSaveItemPrices={handleSaveItemPrices} onSaveOrderPrices={handleSaveOrderPrices} canView={activeUser.role === 'admin'} />}
         {activeTab === 'recetas' && <RecetasTab canViewCosts={activeUser.role === 'admin'} customInsumos={customInsumos} lastPriceUpdate={lastPriceUpdate} />}
         {activeTab === 'metricas' && <MetricasTab />}
 
@@ -1558,7 +1565,7 @@ export const InsumaKitchenDashboard = () => {
         insumos={[...customInsumos, ...CATALOG_INSUMOS.filter(i => !customInsumos.some(c => c.id === i.id))]}
       />
       <NuevoProveedorModal isOpen={showNuevoProveedor} onClose={() => setShowNuevoProveedor(false)} onProveedorCreated={handleProveedorCreated} />
-      <ProveedorPerfilSheet proveedor={selectedProveedor} isOpen={selectedProveedor !== null} onClose={() => setSelectedProveedor(null)} orders={todayOrders} onNuevoPedido={() => {
+      <ProveedorPerfilSheet proveedor={selectedProveedor} isOpen={selectedProveedor !== null} onClose={() => setSelectedProveedor(null)} orders={todayOrders} onUpdateProveedor={handleUpdateProveedor} onNuevoPedido={() => {
       setSelectedProveedor(null);
       setShowNuevoPedido(true);
     }} />

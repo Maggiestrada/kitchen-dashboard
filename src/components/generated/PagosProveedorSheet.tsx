@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, ChevronRight, ArrowRight, Check, CheckCircle2, AlertCircle, ExternalLink, CreditCard, Banknote, Receipt, Send, Package, History, Camera, Edit3, Upload, Clock, MessageSquare, StickyNote, ChevronDown, Sparkles, FileText, Eye, Lock } from 'lucide-react';
+import { X, ChevronRight, ArrowRight, Check, CheckCircle2, AlertCircle, ExternalLink, CreditCard, Banknote, Receipt, Send, Package, History, Camera, Edit3, Upload, Clock, MessageSquare, StickyNote, ChevronDown, Sparkles, FileText, Eye, Lock, Copy } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -78,6 +78,7 @@ interface ProviderPaymentGroup {
   providerName: string;
   providerPhone?: string;
   providerAlias?: string;
+  providerMpAlias?: string;
   providerCbu?: string;
   orders: Order[];
   totalPending: number;
@@ -220,6 +221,7 @@ const AiInvoiceDetailSheet = ({
   const [orderItems, setOrderItems] = useState<OrderLineItem[]>(MOCK_ORDER_ITEMS);
   const [editTotal, setEditTotal] = useState<number>(0);
   const [fotoAdjuntada, setFotoAdjuntada] = useState(false);
+  const [showMpConfirm, setShowMpConfirm] = useState(false);
 
   React.useEffect(() => {
     if (isOpen && order) {
@@ -242,6 +244,13 @@ const AiInvoiceDetailSheet = ({
     }
   }, [isOpen, order?.id]);
   const scan = order ? order.aiInvoiceScan ?? MOCK_AI_SCANS[order.id] ?? null : null;
+
+  // Pre-llenar total desde scan de IA cuando esté disponible y el total no fue guardado aún
+  React.useEffect(() => {
+    if (scan?.total && scan.total > 0 && !manualTotalInput) {
+      setManualTotalInput(String(scan.total));
+    }
+  }, [scan?.total]);
   const hasPhoto = order && (order.status === 'received' || order.status === 'discrepancy' || order.status === 'paid_cash');
   useEffect(() => {
     if (isOpen && hasPhoto && !scan) {
@@ -265,6 +274,19 @@ const AiInvoiceDetailSheet = ({
     }
   }, [isOpen]);
   if (!order) return null;
+
+  // Total calculado desde los ítems del pedido (neto + IVA)
+  const totalNeto = orderItems.reduce((s, it) => s + (it.cantRecibida || it.cantPedida || 1) * it.precioUnit, 0);
+  const totalIvaSum = orderItems.reduce((s, it) => s + (it.cantRecibida || it.cantPedida || 1) * it.precioUnit * (it.ivaRate / 100), 0);
+  const totalFacturaCalculado = totalNeto + totalIvaSum;
+
+  // Total efectivo a mostrar arriba: order.total guardado > calculado > scan > 0
+  const totalEfectivo = (order.total && order.total > 0)
+    ? order.total
+    : totalFacturaCalculado > 0
+      ? totalFacturaCalculado
+      : (scan?.total ?? 0);
+
   const activeScan = scan;
   const displayItems = order.orderItems ?? [];
   const fullTimeline = [{
@@ -355,19 +377,15 @@ const AiInvoiceDetailSheet = ({
                     <span>{STATUS_CONFIG[order.status].label}</span>
                   </div>
                 </div>
-                {order.total != null && <div className="text-right">
+                <div className="text-right">
                     <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-0.5">Total</p>
-                    <p className="text-2xl font-black text-black tabular-nums leading-none">{formatMoney(order.total)}</p>
-                  </div>}
+                    <p className="text-2xl font-black text-black tabular-nums leading-none">{formatMoney(totalEfectivo)}</p>
+                  </div>
               </div>
 
               {/* Detalle del pedido con costos */}
               {(() => {
-                // precioUnit = precio neto UNITARIO. El input muestra subtotal neto (precioUnit × cant)
-                // y divide por cant al guardar. unitConIva = precioUnit × (1 + ivaRate/100)
-                const totalNeto = orderItems.reduce((s, it) => s + (it.cantRecibida || it.cantPedida || 1) * it.precioUnit, 0);
-                const totalIvaSum = orderItems.reduce((s, it) => s + (it.cantRecibida || it.cantPedida || 1) * it.precioUnit * (it.ivaRate / 100), 0);
-                const totalFactura = totalNeto + totalIvaSum;
+                const totalFactura = totalFacturaCalculado;
                 const IVA_OPTIONS = [0, 10.5, 21, 27];
                 return (
                   <div>
@@ -836,12 +854,15 @@ const ProviderOrdersSheet = ({
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [paying, setPaying] = useState(false);
   const [paid, setPaid] = useState(false);
+  const [showMpConfirm, setShowMpConfirm] = useState(false);
+  const [mpOpened, setMpOpened] = useState(false);
   useEffect(() => {
     if (!isOpen) {
       const t = setTimeout(() => {
         setSelectedOrder(null);
         setPaying(false);
         setPaid(false);
+        setMpOpened(false);
       }, 350);
       return () => clearTimeout(t);
     }
@@ -849,17 +870,15 @@ const ProviderOrdersSheet = ({
   if (!group) return null;
   const allPaid = group.orders.every(o => o.paymentStatus === 'paid_digital' || o.paymentStatus === 'confirmed');
   const pendingOrders = group.orders.filter(o => o.paymentStatus !== 'paid_digital' && o.paymentStatus !== 'confirmed');
-  const handlePayAll = () => {
-    setPaying(true);
-    const mpAlias = group.providerAlias ?? 'sin-alias';
-    const amount = group.totalPending;
-    const mpUrl = `https://link.mercadopago.com.ar/pay?alias=${mpAlias}&amount=${amount}&description=Pedidos+INSUMA`;
-    setTimeout(() => {
-      window.open(mpUrl, '_blank');
-      setPaying(false);
-      pendingOrders.forEach(o => onPayDigital(o.id));
-      setPaid(true);
-    }, 800);
+  const handlePayAll = () => setShowMpConfirm(true);
+
+  const handleConfirmMp = () => {
+    const mpUrl = group.providerMpAlias
+      ? `https://link.mercadopago.com.ar/${group.providerMpAlias}`
+      : 'https://www.mercadopago.com.ar/';
+    window.open(mpUrl, '_blank');
+    setShowMpConfirm(false);
+    setMpOpened(true);
   };
   const handleWhatsApp = () => {
     if (!group.providerPhone) return;
@@ -1039,6 +1058,26 @@ const ProviderOrdersSheet = ({
                   </button>
                 </div>}
 
+              {mpOpened && !paid && <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-2 pt-1">
+                  <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">¿Confirmás el pago?</p>
+                  <div className="bg-neutral-50 border border-neutral-100 rounded-2xl px-4 py-4">
+                    <p className="text-xs text-neutral-500 font-medium mb-3">
+                      Abrimos Mercado Pago. ¿Pudiste completar el pago de <span className="font-black text-black">{formatMoney(group.totalPending)}</span>?
+                    </p>
+                    <div className="flex gap-2">
+                      <button onClick={() => { pendingOrders.forEach(o => onPayDigital(o.id)); setPaid(true); setMpOpened(false); }}
+                        className="flex-1 py-3 rounded-xl bg-black text-white text-sm font-black active:scale-95 transition-transform flex items-center justify-center gap-1.5">
+                        <CheckCircle2 size={14} strokeWidth={2.5} />
+                        Sí, pagué
+                      </button>
+                      <button onClick={() => setMpOpened(false)}
+                        className="flex-1 py-3 rounded-xl border border-neutral-200 text-sm font-bold text-neutral-600 active:scale-95 transition-transform">
+                        No pagué
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>}
+
               {(allPaid || paid) && <motion.div initial={{
             opacity: 0,
             y: 8
@@ -1061,6 +1100,17 @@ const ProviderOrdersSheet = ({
 
           {/* Order detail sheet */}
           <AiInvoiceDetailSheet order={selectedOrder} isOpen={selectedOrder !== null} onClose={() => setSelectedOrder(null)} onUpdateBillingDiscrepancy={onUpdateBillingDiscrepancy} onSaveItemPrices={onSaveItemPrices} onSaveOrderPrices={onSaveOrderPrices} />
+
+          <MpConfirmModal
+            isOpen={showMpConfirm}
+            providerName={group.providerName}
+            alias={group.providerAlias}
+            mpAlias={group.providerMpAlias}
+            cbu={group.providerCbu}
+            amount={group.totalPending}
+            onConfirm={handleConfirmMp}
+            onCancel={() => setShowMpConfirm(false)}
+          />
         </motion.div>}
     </AnimatePresence>;
 };
@@ -1069,6 +1119,7 @@ const ProviderOrdersSheet = ({
 
 export const PagosTabEnhanced = ({
   orders,
+  providers = [],
   onConfirmCash,
   onPayDigital,
   onUpdateBillingDiscrepancy,
@@ -1077,6 +1128,7 @@ export const PagosTabEnhanced = ({
   canView = true,
 }: {
   orders: Order[];
+  providers?: { name: string; plazoPago?: string }[];
   onConfirmCash: (orderId: string) => void;
   onPayDigital: (orderId: string) => void;
   onUpdateBillingDiscrepancy: (orderId: string, resolution: string, newAmount?: number) => void;
@@ -1090,49 +1142,24 @@ export const PagosTabEnhanced = ({
   const payableOrders = orders.filter(o => (o.status === 'received' || o.status === 'discrepancy' || o.status === 'paid_cash') && o.paymentStatus !== 'paid_digital' && o.paymentStatus !== 'confirmed');
   const paidOrders = orders.filter(o => o.paymentStatus === 'paid_digital' || o.paymentStatus === 'confirmed');
 
-  // Mock payment terms per provider
-  const PAYMENT_TERMS: Record<string, {
-    days: number;
-    label: string;
-  }> = {
-    'Lácteos La Fé': {
-      days: 3,
-      label: 'Vence en 3 días'
-    },
-    'Distribuidora Almacén': {
-      days: -1,
-      label: 'Vencido ayer'
-    },
-    'Bebidas Express': {
-      days: 7,
-      label: 'Vence en 7 días'
-    },
-    'Pescadería del Puerto': {
-      days: 1,
-      label: 'Vence mañana'
-    },
-    'Frigorífico Central': {
-      days: 5,
-      label: 'Vence en 5 días'
-    },
-    'Huerta Orgánica': {
-      days: 10,
-      label: 'Vence en 10 días'
-    }
+  const getPaymentTerms = (providerName: string): { days: number; label: string } => {
+    const prov = providers.find(p => p.name === providerName);
+    const days = prov?.plazoPago ? parseInt(prov.plazoPago) || 7 : 7;
+    const label = days === 0 ? 'Vence hoy' : days === 1 ? 'Vence mañana' : days < 0 ? 'Vencido' : `Vence en ${days} días`;
+    return { days, label };
   };
 
   // Group payable orders by provider
   const providerGroupMap = payableOrders.reduce<Record<string, ProviderPaymentGroup>>((acc, o) => {
     if (!acc[o.provider]) {
-      const terms = PAYMENT_TERMS[o.provider] ?? {
-        days: 7,
-        label: 'Vence en 7 días'
-      };
+      const terms = getPaymentTerms(o.provider);
+      const provData = providers.find(p => p.name === o.provider) as { name: string; plazoPago?: string; alias?: string; mpAlias?: string; cbu?: string; telefono?: string } | undefined;
       acc[o.provider] = {
         providerName: o.provider,
-        providerPhone: o.providerPhone,
-        providerAlias: o.providerAlias,
-        providerCbu: o.providerCbu,
+        providerPhone: o.providerPhone ?? provData?.telefono,
+        providerAlias: o.providerAlias ?? provData?.alias,
+        providerMpAlias: provData?.mpAlias,
+        providerCbu: o.providerCbu ?? provData?.cbu,
         orders: [],
         totalPending: 0,
         daysUntilDue: terms.days,
@@ -1167,10 +1194,7 @@ export const PagosTabEnhanced = ({
   const paidGroups = Object.values(paidGroupMap);
   const syncedSelectedGroup = selectedGroup ? (() => {
     const currentOrders = orders.filter(o => o.provider === selectedGroup.providerName);
-    const terms = PAYMENT_TERMS[selectedGroup.providerName] ?? {
-      days: 7,
-      label: 'Vence en 7 días'
-    };
+    const terms = getPaymentTerms(selectedGroup.providerName);
     return {
       ...selectedGroup,
       orders: currentOrders,
@@ -1363,4 +1387,97 @@ export const PagosTabEnhanced = ({
 
       <ProviderOrdersSheet group={syncedSelectedGroup} isOpen={selectedGroup !== null} onClose={() => setSelectedGroup(null)} onConfirmCash={onConfirmCash} onPayDigital={onPayDigital} onUpdateBillingDiscrepancy={onUpdateBillingDiscrepancy} onSaveItemPrices={onSaveItemPrices} onSaveOrderPrices={onSaveOrderPrices} />
     </motion.div>;
+};
+
+// ─── Modal confirmación MP ──────────────────────────────────────────────────
+const MpConfirmModal: React.FC<{
+  isOpen: boolean;
+  providerName: string;
+  alias?: string;
+  mpAlias?: string;
+  cbu?: string;
+  amount: number;
+  onConfirm: () => void;
+  onCancel: () => void;
+}> = ({ isOpen, providerName, alias, mpAlias, cbu, amount, onConfirm, onCancel }) => {
+  const [copied, setCopied] = React.useState<'alias' | 'cbu' | null>(null);
+  const copy = (text: string, type: 'alias' | 'cbu') => {
+    navigator.clipboard.writeText(text).catch(() => {});
+    setCopied(type);
+    setTimeout(() => setCopied(null), 2000);
+  };
+  const fmt = (n: number) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(n);
+  return (
+    <AnimatePresence>
+      {isOpen && <>
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/40 z-[90]" onClick={onCancel} />
+        <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+          transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+          className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white rounded-t-3xl z-[90] px-5 pt-4 pb-10">
+          <div className="w-10 h-1 bg-neutral-200 rounded-full mx-auto mb-5" />
+          <p className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-1">Confirmar pago</p>
+          <p className="text-xl font-black text-black mb-5">Pagando a {providerName}</p>
+
+          <div className="bg-neutral-50 rounded-2xl p-4 mb-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-neutral-500">Monto</span>
+              <span className="text-xl font-black text-black tabular-nums">{fmt(amount)}</span>
+            </div>
+            {mpAlias && (
+              <div className="flex items-center justify-between border-t border-neutral-100 pt-3">
+                <span className="text-sm text-neutral-500">Link MP</span>
+                <span className="text-sm font-bold text-blue-600 font-mono">{mpAlias}</span>
+              </div>
+            )}
+            {alias && (
+              <div className="flex items-center justify-between border-t border-neutral-100 pt-3">
+                <span className="text-sm text-neutral-500">Alias bancario</span>
+                <button onClick={() => copy(alias, 'alias')}
+                  className="flex items-center gap-2 bg-white border border-neutral-200 rounded-xl px-3 py-1.5 active:scale-95 transition-transform">
+                  <span className="text-sm font-bold text-black font-mono">{alias}</span>
+                  {copied === 'alias'
+                    ? <Check size={13} strokeWidth={3} className="text-green-500" />
+                    : <Copy size={13} strokeWidth={2} className="text-neutral-400" />}
+                </button>
+              </div>
+            )}
+            {cbu && (
+              <div className="flex items-center justify-between border-t border-neutral-100 pt-3">
+                <span className="text-sm text-neutral-500">CBU</span>
+                <button onClick={() => copy(cbu, 'cbu')}
+                  className="flex items-center gap-2 bg-white border border-neutral-200 rounded-xl px-3 py-1.5 active:scale-95 transition-transform">
+                  <span className="text-xs font-bold text-black font-mono tabular-nums">{cbu.slice(0, 6)}···{cbu.slice(-4)}</span>
+                  {copied === 'cbu'
+                    ? <Check size={13} strokeWidth={3} className="text-green-500" />
+                    : <Copy size={13} strokeWidth={2} className="text-neutral-400" />}
+                </button>
+              </div>
+            )}
+            {!alias && !cbu && !mpAlias && (
+              <p className="text-xs text-amber-600 border-t border-neutral-100 pt-3">
+                Este proveedor no tiene datos de pago cargados. Ingresalos en su ficha.
+              </p>
+            )}
+          </div>
+
+          {/* Botón principal: directo si tiene mpAlias, genérico si no */}
+          <button onClick={onConfirm}
+            className="w-full bg-black text-white rounded-2xl py-4 font-black text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-transform mb-2">
+            <ExternalLink size={16} strokeWidth={2.5} />
+            {mpAlias ? `Pagar directo por Mercado Pago` : 'Abrir Mercado Pago'}
+          </button>
+          {!mpAlias && (alias || cbu) && (
+            <p className="text-[11px] text-neutral-400 text-center mb-2">
+              Copiá el alias y pegalo en Mercado Pago al abrirse.
+            </p>
+          )}
+          <button onClick={onCancel}
+            className="w-full py-3 text-sm font-medium text-neutral-500 active:text-black transition-colors">
+            Cancelar
+          </button>
+        </motion.div>
+      </>}
+    </AnimatePresence>
+  );
 };

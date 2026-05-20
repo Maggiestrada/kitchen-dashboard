@@ -84,6 +84,7 @@ interface ProveedorPerfil {
   plazoPago?: string;
   cbu?: string;
   alias?: string;
+  mpAlias?: string;
   nombreVentas?: string;
   createdAt?: string;
   cuit?: string;
@@ -619,6 +620,7 @@ interface ProveedorPerfilSheetProps {
   isOpen: boolean;
   onClose: () => void;
   onNuevoPedido?: (providerId: string) => void;
+  onUpdateProveedor?: (data: ProveedorPerfil) => void;
   orders?: DashboardOrder[];
 }
 
@@ -733,12 +735,21 @@ const FichaOverlay = ({
             : <p className="text-sm font-bold text-black px-3 py-2.5 bg-neutral-50 rounded-xl tabular-nums">{proveedorFull.cbu ?? '—'}</p>}
         </div>
 
-        {/* Alias */}
+        {/* Alias bancario */}
         <div>
-          <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest block mb-1.5">Alias de pago</label>
+          <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest block mb-1.5">Alias bancario / CBU alias</label>
           {fichaEditing
-            ? <input value={fichaTemp.alias ?? ''} onChange={e => setFichaTemp(p => ({ ...p, alias: e.target.value }))} placeholder="alias.pago.mp" className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2.5 text-sm text-black outline-none" />
+            ? <input value={fichaTemp.alias ?? ''} onChange={e => setFichaTemp(p => ({ ...p, alias: e.target.value }))} placeholder="PALABRA.PALABRA.PALABRA" className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2.5 text-sm text-black outline-none" />
             : <p className="text-sm font-bold text-black px-3 py-2.5 bg-neutral-50 rounded-xl">{proveedorFull.alias ?? '—'}</p>}
+        </div>
+
+        {/* Alias Mercado Pago */}
+        <div>
+          <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest block mb-1.5">Alias Mercado Pago</label>
+          <p className="text-[10px] text-neutral-400 mb-1.5">El nombre del link de cobro de MP (link.mercadopago.com.ar/<strong>este-nombre</strong>)</p>
+          {fichaEditing
+            ? <input value={fichaTemp.mpAlias ?? ''} onChange={e => setFichaTemp(p => ({ ...p, mpAlias: e.target.value }))} placeholder="nombre-link-mp" className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2.5 text-sm text-black outline-none" />
+            : <p className="text-sm font-bold text-black px-3 py-2.5 bg-neutral-50 rounded-xl">{proveedorFull.mpAlias ?? '—'}</p>}
         </div>
 
         {/* Días de entrega */}
@@ -906,6 +917,7 @@ export const ProveedorPerfilSheet = ({
   isOpen,
   onClose,
   onNuevoPedido,
+  onUpdateProveedor,
   orders = []
 }: ProveedorPerfilSheetProps) => {
   const [activeSection, setActiveSection] = useState<'historial' | 'stats' | 'programados'>('historial');
@@ -923,6 +935,8 @@ export const ProveedorPerfilSheet = ({
   const [showFicha, setShowFicha] = useState(false);
   const [fichaEditing, setFichaEditing] = useState(false);
   const [proveedorData, setProveedorData] = useState<ProveedorPerfil | null>(null);
+
+  React.useEffect(() => { setProveedorData(null); }, [proveedor?.id]);
 
   if (!proveedor) return null;
 
@@ -1763,7 +1777,7 @@ export const ProveedorPerfilSheet = ({
                 fichaEditing={fichaEditing}
                 setFichaEditing={setFichaEditing}
                 onClose={() => { setShowFicha(false); setFichaEditing(false); }}
-                onSave={(data) => { setProveedorData(data); setFichaEditing(false); }}
+                onSave={(data) => { setProveedorData(data); setFichaEditing(false); onUpdateProveedor?.(data); }}
               />
             )}
           </AnimatePresence>
