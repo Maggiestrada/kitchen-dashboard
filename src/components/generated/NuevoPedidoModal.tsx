@@ -21,6 +21,7 @@ interface Product {
   name: string;
   unit: string;
   lastQty?: number;
+  provider?: string;
 }
 interface CartItem {
   productId: string;
@@ -341,9 +342,10 @@ interface NuevoPedidoModalProps {
   creadoPor?: string;
   providers?: ProviderProp[];
   negocioNombre?: string;
-  insumos?: Array<{id: string; name: string; unit: string; category: string}>;
+  insumos?: Array<{id: string; name: string; unit: string; category: string; provider?: string}>;
   initialProvider?: string;
   initialItems?: Array<{id: string; name: string; qty: number; unit: string}>;
+  lastOrdersByProvider?: Record<string, {date: string; items: Array<{productId: string; name: string; qty: number; unit: string; note: string}>}>;
 }
 export const NuevoPedidoModal = ({
   isOpen,
@@ -356,6 +358,7 @@ export const NuevoPedidoModal = ({
   insumos = [],
   initialProvider,
   initialItems,
+  lastOrdersByProvider = {},
 }: NuevoPedidoModalProps) => {
   const [step, setStep] = useState<WizardStep>(1);
   const [search, setSearch] = useState('');
@@ -430,11 +433,17 @@ export const NuevoPedidoModal = ({
 
   // ── Step 2 helpers ─────────────────────────────────────────────────────────
 
-  const products: Product[] = insumos.map(i => ({ id: i.id, name: i.name, unit: i.unit }));
-  const lastOrder = selectedProvider ? LAST_ORDERS[selectedProvider.id] : null;
-  const filteredProducts = productSearch.trim().length > 0
+  const products: Product[] = insumos.map(i => ({ id: i.id, name: i.name, unit: i.unit, provider: i.provider }));
+  const lastOrder = selectedProvider
+    ? (lastOrdersByProvider[selectedProvider.name] ?? LAST_ORDERS[selectedProvider.id] ?? null)
+    : null;
+  const isSearching = productSearch.trim().length > 0;
+  const linkedProducts = selectedProvider
+    ? products.filter(p => p.provider && p.provider === selectedProvider.name)
+    : [];
+  const filteredProducts = isSearching
     ? products.filter(p => p.name.toLowerCase().includes(productSearch.toLowerCase()))
-    : products;
+    : linkedProducts;
   const setQty = useCallback((productId: string, name: string, unit: string, qty: number) => {
     if (qty <= 0) {
       setCart(prev => {
@@ -825,7 +834,7 @@ export const NuevoPedidoModal = ({
                     {/* Available products */}
                     {filteredProducts.filter(p => !cart[p.id]).length > 0 && <div>
                         <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-2 mt-1">
-                          {productSearch ? 'Resultados' : 'Productos del proveedor'}
+                          {isSearching ? 'Resultados' : 'Insumos del proveedor'}
                         </p>
                         <div className="space-y-2">
                           {filteredProducts.filter(p => !cart[p.id]).map(product => <div key={product.id} className="bg-white border border-neutral-100 rounded-2xl">
@@ -846,12 +855,19 @@ export const NuevoPedidoModal = ({
                         </div>
                       </div>}
 
-                    {cartItems.length === 0 && filteredProducts.length === 0 && !productSearch && <div className="py-12 flex flex-col items-center gap-3 text-center">
+                    {/* Empty state: no linked insumos and not searching */}
+                    {!isSearching && cartItems.length === 0 && linkedProducts.length === 0 && <div className="py-12 flex flex-col items-center gap-3 text-center">
                         <div className="w-12 h-12 rounded-2xl bg-neutral-100 flex items-center justify-center">
                           <Package size={22} className="text-neutral-400" />
                         </div>
-                        <p className="text-sm font-bold text-neutral-400"><span>No hay productos registrados</span></p>
-                        <p className="text-xs text-neutral-300"><span>Escribí un producto en el buscador para agregarlo</span></p>
+                        <p className="text-sm font-bold text-neutral-400">No hay insumos vinculados</p>
+                        <p className="text-xs text-neutral-300">Buscá un producto arriba para agregarlo al pedido,{'\n'}o creá un insumo nuevo desde Recetas</p>
+                      </div>}
+
+                    {/* Empty search state */}
+                    {isSearching && filteredProducts.length === 0 && <div className="py-8 flex flex-col items-center gap-2 text-center">
+                        <p className="text-sm font-bold text-neutral-400">Sin resultados para "{productSearch}"</p>
+                        <p className="text-xs text-neutral-300">Presioná Enter para crearlo como nuevo insumo</p>
                       </div>}
                   </div>
 

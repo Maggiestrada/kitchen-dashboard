@@ -1051,6 +1051,7 @@ export const InsumaKitchenDashboard = () => {
   const [alertOrderId, setAlertOrderId] = useState<string | null>(null);
   const [cancelOrder, setCancelOrder] = useState<Order | null>(null);
   const [selectedDetailOrder, setSelectedDetailOrder] = useState<Order | null>(null);
+  const [providerSearch, setProviderSearch] = useState('');
   const [showBellPanel, setShowBellPanel] = useState(false);
   const [notifPermission, setNotifPermission] = useState<NotificationPermission>('default');
   const [activeUser, setActiveUser] = useState<UserProfile>({ id: 'chef', name: 'Operador', role: 'chef' });
@@ -1346,6 +1347,17 @@ export const InsumaKitchenDashboard = () => {
 
   const alertOrder = todayOrders.find(o => o.id === alertOrderId) ?? null;
   const allUnresolvedAlerts = todayOrders.flatMap(o => (o.alerts ?? []).filter(a => !a.resolved));
+  const lastOrdersByProvider: Record<string, {date: string; items: Array<{productId: string; name: string; qty: number; unit: string; note: string}>}> = {};
+  todayOrders.forEach(o => {
+    if (!o.orderItems || o.orderItems.length === 0) return;
+    const existing = lastOrdersByProvider[o.provider];
+    if (!existing || o.time > existing.date) {
+      lastOrdersByProvider[o.provider] = {
+        date: o.time,
+        items: o.orderItems.map(i => ({ productId: i.id, name: i.name, qty: i.requestedQty, unit: i.unit, note: '' })),
+      };
+    }
+  });
   const pendingPayments = todayOrders.filter(o => (o.status === 'received' || o.status === 'discrepancy' || o.status === 'paid_cash') && o.paymentStatus !== 'paid_digital' && o.paymentStatus !== 'confirmed').length;
   const pendingReceptionOrders = todayOrders.filter(o => o.status === 'on_way' || o.status === 'waiting');
   const statCards = [{
@@ -1490,7 +1502,7 @@ export const InsumaKitchenDashboard = () => {
             <section>
               <div className="flex justify-between items-center mb-2">
                 <p className="text-[9px] font-normal text-neutral-400 uppercase tracking-[0.18em]">Pedidos de hoy</p>
-                <button className="text-black text-[11px] font-bold uppercase tracking-wide">Ver todo</button>
+                <button onClick={() => setActiveTab('orders')} className="text-black text-[11px] font-bold uppercase tracking-wide active:opacity-60 transition-opacity">Ver todo</button>
               </div>
               <div className="space-y-1.5">
                 {todayOrders.map(order => <OrderCard key={order.id} order={order} onAlertClick={id => setAlertOrderId(id)} onCancelClick={o => setCancelOrder(o)} onDetailClick={o => setSelectedDetailOrder(o)} />)}
@@ -1514,10 +1526,11 @@ export const InsumaKitchenDashboard = () => {
             </div>
             <div className="flex items-center gap-3 bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2.5">
               <Search size={15} className="text-neutral-400 shrink-0" strokeWidth={2} />
-              <span className="flex-1 text-sm text-neutral-300 font-medium">Buscar proveedor o rubro...</span>
+              <input value={providerSearch} onChange={e => setProviderSearch(e.target.value)} placeholder="Buscar proveedor o rubro..." className="flex-1 bg-transparent text-sm text-black placeholder:text-neutral-400 outline-none font-medium" />
+              {providerSearch && <button onClick={() => setProviderSearch('')} className="text-neutral-400"><X size={14} /></button>}
             </div>
             <div className="space-y-1.5">
-              {providers.map(prov => <button key={prov.id} onClick={() => setSelectedProveedor(prov)} className="w-full flex items-center justify-between px-3 py-3 bg-white rounded-xl border border-neutral-100 active:bg-neutral-50 transition-colors text-left">
+              {providers.filter(p => !providerSearch || p.name.toLowerCase().includes(providerSearch.toLowerCase()) || p.category.toLowerCase().includes(providerSearch.toLowerCase())).map(prov => <button key={prov.id} onClick={() => setSelectedProveedor(prov)} className="w-full flex items-center justify-between px-3 py-3 bg-white rounded-xl border border-neutral-100 active:bg-neutral-50 transition-colors text-left">
                   <div className="flex items-center gap-3">
                     <div className="w-9 h-9 rounded-xl bg-black text-white flex items-center justify-center text-sm font-light shrink-0"><span>{prov.name.charAt(0)}</span></div>
                     <div>
@@ -1682,6 +1695,7 @@ export const InsumaKitchenDashboard = () => {
         providers={providers}
         negocioNombre={negocioNombre}
         insumos={[...customInsumos, ...CATALOG_INSUMOS.filter(i => !customInsumos.some(c => c.id === i.id))]}
+        lastOrdersByProvider={lastOrdersByProvider}
       />
       <NuevoProveedorModal isOpen={showNuevoProveedor} onClose={() => setShowNuevoProveedor(false)} onProveedorCreated={handleProveedorCreated} />
       <ProveedorPerfilSheet proveedor={selectedProveedor} isOpen={selectedProveedor !== null} onClose={() => setSelectedProveedor(null)} orders={todayOrders} onUpdateProveedor={handleUpdateProveedor} onNuevoPedido={(_id, items) => {
