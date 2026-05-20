@@ -619,7 +619,7 @@ interface ProveedorPerfilSheetProps {
   proveedor: ProveedorPerfil | null;
   isOpen: boolean;
   onClose: () => void;
-  onNuevoPedido?: (providerId: string) => void;
+  onNuevoPedido?: (providerId: string, items?: Array<{id: string; name: string; qty: number; unit: string}>) => void;
   onUpdateProveedor?: (data: ProveedorPerfil) => void;
   orders?: DashboardOrder[];
 }
@@ -999,8 +999,11 @@ export const ProveedorPerfilSheet = ({
   const handleRepeatLastOrder = () => {
     if (!lastOrder) return;
     setRepeatConfirmed(true);
+    const items = (lastOrder.lineItems ?? [])
+      .filter(it => it.precioUnit !== undefined || it.cantPedida > 0)
+      .map(it => ({ id: it.id, name: it.nombre, qty: it.cantPedida, unit: it.unit }));
     setTimeout(() => {
-      onNuevoPedido?.(proveedor.id);
+      onNuevoPedido?.(proveedor.id, items.length > 0 ? items : undefined);
       setRepeatConfirmed(false);
     }, 700);
   };

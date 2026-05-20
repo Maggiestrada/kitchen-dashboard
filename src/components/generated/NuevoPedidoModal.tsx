@@ -342,6 +342,8 @@ interface NuevoPedidoModalProps {
   providers?: ProviderProp[];
   negocioNombre?: string;
   insumos?: Array<{id: string; name: string; unit: string; category: string}>;
+  initialProvider?: string;
+  initialItems?: Array<{id: string; name: string; qty: number; unit: string}>;
 }
 export const NuevoPedidoModal = ({
   isOpen,
@@ -352,6 +354,8 @@ export const NuevoPedidoModal = ({
   providers: providersProp = [],
   negocioNombre = '',
   insumos = [],
+  initialProvider,
+  initialItems,
 }: NuevoPedidoModalProps) => {
   const [step, setStep] = useState<WizardStep>(1);
   const [search, setSearch] = useState('');
@@ -401,6 +405,21 @@ export const NuevoPedidoModal = ({
     isFavorite: p.isFavorite,
     lastOrderDate: p.lastOrderDate,
   }));
+  useEffect(() => {
+    if (!isOpen || !initialProvider) return;
+    const prov = mappedProviders.find(p => p.name === initialProvider);
+    if (!prov) return;
+    setSelectedProvider(prov);
+    if (initialItems && initialItems.length > 0) {
+      const preCart: Record<string, CartItem> = {};
+      initialItems.forEach(item => {
+        preCart[item.id] = { productId: item.id, name: item.name, qty: item.qty, unit: item.unit, note: '' };
+      });
+      setCart(preCart);
+    }
+    setStep(2);
+  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const filteredProviders = mappedProviders.filter(p => p.name.toLowerCase().includes(search.toLowerCase()) || p.category.toLowerCase().includes(search.toLowerCase()));
   const selectProvider = (p: Provider) => {
     setSelectedProvider(p);

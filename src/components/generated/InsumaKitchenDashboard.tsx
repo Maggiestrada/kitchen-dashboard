@@ -329,20 +329,73 @@ const OrderCard = ({
 
 // ─── OrderDetailSheet ─────────────────────────────────────────────────────────
 
-const OrderDetailSheet = ({ order, isOpen, onClose }: { order: Order | null; isOpen: boolean; onClose: () => void }) => {
+const OrderDetailSheet = ({
+  order, isOpen, onClose, onUpdateOrder, insumos = []
+}: {
+  order: Order | null;
+  isOpen: boolean;
+  onClose: () => void;
+  onUpdateOrder?: (orderId: string, updates: { orderItems?: OrderItem[]; orderNote?: string; items?: number }) => void;
+  insumos?: Array<{id: string; name: string; unit: string; category: string}>;
+}) => {
+  const [editing, setEditing] = useState(false);
+  const [editItems, setEditItems] = useState<OrderItem[]>([]);
+  const [editNote, setEditNote] = useState('');
+  const [addSearch, setAddSearch] = useState('');
+  const [saved, setSaved] = useState(false);
+
+  React.useEffect(() => {
+    if (isOpen && order) {
+      setEditItems(order.orderItems ? [...order.orderItems] : []);
+      setEditNote(order.orderNote ?? '');
+      setEditing(false);
+      setSaved(false);
+    }
+  }, [isOpen, order?.id]);
+
   if (!order) return null;
   const cfg = STATUS_CONFIG[order.status];
+
+  const handleSaveEdit = () => {
+    onUpdateOrder?.(order.id, { orderItems: editItems, orderNote: editNote.trim() || undefined, items: editItems.length });
+    setSaved(true);
+    setTimeout(() => { setSaved(false); setEditing(false); }, 1200);
+  };
+
+  const removeItem = (itemId: string) => setEditItems(prev => prev.filter(i => i.id !== itemId));
+  const updateQty = (itemId: string, qty: number) => {
+    if (qty <= 0) { removeItem(itemId); return; }
+    setEditItems(prev => prev.map(i => i.id === itemId ? { ...i, requestedQty: qty } : i));
+  };
+  const addInsumo = (ins: {id: string; name: string; unit: string}) => {
+    if (editItems.some(i => i.id === ins.id)) return;
+    setEditItems(prev => [...prev, { id: ins.id, name: ins.name, requestedQty: 1, receivedQty: 0, unit: ins.unit, status: 'pending', alertMsg: '' }]);
+    setAddSearch('');
+  };
+
+  const filteredInsumos = addSearch.trim().length > 1
+    ? insumos.filter(i => i.name.toLowerCase().includes(addSearch.toLowerCase()) && !editItems.some(e => e.id === i.id)).slice(0, 6)
+    : [];
+
   return <AnimatePresence>
     {isOpen && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex flex-col justify-end" style={{ maxWidth: 448, margin: '0 auto' }}>
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', damping: 30, stiffness: 320 }} className="relative bg-white rounded-t-3xl z-10 max-h-[85vh] flex flex-col">
+      <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', damping: 30, stiffness: 320 }} className="relative bg-white rounded-t-3xl z-10 max-h-[90vh] flex flex-col">
         <div className="flex justify-center pt-3 pb-1 shrink-0"><div className="w-9 h-1 rounded-full bg-neutral-200" /></div>
         <div className="px-5 pt-2 pb-4 flex items-start justify-between shrink-0">
           <div>
             <h2 className="text-base font-black text-black">{order.provider}</h2>
             <p className="text-[11px] text-neutral-400 font-medium mt-0.5">#{order.id}</p>
           </div>
-          <button onClick={onClose} className="w-9 h-9 rounded-full border border-neutral-200 flex items-center justify-center text-neutral-500 active:scale-90 transition-transform"><X size={17} strokeWidth={2} /></button>
+          <div className="flex items-center gap-2">
+            {!editing && onUpdateOrder && (
+              <button onClick={() => setEditing(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-neutral-200 text-xs font-bold text-neutral-600 active:scale-95 transition-transform">
+                <Edit3 size={12} strokeWidth={2.5} />
+                Editar
+              </button>
+            )}
+            <button onClick={onClose} className="w-9 h-9 rounded-full border border-neutral-200 flex items-center justify-center text-neutral-500 active:scale-90 transition-transform"><X size={17} strokeWidth={2} /></button>
+          </div>
         </div>
         <div className="h-px bg-neutral-100 mx-5 shrink-0" />
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
@@ -365,8 +418,9 @@ const OrderDetailSheet = ({ order, isOpen, onClose }: { order: Order | null; isO
               <p className="text-[11px] font-bold text-neutral-700">{order.time}</p>
             </div>}
           </div>
-          {/* Items */}
-          {(order.orderItems ?? []).length > 0 && <div>
+
+          {/* Items — modo visualización */}
+          {!editing && (order.orderItems ?? []).length > 0 && <div>
             <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">Productos ({order.orderItems!.length})</p>
             <div className="bg-white border border-neutral-100 rounded-2xl overflow-hidden">
               {order.orderItems!.map((item, idx) => <div key={item.id} className={`px-4 py-2.5 flex items-center justify-between gap-3 ${idx < order.orderItems!.length - 1 ? 'border-b border-neutral-50' : ''}`}>
@@ -375,14 +429,72 @@ const OrderDetailSheet = ({ order, isOpen, onClose }: { order: Order | null; isO
               </div>)}
             </div>
           </div>}
-          {/* Nota */}
-          {order.orderNote && <div>
+
+          {/* Items — modo edición */}
+          {editing && <div>
+            <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">Productos</p>
+            <div className="bg-white border border-neutral-100 rounded-2xl overflow-hidden mb-2">
+              {editItems.length === 0 && <p className="px-4 py-3 text-xs text-neutral-400">Sin productos. Agregá uno abajo.</p>}
+              {editItems.map((item, idx) => <div key={item.id} className={`px-3 py-2.5 flex items-center gap-2 ${idx < editItems.length - 1 ? 'border-b border-neutral-50' : ''}`}>
+                <p className="text-xs font-bold text-neutral-800 flex-1 truncate">{item.name}</p>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button onClick={() => updateQty(item.id, item.requestedQty - 1)} className="w-6 h-6 rounded-lg bg-neutral-100 flex items-center justify-center text-neutral-600 active:scale-90 transition-transform text-sm font-black">−</button>
+                  <span className="text-xs font-black text-black tabular-nums w-8 text-center">{item.requestedQty} {item.unit}</span>
+                  <button onClick={() => updateQty(item.id, item.requestedQty + 1)} className="w-6 h-6 rounded-lg bg-neutral-100 flex items-center justify-center text-neutral-600 active:scale-90 transition-transform text-sm font-black">+</button>
+                  <button onClick={() => removeItem(item.id)} className="w-6 h-6 rounded-lg bg-red-50 flex items-center justify-center text-red-400 active:scale-90 transition-transform ml-1">
+                    <X size={11} strokeWidth={2.5} />
+                  </button>
+                </div>
+              </div>)}
+            </div>
+            {/* Agregar insumo */}
+            <div className="relative">
+              <input
+                value={addSearch}
+                onChange={e => setAddSearch(e.target.value)}
+                placeholder="Buscar insumo para agregar..."
+                className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2.5 text-xs font-medium text-black outline-none focus:border-black transition-colors"
+              />
+              {filteredInsumos.length > 0 && <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-neutral-200 rounded-xl overflow-hidden shadow-lg z-10">
+                {filteredInsumos.map(ins => <button key={ins.id} onClick={() => addInsumo(ins)} className="w-full px-3 py-2 text-left text-xs font-bold text-neutral-800 hover:bg-neutral-50 active:bg-neutral-100 border-b border-neutral-50 last:border-0">
+                  {ins.name} <span className="text-neutral-400 font-medium">· {ins.unit}</span>
+                </button>)}
+              </div>}
+            </div>
+          </div>}
+
+          {/* Nota — modo visualización */}
+          {!editing && order.orderNote && <div>
             <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">Nota</p>
             <div className="bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3">
               <p className="text-xs text-amber-800 font-medium">"{order.orderNote}"</p>
             </div>
           </div>}
+
+          {/* Nota — modo edición */}
+          {editing && <div>
+            <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">Nota del pedido</p>
+            <textarea
+              value={editNote}
+              onChange={e => setEditNote(e.target.value)}
+              placeholder="Agregar nota..."
+              rows={2}
+              className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2.5 text-xs font-medium text-black outline-none focus:border-black transition-colors resize-none"
+            />
+          </div>}
         </div>
+
+        {/* Botones de edición */}
+        {editing && <div className="shrink-0 px-5 py-3 bg-white border-t border-neutral-100 flex gap-2">
+          <button onClick={() => { setEditing(false); setEditItems(order.orderItems ? [...order.orderItems] : []); setEditNote(order.orderNote ?? ''); }}
+            className="flex-1 py-3 rounded-xl border border-neutral-200 text-sm font-bold text-neutral-600 active:scale-95 transition-transform">
+            Cancelar
+          </button>
+          <button onClick={handleSaveEdit}
+            className={`flex-1 py-3 rounded-xl text-sm font-black flex items-center justify-center gap-1.5 active:scale-95 transition-all ${saved ? 'bg-green-500 text-white' : 'bg-black text-white'}`}>
+            {saved ? <><Check size={14} strokeWidth={3} /> Guardado</> : 'Guardar cambios'}
+          </button>
+        </div>}
       </motion.div>
     </motion.div>}
   </AnimatePresence>;
@@ -906,6 +1018,7 @@ const NotificationPanel = ({
 export const InsumaKitchenDashboard = () => {
   const [activeTab, setActiveTab] = useState('home');
   const [showNuevoPedido, setShowNuevoPedido] = useState(false);
+  const [nuevoPedidoInitial, setNuevoPedidoInitial] = useState<{providerName?: string; items?: Array<{id: string; name: string; qty: number; unit: string}>} | null>(null);
   const [showNuevoProveedor, setShowNuevoProveedor] = useState(false);
   const [showNuevoInsumo, setShowNuevoInsumo] = useState(false);
   const [customInsumos, setCustomInsumos] = useState<{ id: string; name: string; category: string; unit: string; pricePerKg: number; provider: string }[]>(() => {
@@ -1093,6 +1206,10 @@ export const InsumaKitchenDashboard = () => {
   }, []);
   const handleUpdateProveedor = useCallback((data: Provider) => {
     setProviders(prev => prev.map(p => p.id === data.id ? { ...p, ...data } : p));
+  }, []);
+  const handleUpdateOrder = useCallback((orderId: string, updates: { orderItems?: OrderItem[]; orderNote?: string; items?: number }) => {
+    setTodayOrders(prev => prev.map(o => o.id !== orderId ? o : { ...o, ...updates }));
+    setSelectedDetailOrder(prev => prev?.id === orderId ? { ...prev, ...updates } : prev);
   }, []);
   const handleResolveAlert = useCallback((orderId: string, alertId: string) => {
     setTodayOrders(prev => prev.map(o => {
@@ -1548,7 +1665,9 @@ export const InsumaKitchenDashboard = () => {
       />
       <NuevoPedidoModal
         isOpen={showNuevoPedido}
-        onClose={() => setShowNuevoPedido(false)}
+        onClose={() => { setShowNuevoPedido(false); setNuevoPedidoInitial(null); }}
+        initialProvider={nuevoPedidoInitial?.providerName}
+        initialItems={nuevoPedidoInitial?.items}
         onOrderCreated={handleOrderCreated}
         onInsumoCreated={async insumo => {
           const newInsumo = { ...insumo, pricePerKg: 0, provider: '' };
@@ -1565,8 +1684,10 @@ export const InsumaKitchenDashboard = () => {
         insumos={[...customInsumos, ...CATALOG_INSUMOS.filter(i => !customInsumos.some(c => c.id === i.id))]}
       />
       <NuevoProveedorModal isOpen={showNuevoProveedor} onClose={() => setShowNuevoProveedor(false)} onProveedorCreated={handleProveedorCreated} />
-      <ProveedorPerfilSheet proveedor={selectedProveedor} isOpen={selectedProveedor !== null} onClose={() => setSelectedProveedor(null)} orders={todayOrders} onUpdateProveedor={handleUpdateProveedor} onNuevoPedido={() => {
+      <ProveedorPerfilSheet proveedor={selectedProveedor} isOpen={selectedProveedor !== null} onClose={() => setSelectedProveedor(null)} orders={todayOrders} onUpdateProveedor={handleUpdateProveedor} onNuevoPedido={(_id, items) => {
+      const provName = selectedProveedor?.name;
       setSelectedProveedor(null);
+      setNuevoPedidoInitial(items && items.length > 0 ? { providerName: provName, items } : { providerName: provName });
       setShowNuevoPedido(true);
     }} />
       <RecepcionPedidoModal isOpen={showRecepcion} onClose={() => {
@@ -1575,7 +1696,7 @@ export const InsumaKitchenDashboard = () => {
     }} onOrderReceived={handleOrderReceived} initialOrderId={recepcionOrderId} recepcionadoPor={activeUser.name} orders={pendingReceptionOrders} />
       <AlertDetailSheet order={alertOrder} isOpen={alertOrderId !== null} onClose={() => setAlertOrderId(null)} onResolve={handleResolveAlert} />
       <CancelOrderSheet order={cancelOrder} isOpen={cancelOrder !== null} onClose={() => setCancelOrder(null)} onConfirmCancel={handleCancelOrder} />
-      <OrderDetailSheet order={selectedDetailOrder} isOpen={selectedDetailOrder !== null} onClose={() => setSelectedDetailOrder(null)} />
+      <OrderDetailSheet order={selectedDetailOrder} isOpen={selectedDetailOrder !== null} onClose={() => setSelectedDetailOrder(null)} onUpdateOrder={handleUpdateOrder} insumos={[...customInsumos, ...CATALOG_INSUMOS.filter(i => !customInsumos.some(c => c.id === i.id))]} />
 
       {/* User menu sheet */}
       <AnimatePresence>
