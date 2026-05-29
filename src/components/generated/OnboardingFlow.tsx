@@ -364,7 +364,7 @@ export const OnboardingFlow: React.FC<{ onComplete: () => void; authUserId?: str
               onBack={() => goTo(1)}>
               <div className="grid grid-cols-2 gap-3 pb-4">
                 {TIPOS_NEGOCIO.map(tipo => (
-                  <button key={tipo.id} onClick={() => { setTipoNegocio(tipo.id); setTimeout(() => goTo(3), 180); }}
+                  <button key={tipo.id} onClick={() => { setTipoNegocio(tipo.id); setTimeout(() => goTo(inviteCode ? 4 : 3), 180); }}
                     className="flex flex-col items-start gap-3 p-5 rounded-2xl border-2 transition-all active:scale-[0.97]"
                     style={{
                       border: tipoNegocio === tipo.id ? '2px solid #fff' : '2px solid rgba(255,255,255,0.25)',
