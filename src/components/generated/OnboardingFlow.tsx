@@ -491,7 +491,7 @@ export const OnboardingFlow: React.FC<{ onComplete: () => void; authUserId?: str
             className="absolute inset-0">
             <BlueScreen step={4} total={5} title="Elegí tu plan" subtitle="Podés cambiar o cancelar cuando quieras."
               onBack={() => goTo(4)}
-              footer={<WhiteBtn onClick={handleEmpezar} loading={guardando}>Empezar 🚀</WhiteBtn>}>
+              footer={<WhiteBtn onClick={() => goTo(6)}>Continuar →</WhiteBtn>}>
               <div className="space-y-3 py-2">
                 {/* Prueba gratis */}
                 <button onClick={() => setPlan('trial')}
