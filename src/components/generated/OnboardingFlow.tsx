@@ -210,7 +210,7 @@ const slide = {
 
 // ─── Main OnboardingFlow ──────────────────────────────────────────────────────
 
-export const OnboardingFlow: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
+export const OnboardingFlow: React.FC<{ onComplete: () => void; authUserId?: string; inviteCode?: string }> = ({ onComplete, authUserId, inviteCode }) => {
   const [step, setStep] = useState(1);
   const [direction, setDirection] = useState(1);
 
@@ -302,16 +302,10 @@ export const OnboardingFlow: React.FC<{ onComplete: () => void }> = ({ onComplet
     try {
       await guardarOnboarding(
         { nombre: nombreNegocio.trim(), tipo: tipoNegocio as NegocioConfig['tipo'], pais: 'Argentina', email: email.trim() },
-        usuarios
+        usuarios,
+        authUserId,
+        inviteCode,
       );
-      const code = localStorage.getItem('insuma_invite_code');
-      if (code) {
-        const { data: { user } } = await supabase.auth.getUser();
-        await supabase.from('invite_codes')
-          .update({ used_by: user?.email ?? 'oauth', used_at: new Date().toISOString() })
-          .eq('code', code).is('used_by', null);
-        localStorage.removeItem('insuma_invite_code');
-      }
       localStorage.setItem('insuma_plan', plan);
       onComplete();
     } catch (err) {
@@ -497,7 +491,7 @@ export const OnboardingFlow: React.FC<{ onComplete: () => void }> = ({ onComplet
             className="absolute inset-0">
             <BlueScreen step={4} total={5} title="Elegí tu plan" subtitle="Podés cambiar o cancelar cuando quieras."
               onBack={() => goTo(4)}
-              footer={<WhiteBtn onClick={() => goTo(6)}>Continuar →</WhiteBtn>}>
+              footer={<WhiteBtn onClick={handleEmpezar} loading={guardando}>Empezar 🚀</WhiteBtn>}>
               <div className="space-y-3 py-2">
                 {/* Prueba gratis */}
                 <button onClick={() => setPlan('trial')}
