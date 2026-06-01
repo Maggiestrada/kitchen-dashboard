@@ -280,7 +280,8 @@ export const OnboardingFlow: React.FC<{ onComplete: () => void; authUserId?: str
     setAuthLoading(false);
     if (error) { setAuthError(error.message); return; }
     const code = localStorage.getItem('insuma_invite_code');
-    if (code) {
+    const PERMANENT_CODES = ['INSUMA.PRUEBA', 'INSUMA.MAGGIE'];
+    if (code && !PERMANENT_CODES.includes(code)) {
       await supabase.from('invite_codes').update({ used_by: email.trim(), used_at: new Date().toISOString() }).eq('code', code);
       localStorage.removeItem('insuma_invite_code');
     }
