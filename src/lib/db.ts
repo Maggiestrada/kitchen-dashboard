@@ -421,15 +421,86 @@ export function getNegocioId(): string | null {
   return localStorage.getItem('insuma_negocio_id');
 }
 
-function setNegocioId(id: string) {
+export function setNegocioId(id: string) {
   localStorage.setItem('insuma_negocio_id', id);
+}
+
+// ─── Auth helpers ─────────────────────────────────────────────────────────────
+
+export async function signInWithGoogle(): Promise<{ error: string | null }> {
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: window.location.origin + window.location.pathname.replace(/\/$/, '') + '/' },
+  });
+  return { error: error?.message ?? null };
+}
+
+export async function authSignOut(): Promise<void> {
+  await supabase.auth.signOut();
+  localStorage.removeItem('insuma_negocio_id');
+  localStorage.removeItem('insuma_onboarding_ok');
+}
+
+export async function findNegocioByAuthUser(authUserId: string): Promise<string | null> {
+  try {
+    const { data, error } = await supabase
+      .from('negocio')
+      .select('id')
+      .eq('auth_user_id', authUserId)
+      .single();
+    if (!error && data) return data.id;
+  } catch { /* ignore */ }
+  return null;
+}
+
+export async function validateInviteCode(code: string): Promise<boolean> {
+  try {
+    const { data, error } = await supabase
+      .from('codigos_invitacion')
+      .select('id, usado')
+      .eq('codigo', code.toUpperCase().trim())
+      .single();
+    return !error && !!data && !data.usado;
+  } catch { return false; }
+}
+
+export async function markInviteCodeUsed(code: string, authUserId: string): Promise<void> {
+  try {
+    await supabase
+      .from('codigos_invitacion')
+      .update({ usado: true, usado_por: authUserId, usado_at: new Date().toISOString() })
+      .eq('codigo', code.toUpperCase().trim());
+  } catch { /* ignore */ }
+}
+
+export async function sendPinResetOtp(email: string): Promise<{ error: string | null }> {
+  const { error } = await supabase.auth.signInWithOtp({
+    email,
+    options: { shouldCreateUser: false },
+  });
+  return { error: error?.message ?? null };
+}
+
+export async function verifyPinOtp(email: string, token: string): Promise<{ error: string | null }> {
+  const { error } = await supabase.auth.verifyOtp({ email, token, type: 'email' });
+  return { error: error?.message ?? null };
+}
+
+export async function updateAdminPin(negocioId: string, newPin: string): Promise<void> {
+  await supabase
+    .from('usuarios')
+    .update({ pin: newPin })
+    .eq('negocio_id', negocioId)
+    .eq('rol', 'admin');
 }
 
 // ─── Onboarding: guardar negocio + usuarios en Supabase ──────────────────────
 
 export async function guardarOnboarding(
   negocio: NegocioConfig,
-  usuarios: UsuarioConfig[]
+  usuarios: UsuarioConfig[],
+  authUserId?: string,
+  inviteCode?: string,
 ): Promise<{ negocioId: string }> {
   const negocioId = crypto.randomUUID();
 
@@ -447,6 +518,7 @@ export async function guardarOnboarding(
         tipo: negocio.tipo,
         pais: negocio.pais,
         email: negocio.email,
+        ...(authUserId ? { auth_user_id: authUserId } : {}),
       })
       .select('id')
       .single();
@@ -455,7 +527,7 @@ export async function guardarOnboarding(
       const remoteId = negocioData.id;
 
       const usuariosInsert = usuarios.map(u => ({
-        id: u.id,
+        id: u.id.startsWith('usr-') ? crypto.randomUUID() : u.id,
         negocio_id: remoteId,
         nombre: u.nombre,
         rol: u.rol,
@@ -465,9 +537,8 @@ export async function guardarOnboarding(
 
       await supabase.from('usuarios').insert(usuariosInsert);
 
-      // Insertar proveedores seed
+      // Insertar proveedores seed (sin id para que Supabase genere UUID válido)
       const proveedoresInsert = SEED_PROVEEDORES.map(p => ({
-        id: p.id,
         negocio_id: remoteId,
         nombre: p.nombre,
         categoria: p.categoria ?? null,
@@ -493,6 +564,11 @@ export async function guardarOnboarding(
       await supabase.from('insumos').insert(insumosInsert);
 
       setNegocioId(remoteId);
+
+      // Marcar código de invitación como usado
+      if (authUserId && inviteCode) {
+        await markInviteCodeUsed(inviteCode, authUserId);
+      }
     } else {
       // Supabase no disponible — usar ID local
       setNegocioId(negocioId);
@@ -661,6 +737,7 @@ export async function guardarPedido(pedido: {
   creadoPor?: string;
   items: unknown[];
   total?: number;
+  alertas?: unknown;
 }): Promise<void> {
   const negocioId = getNegocioId();
   if (!negocioId) return;
@@ -670,13 +747,13 @@ export async function guardarPedido(pedido: {
     negocio_id: negocioId,
     proveedor_nombre: pedido.proveedorNombre,
     proveedor_id: pedido.proveedorId ?? null,
-    estado: pedido.estado as 'en_espera',
+    estado: pedido.estado,
     nota: pedido.nota ?? null,
     creado_por: pedido.creadoPor ?? null,
     items: pedido.items,
     total: pedido.total ?? null,
     tiene_efectivo: false,
-    alertas: null,
+    alertas: pedido.alertas ?? null,
   });
 
   if (error) console.error('Error guardando pedido:', error.message);
@@ -687,6 +764,8 @@ export async function actualizarPedido(id: string, cambios: {
   recepcionadoPor?: string;
   tieneEfectivo?: boolean;
   alertas?: unknown;
+  total?: number;
+  items?: unknown[];
 }): Promise<void> {
   const { error } = await supabase
     .from('pedidos')
@@ -695,8 +774,83 @@ export async function actualizarPedido(id: string, cambios: {
       ...(cambios.recepcionadoPor && { recepcionado_por: cambios.recepcionadoPor }),
       ...(cambios.tieneEfectivo !== undefined && { tiene_efectivo: cambios.tieneEfectivo }),
       ...(cambios.alertas !== undefined && { alertas: cambios.alertas }),
+      ...(cambios.total !== undefined && { total: cambios.total }),
+      ...(cambios.items !== undefined && { items: cambios.items }),
     })
     .eq('id', id);
 
   if (error) console.error('Error actualizando pedido:', error.message);
+}
+
+// ─── Proveedores ──────────────────────────────────────────────────────────────
+
+export interface ProveedorBasico {
+  id: string;
+  name: string;
+  category: string;
+  telefono?: string;
+  nombreVentas?: string;
+  email?: string;
+}
+
+export async function loadProveedores(): Promise<ProveedorBasico[]> {
+  const negocioId = getNegocioId();
+  if (!negocioId) return [];
+
+  try {
+    const { data, error } = await supabase
+      .from('proveedores')
+      .select('id, nombre, categoria, contacto, email, telefono')
+      .eq('negocio_id', negocioId)
+      .eq('activo', true)
+      .order('nombre');
+
+    if (!error && data && data.length > 0) {
+      return data.map(p => ({
+        id: p.id,
+        name: p.nombre,
+        category: p.categoria ?? 'Otros',
+        telefono: p.telefono ?? undefined,
+        nombreVentas: p.contacto ?? undefined,
+        email: p.email ?? undefined,
+      }));
+    }
+  } catch { /* fallback */ }
+
+  return [];
+}
+
+// ─── Cargar pedidos ───────────────────────────────────────────────────────────
+
+export interface PedidoDB {
+  id: string;
+  proveedor_nombre: string;
+  proveedor_id: string | null;
+  estado: string;
+  nota: string | null;
+  creado_por: string | null;
+  recepcionado_por: string | null;
+  items: unknown;
+  total: number | null;
+  tiene_efectivo: boolean;
+  alertas: unknown;
+  created_at: string;
+}
+
+export async function loadPedidos(): Promise<PedidoDB[]> {
+  const negocioId = getNegocioId();
+  if (!negocioId) return [];
+
+  try {
+    const { data, error } = await supabase
+      .from('pedidos')
+      .select('id, proveedor_nombre, proveedor_id, estado, nota, creado_por, recepcionado_por, items, total, tiene_efectivo, alertas, created_at')
+      .eq('negocio_id', negocioId)
+      .neq('estado', 'cancelado')
+      .order('created_at', { ascending: false });
+
+    if (!error && data) return data as PedidoDB[];
+  } catch { /* fallback */ }
+
+  return [];
 }
