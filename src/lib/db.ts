@@ -430,7 +430,7 @@ export function setNegocioId(id: string) {
 export async function signInWithGoogle(): Promise<{ error: string | null }> {
   const { error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
-    options: { redirectTo: 'https://maggiestrada.github.io/kitchen-dashboard/' },
+    options: { redirectTo: 'https://maggiestrada.github.io/kitchen-dashboard/' }, // GitHub Pages
   });
   return { error: error?.message ?? null };
 }

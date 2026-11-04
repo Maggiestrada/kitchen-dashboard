@@ -447,6 +447,7 @@ const IngredienteEditRow = ({
     if (u === 'kg') return 'gr';
     if (u === 'lt' || u === 'l') return 'ml';
     if (ins.gramsPerUnit) return 'gr';
+    if (['atado', 'paq', 'paquete', 'docena', 'sobre', 'otro'].includes(u)) return 'gr';
     return ins.unit || ing.unit;
   }, [ing.referenciaId, ing.tipo, ing.unit, insumos]);
 

@@ -317,7 +317,8 @@ const AiInvoiceDetailSheet = ({
   if (!order) return null;
 
   const noPricesLoaded = orderItems.length > 0 && orderItems.every(it => it.precioUnit === 0);
-  const showPriceAlert = noPricesLoaded && (order.status === 'received' || order.status === 'discrepancy' || order.status === 'paid_cash');
+  const activeScanForAlert = scan ?? localMockScan;
+  const showPriceAlert = noPricesLoaded && !activeScanForAlert && (order.status === 'received' || order.status === 'discrepancy' || order.status === 'paid_cash');
 
   // Total calculado desde los ítems del pedido (neto + IVA)
   const totalNeto = orderItems.reduce((s, it) => s + (it.cantRecibida || it.cantPedida || 1) * it.precioUnit, 0);
@@ -1531,8 +1532,8 @@ export const PagosTabEnhanced = ({
   const [tarifaInput, setTarifaInput] = useState(() => localStorage.getItem('insuma_tarifa_hora') ?? '');
   const [activeView, setActiveView] = useState<'pendientes' | 'archivo'>('pendientes');
   const [archivoDetailOrder, setArchivoDetailOrder] = useState<Order | null>(null);
-  const payableOrders = orders.filter(o => (o.status === 'received' || o.status === 'discrepancy' || o.status === 'paid_cash') && o.paymentStatus !== 'paid_digital' && o.paymentStatus !== 'confirmed');
-  const paidOrders = orders.filter(o => o.paymentStatus === 'paid_digital' || o.paymentStatus === 'confirmed');
+  const payableOrders = orders.filter(o => (o.status === 'received' || o.status === 'discrepancy') && o.paymentStatus !== 'paid_digital' && o.paymentStatus !== 'confirmed');
+  const paidOrders = orders.filter(o => o.paymentStatus === 'paid_digital' || o.paymentStatus === 'confirmed' || o.status === 'paid_cash');
 
   const getPaymentTerms = (providerName: string): { days: number; label: string } => {
     const prov = providers.find(p => p.name === providerName);
