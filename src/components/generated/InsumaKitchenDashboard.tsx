@@ -10,7 +10,9 @@ import { MetricasTab } from './MetricasTab';
 import { RecetasTab, CATALOG_INSUMOS } from './RecetasTab';
 import { NuevoInsumoModal } from './NuevoInsumoModal';
 import { InsumaLogo } from './InsumaLogo';
-import { loadUsuarios as loadUsuariosDB, loadNegocio, loadInsumos, crearInsumo } from '../../lib/db';
+import { loadUsuarios as loadUsuariosDB, loadNegocio, loadInsumos, crearInsumo, guardarPedido, actualizarPedido, loadPedidos as loadPedidosDB, loadProveedores as loadProveedoresDB, type PedidoDB } from '../../lib/db';
+import { PinResetSheet } from './PinResetSheet';
+import { type ProveedorCompleto } from './NuevoProveedorModal';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -70,6 +72,7 @@ interface Order {
   receptionNote?: string;
   creadoPor?: string;
   recepcionadoPor?: string;
+  invoiceImageUrl?: string;
 }
 interface Provider {
   id: string;
@@ -78,6 +81,7 @@ interface Provider {
   isOrganic?: boolean;
   lastOrderDate?: string;
   telefono?: string;
+  telefonoAdmin?: string;
   nombreVentas?: string;
   email?: string;
   alias?: string;
@@ -151,6 +155,66 @@ const INITIAL_PROVIDERS: Provider[] = [
   { id: 'prov55', name: 'Finca Sophenia', category: 'Bebidas', telefono: '+5491160479400', nombreVentas: 'Eugenia Luka', cuit: '30-69439267-5', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'], plazoPago: '30 días' },
   { id: 'prov56', name: 'Achaval Ferrer', category: 'Bebidas', telefono: '+5491150951600', nombreVentas: 'Catalina Uriburu', email: 'uriburu.cata@gmail.com', cuit: '30-70086601-3', plazoPago: '45 días' },
 ];
+
+// ─── DB → Order mapper ────────────────────────────────────────────────────────
+
+const ESTADO_TO_STATUS: Record<string, OrderStatus> = {
+  en_espera: 'waiting',
+  en_camino: 'on_way',
+  recibido: 'received',
+  con_diferencias: 'discrepancy',
+  pago_efectivo: 'paid_cash',
+};
+
+function pedidoDBToOrder(row: PedidoDB, providers: Provider[]): Order {
+  const prov = providers.find(p => p.id === row.proveedor_id);
+  const alertasObj =
+    row.alertas && typeof row.alertas === 'object' && !Array.isArray(row.alertas)
+      ? (row.alertas as Record<string, unknown>)
+      : {};
+  const alertsArr: Alert[] = Array.isArray(alertasObj.alerts)
+    ? (alertasObj.alerts as Alert[])
+    : Array.isArray(row.alertas)
+    ? (row.alertas as Alert[])
+    : [];
+
+  const rawItems = Array.isArray(row.items) ? (row.items as Array<Record<string, unknown>>) : [];
+  const orderItems: OrderItem[] = rawItems.map((i, idx) => ({
+    id: String(i.id ?? `item-${idx}`),
+    name: String(i.name ?? ''),
+    requestedQty: Number(i.requestedQty ?? i.qty ?? 0),
+    receivedQty: Number(i.receivedQty ?? 0),
+    unit: String(i.unit ?? 'u'),
+    status: (['ok', 'discrepancy', 'pending'].includes(String(i.status))
+      ? i.status
+      : 'pending') as 'ok' | 'discrepancy' | 'pending',
+    alertMsg: String(i.alertMsg ?? ''),
+    precioUnit: typeof i.precioUnit === 'number' ? i.precioUnit : undefined,
+    ivaRate: typeof i.ivaRate === 'number' ? i.ivaRate : undefined,
+  }));
+
+  return {
+    id: row.id,
+    provider: row.proveedor_nombre,
+    providerPhone: prov?.telefono,
+    providerAlias: prov?.alias,
+    providerCbu: prov?.cbu,
+    category: 'Pedido',
+    status: ESTADO_TO_STATUS[row.estado] ?? 'waiting',
+    time: new Date(row.created_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }),
+    items: orderItems.length || 1,
+    total: row.total ?? 0,
+    orderItems,
+    alerts: alertsArr,
+    paymentStatus: 'pending' as PaymentStatus,
+    paymentHistory: [],
+    orderNote: row.nota ?? undefined,
+    creadoPor: row.creado_por ?? undefined,
+    recepcionadoPor: row.recepcionado_por ?? undefined,
+    deliveryDate: typeof alertasObj.deliveryDate === 'string' ? alertasObj.deliveryDate : undefined,
+    weekLabel: 'Esta semana',
+  };
+}
 
 // ─── Status helpers ───────────────────────────────────────────────────────────
 
@@ -1112,7 +1176,7 @@ const AllOrdersSheet = ({
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export const InsumaKitchenDashboard = () => {
+export const InsumaKitchenDashboard = ({ authUserEmail, onSignOut }: { authUserEmail?: string; onSignOut?: () => void } = {}) => {
   const [activeTab, setActiveTab] = useState('home');
   const [showNuevoPedido, setShowNuevoPedido] = useState(false);
   const [nuevoPedidoInitial, setNuevoPedidoInitial] = useState<{providerName?: string; items?: Array<{id: string; name: string; qty: number; unit: string}>} | null>(null);
@@ -1159,6 +1223,7 @@ export const InsumaKitchenDashboard = () => {
   const [lastPriceUpdate, setLastPriceUpdate] = useState<number | undefined>(undefined);
   const [pinError, setPinError] = useState(false);
   const [pendingAdmin, setPendingAdmin] = useState<UserProfile | null>(null);
+  const [showPinReset, setShowPinReset] = useState(false);
   const swipeStartX = React.useRef<number | null>(null);
   const swipeStartY = React.useRef<number | null>(null);
 
@@ -1181,7 +1246,6 @@ export const InsumaKitchenDashboard = () => {
     // Cargar usuarios — Supabase primero, fallback a localStorage
     loadUsuariosDB().then(rawUsuarios => {
       let source = rawUsuarios;
-      // Fallback: si Supabase no devuelve usuarios, leer de localStorage
       if (source.length === 0) {
         try {
           const local = JSON.parse(localStorage.getItem('insuma_usuarios') ?? '[]');
@@ -1195,13 +1259,36 @@ export const InsumaKitchenDashboard = () => {
         pin: u.pin,
       }));
       setUsuarios(mapped);
-      // Usuario activo inicial = primer cocinero, o primero si no hay
       const inicial = mapped.find(u => u.role === 'chef') ?? mapped[0];
       if (inicial) setActiveUser(inicial);
     });
 
     // Cargar insumos custom
     loadInsumos().then(insumos => setCustomInsumos(insumos));
+
+    // Cargar pedidos desde Supabase — merge con localStorage
+    loadPedidosDB().then(dbRows => {
+      if (dbRows.length === 0) return;
+      setTodayOrders(prev => {
+        const localMap = new Map(prev.map(o => [o.id, o]));
+        const dbIds = new Set(dbRows.map(r => r.id));
+        // Para cada pedido en Supabase: preferir versión local (tiene paymentHistory completo)
+        const merged = dbRows.map(row => localMap.get(row.id) ?? pedidoDBToOrder(row, INITIAL_PROVIDERS));
+        // Agregar pedidos locales que aún no llegaron a Supabase (ej: creados offline)
+        const localOnly = prev.filter(o => !dbIds.has(o.id));
+        return [...merged, ...localOnly];
+      });
+    });
+
+    // Cargar proveedores desde Supabase — solo agregar los que no están en local
+    loadProveedoresDB().then(dbProvs => {
+      if (dbProvs.length === 0) return;
+      setProviders(prev => {
+        const localIds = new Set(prev.map(p => p.id));
+        const newFromDB = dbProvs.filter(dp => !localIds.has(dp.id));
+        return newFromDB.length > 0 ? [...prev, ...newFromDB] : prev;
+      });
+    });
   }, []);
 
   // Persistir todo en localStorage cada vez que cambian
@@ -1217,6 +1304,7 @@ export const InsumaKitchenDashboard = () => {
 
   const handleCancelOrder = useCallback((orderId: string) => {
     setTodayOrders(prev => prev.filter(o => o.id !== orderId));
+    actualizarPedido(orderId, { estado: 'cancelado' });
   }, []);
 
   const handleRequestNotifications = useCallback(async () => {
@@ -1226,6 +1314,7 @@ export const InsumaKitchenDashboard = () => {
   }, []);
   const handleOrderCreated = useCallback((providerName?: string, orderNote?: string, creadoPor?: string, cartItems?: Array<{id: string; name: string; qty: number; unit: string}>, providerPhone?: string, deliveryDate?: string) => {
     const prov = providers.find(p => p.name === providerName);
+    const orderId = crypto.randomUUID();
     const orderItems: OrderItem[] = (cartItems ?? []).map(i => ({
       id: i.id,
       name: i.name,
@@ -1235,18 +1324,15 @@ export const InsumaKitchenDashboard = () => {
       status: 'pending' as const,
       alertMsg: '',
     }));
-    setTodayOrders(prev => [{
-      id: String(Date.now()),
+    const newOrder: Order = {
+      id: orderId,
       provider: providerName ?? 'Nuevo Pedido',
       providerPhone: providerPhone ?? prov?.telefono,
       providerAlias: prov?.alias,
       providerCbu: prov?.cbu,
       category: 'Pedido',
       status: 'waiting' as OrderStatus,
-      time: new Date().toLocaleTimeString('es-AR', {
-        hour: '2-digit',
-        minute: '2-digit'
-      }),
+      time: new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }),
       items: orderItems.length || 1,
       total: 0,
       paymentStatus: 'pending',
@@ -1256,7 +1342,19 @@ export const InsumaKitchenDashboard = () => {
       orderNote: orderNote && orderNote.trim().length > 0 ? orderNote : undefined,
       creadoPor: creadoPor ?? undefined,
       deliveryDate: deliveryDate ?? undefined,
-    }, ...prev]);
+    };
+    setTodayOrders(prev => [newOrder, ...prev]);
+    guardarPedido({
+      id: orderId,
+      proveedorNombre: providerName ?? 'Nuevo Pedido',
+      proveedorId: prov?.id,
+      estado: 'en_espera',
+      nota: orderNote && orderNote.trim().length > 0 ? orderNote : undefined,
+      creadoPor: creadoPor ?? undefined,
+      items: orderItems,
+      total: 0,
+      alertas: deliveryDate ? { deliveryDate } : undefined,
+    });
   }, [providers]);
   const handleOrderReceived = useCallback((orderId: string, hasCash: boolean, newAlerts?: Alert[], receptionNote?: string, recepcionadoPor?: string, totalFactura?: number) => {
     setTodayOrders(prev => prev.map(o => {
@@ -1285,6 +1383,18 @@ export const InsumaKitchenDashboard = () => {
         total: totalFactura ?? o.total,
       };
     }));
+    // Sync to Supabase
+    const nuevoEstado = hasCash ? 'pago_efectivo' : (newAlerts && newAlerts.length > 0 ? 'con_diferencias' : 'recibido');
+    actualizarPedido(orderId, {
+      estado: nuevoEstado,
+      recepcionadoPor: recepcionadoPor ?? undefined,
+      tieneEfectivo: hasCash,
+      total: totalFactura,
+      alertas: {
+        alerts: newAlerts ?? [],
+        receptionNote: receptionNote ?? '',
+      },
+    });
     if (newAlerts && newAlerts.length > 0) {
       newAlerts.forEach(alert => {
         sendNotification(`⚠️ Alerta — ${alert.provider}`, `${alert.itemName}: ${alert.message}`, () => {
@@ -1295,12 +1405,19 @@ export const InsumaKitchenDashboard = () => {
     }
     setTimeout(() => setActiveTab('pagos'), 300);
   }, []);
-  const handleProveedorCreated = useCallback((nombre: string) => {
+  const handleProveedorCreated = useCallback((data: ProveedorCompleto) => {
     setProviders(prev => [{
-      id: `pv-${Date.now()}`,
-      name: nombre,
-      category: 'Nuevo',
-      lastOrderDate: undefined
+      id: crypto.randomUUID(),
+      name: data.nombreEmpresa,
+      category: data.rubro || 'Nuevo',
+      telefono: data.telefonoVentas || undefined,
+      telefonoAdmin: data.telefonoAdmin || undefined,
+      nombreVentas: data.nombreVentas || undefined,
+      email: data.email || undefined,
+      alias: data.alias || undefined,
+      cbu: data.cbu || undefined,
+      diasEntrega: data.diasEntrega.length > 0 ? data.diasEntrega : undefined,
+      plazoPago: data.plazoPago || undefined,
     }, ...prev]);
   }, []);
   const handleUpdateProveedor = useCallback((data: Provider) => {
@@ -1352,6 +1469,7 @@ export const InsumaKitchenDashboard = () => {
         paymentHistory: [...(o.paymentHistory ?? []), confirmEvent, sendEvent]
       };
     }));
+    actualizarPedido(orderId, { estado: 'recibido', tieneEfectivo: true });
     sendNotification('INSUMA — Pago confirmado', 'Pago en efectivo confirmado correctamente.');
   }, []);
   const handlePayDigital = useCallback((orderId: string) => {
@@ -1381,6 +1499,7 @@ export const InsumaKitchenDashboard = () => {
         paymentHistory: [...(o.paymentHistory ?? []), payEvent, sendEvent]
       };
     }));
+    actualizarPedido(orderId, { estado: 'recibido' });
     sendNotification('INSUMA — Pago digital', 'El pago digital fue procesado y el comprobante enviado por WhatsApp.');
   }, []);
   const handleUpdateBillingDiscrepancy = useCallback((orderId: string, resolution: string, newAmount?: number) => {
@@ -1441,6 +1560,10 @@ export const InsumaKitchenDashboard = () => {
       });
       return { ...o, orderItems: updatedItems };
     }));
+  }, []);
+
+  const handleSaveInvoicePhoto = useCallback((orderId: string, dataUrl: string) => {
+    setTodayOrders(prev => prev.map(o => o.id !== orderId ? o : { ...o, invoiceImageUrl: dataUrl }));
   }, []);
 
   const alertOrder = todayOrders.find(o => o.id === alertOrderId) ?? null;
@@ -1697,7 +1820,7 @@ export const InsumaKitchenDashboard = () => {
 
         {activeTab === 'alertas' && <AlertasTab orders={todayOrders} onResolve={handleResolveAlert} />}
         {activeTab === 'recibidos' && <RecibidosTab orders={todayOrders} />}
-        {activeTab === 'pagos' && <PagosTabEnhanced orders={todayOrders} providers={providers} onConfirmCash={handleConfirmCash} onPayDigital={handlePayDigital} onUpdateBillingDiscrepancy={handleUpdateBillingDiscrepancy} onSaveItemPrices={handleSaveItemPrices} onSaveOrderPrices={handleSaveOrderPrices} canView={activeUser.role === 'admin'} />}
+        {activeTab === 'pagos' && <PagosTabEnhanced orders={todayOrders} providers={providers} onConfirmCash={handleConfirmCash} onPayDigital={handlePayDigital} onUpdateBillingDiscrepancy={handleUpdateBillingDiscrepancy} onSaveItemPrices={handleSaveItemPrices} onSaveOrderPrices={handleSaveOrderPrices} onSaveInvoicePhoto={handleSaveInvoicePhoto} canView={activeUser.role === 'admin'} />}
         {activeTab === 'recetas' && <RecetasTab canViewCosts={activeUser.role === 'admin'} customInsumos={customInsumos} lastPriceUpdate={lastPriceUpdate} />}
         {activeTab === 'metricas' && <MetricasTab />}
 
@@ -1851,11 +1974,16 @@ export const InsumaKitchenDashboard = () => {
             </div>
             <button
               onClick={() => {
-                localStorage.removeItem('insuma_onboarding_ok');
-                localStorage.removeItem('insuma_negocio_id');
-                localStorage.removeItem('insuma_negocio');
-                localStorage.removeItem('insuma_usuarios');
-                window.location.reload();
+                setShowUserMenu(false);
+                if (onSignOut) {
+                  onSignOut();
+                } else {
+                  localStorage.removeItem('insuma_onboarding_ok');
+                  localStorage.removeItem('insuma_negocio_id');
+                  localStorage.removeItem('insuma_negocio');
+                  localStorage.removeItem('insuma_usuarios');
+                  window.location.reload();
+                }
               }}
               className="w-full mt-4 flex items-center justify-center gap-2 px-4 py-3 rounded-2xl border border-red-100 text-red-500 text-sm font-medium active:bg-red-50 transition-colors"
             >
@@ -1911,9 +2039,28 @@ export const InsumaKitchenDashboard = () => {
                 </button>
               ))}
             </div>
-            <button onClick={() => setShowPinModal(false)} className="w-full text-center text-sm text-neutral-400 py-2">Cancelar</button>
+            <div className="flex items-center justify-between">
+              <button onClick={() => setShowPinModal(false)} className="text-sm text-neutral-400 py-2">Cancelar</button>
+              {authUserEmail && (
+                <button
+                  onClick={() => { setShowPinModal(false); setShowPinReset(true); }}
+                  className="text-sm text-blue-500 py-2 font-medium"
+                >
+                  Olvidé el código
+                </button>
+              )}
+            </div>
           </motion.div>
         </>}
       </AnimatePresence>
+
+      <PinResetSheet
+        isOpen={showPinReset}
+        email={authUserEmail ?? ''}
+        onClose={() => setShowPinReset(false)}
+        onPinUpdated={(newPin) => {
+          setUsuarios(prev => prev.map(u => u.role === 'admin' ? { ...u, pin: newPin } : u));
+        }}
+      />
     </div>;
 };

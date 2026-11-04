@@ -9,10 +9,23 @@ interface ProveedorForm {
   nombreEmpresa: string;
   nombrePersona: string;
   rubro: string;
-  telefono: string;
-  contactoTipo: 'whatsapp' | 'mail';
-  contactoValor: string;
+  telefonoVentas: string;
+  telefonoAdmin: string;
+  mismoTelefono: boolean;
+  email: string;
+  cbu: string;
+  alias: string;
+  diasEntrega: string[];
+  plazoPago: string;
+}
+
+export interface ProveedorCompleto {
+  nombreEmpresa: string;
   nombreVentas: string;
+  rubro: string;
+  telefonoVentas: string;
+  telefonoAdmin: string;
+  email: string;
   cbu: string;
   alias: string;
   diasEntrega: string[];
@@ -111,14 +124,14 @@ const EMPTY_FORM: ProveedorForm = {
   nombreEmpresa: '',
   nombrePersona: '',
   rubro: '',
-  telefono: '',
-  contactoTipo: 'whatsapp',
-  contactoValor: '',
-  nombreVentas: '',
+  telefonoVentas: '',
+  telefonoAdmin: '',
+  mismoTelefono: true,
+  email: '',
   cbu: '',
   alias: '',
   diasEntrega: [],
-  plazoPago: ''
+  plazoPago: '',
 };
 
 // ─── Step Indicator ───────────────────────────────────────────────────────────
@@ -177,7 +190,7 @@ const TextInput = ({
 interface NuevoProveedorModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onProveedorCreated: (nombre: string) => void;
+  onProveedorCreated: (data: ProveedorCompleto) => void;
 }
 export const NuevoProveedorModal = ({
   isOpen,
@@ -187,7 +200,7 @@ export const NuevoProveedorModal = ({
   const [step, setStep] = useState<FormStep>(1);
   const [form, setForm] = useState<ProveedorForm>(EMPTY_FORM);
   const [saved, setSaved] = useState(false);
-  const set = (key: keyof ProveedorForm, value: string | string[]) => setForm(prev => ({
+  const set = (key: keyof ProveedorForm, value: string | string[] | boolean) => setForm(prev => ({
     ...prev,
     [key]: value
   }));
@@ -197,7 +210,7 @@ export const NuevoProveedorModal = ({
       diasEntrega: prev.diasEntrega.includes(dia) ? prev.diasEntrega.filter(d => d !== dia) : [...prev.diasEntrega, dia]
     }));
   };
-  const canContinueStep1 = form.nombreEmpresa.trim().length > 0 && form.rubro.length > 0 && form.telefono.trim().length > 0;
+  const canContinueStep1 = form.nombreEmpresa.trim().length > 0 && form.rubro.length > 0 && form.telefonoVentas.trim().length > 0 && (form.mismoTelefono || form.telefonoAdmin.trim().length > 0);
   const canContinueStep2 = true; // pago es opcional
 
   const canSave = form.diasEntrega.length > 0;
@@ -212,7 +225,18 @@ export const NuevoProveedorModal = ({
   const handleSave = () => {
     setSaved(true);
     setTimeout(() => {
-      onProveedorCreated(form.nombreEmpresa);
+      onProveedorCreated({
+        nombreEmpresa: form.nombreEmpresa,
+        nombreVentas: form.nombrePersona,
+        rubro: form.rubro,
+        telefonoVentas: form.telefonoVentas,
+        telefonoAdmin: form.mismoTelefono ? form.telefonoVentas : form.telefonoAdmin,
+        email: form.email,
+        cbu: form.cbu,
+        alias: form.alias,
+        diasEntrega: form.diasEntrega,
+        plazoPago: form.plazoPago === '__otros__' ? '' : form.plazoPago,
+      });
       resetAndClose();
     }, 1400);
   };
@@ -320,24 +344,44 @@ export const NuevoProveedorModal = ({
                       </div>
                     </Field>
 
-                    {/* Teléfono */}
-                    <Field label="Teléfono" icon={Phone}>
-                      <TextInput value={form.telefono} onChange={v => set('telefono', v)} placeholder="+54 9 11 1234-5678" type="tel" inputMode="tel" />
+                    {/* Teléfono de ventas */}
+                    <Field label="Teléfono de ventas" icon={Phone}>
+                      <TextInput value={form.telefonoVentas} onChange={v => set('telefonoVentas', v)} placeholder="+54 9 11 1234-5678" type="tel" inputMode="tel" />
+                      <p className="text-[10px] text-neutral-400 font-medium mt-1.5">Para enviar pedidos por WhatsApp</p>
                     </Field>
 
-                    {/* Contacto preferido */}
-                    <Field label="Contacto preferido" icon={Mail}>
-                      <div className="flex gap-2 mb-2">
-                        {(['whatsapp', 'mail'] as const).map(tipo => <button key={tipo} onClick={() => set('contactoTipo', tipo)} className={`flex-1 py-2.5 rounded-xl border text-xs font-black transition-all active:scale-95 uppercase tracking-wide ${form.contactoTipo === tipo ? 'bg-black text-white border-black' : 'bg-white text-neutral-600 border-neutral-200'}`}>
-                            {tipo === 'whatsapp' ? 'WhatsApp' : 'E-mail'}
-                          </button>)}
+                    {/* Toggle mismo teléfono */}
+                    <div className="flex items-center justify-between bg-neutral-50 border border-neutral-100 rounded-2xl px-4 py-3">
+                      <div>
+                        <p className="text-xs font-black text-neutral-800">Mismo teléfono para admin</p>
+                        <p className="text-[10px] text-neutral-400 font-medium mt-0.5">Para enviar comprobantes de pago</p>
                       </div>
-                      <TextInput value={form.contactoValor} onChange={v => set('contactoValor', v)} placeholder={form.contactoTipo === 'whatsapp' ? '+54 9 11 1234-5678' : 'proveedor@email.com'} type={form.contactoTipo === 'mail' ? 'email' : 'tel'} inputMode={form.contactoTipo === 'mail' ? 'email' : 'tel'} />
+                      <button
+                        onClick={() => setForm(prev => ({ ...prev, mismoTelefono: !prev.mismoTelefono }))}
+                        className={`w-12 h-6 rounded-full transition-all relative shrink-0 ${form.mismoTelefono ? 'bg-black' : 'bg-neutral-200'}`}
+                      >
+                        <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-all ${form.mismoTelefono ? 'right-0.5' : 'left-0.5'}`} />
+                      </button>
+                    </div>
+
+                    {/* Teléfono de admin (solo si son distintos) */}
+                    {!form.mismoTelefono && (
+                      <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}>
+                        <Field label="Teléfono de admin" icon={Phone}>
+                          <TextInput value={form.telefonoAdmin} onChange={v => set('telefonoAdmin', v)} placeholder="+54 9 11 9876-5432" type="tel" inputMode="tel" />
+                          <p className="text-[10px] text-neutral-400 font-medium mt-1.5">Para enviar comprobantes de pago</p>
+                        </Field>
+                      </motion.div>
+                    )}
+
+                    {/* E-mail */}
+                    <Field label="E-mail" icon={Mail} optional>
+                      <TextInput value={form.email} onChange={v => set('email', v)} placeholder="proveedor@email.com" type="email" inputMode="email" />
                     </Field>
 
-                    {/* Nombre ventas */}
+                    {/* Persona de ventas */}
                     <Field label="Persona de ventas" icon={User} optional>
-                      <TextInput value={form.nombreVentas} onChange={v => set('nombreVentas', v)} placeholder="Ej: María López" />
+                      <TextInput value={form.nombrePersona} onChange={v => set('nombrePersona', v)} placeholder="Ej: María López" />
                     </Field>
                   </div>
 
@@ -476,9 +520,13 @@ export const NuevoProveedorModal = ({
                           <span className="text-xs font-black text-black">{form.rubro || '—'}</span>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="text-xs text-neutral-400 font-medium">Teléfono</span>
-                          <span className="text-xs font-black text-black">{form.telefono || '—'}</span>
+                          <span className="text-xs text-neutral-400 font-medium">Tel. ventas</span>
+                          <span className="text-xs font-black text-black">{form.telefonoVentas || '—'}</span>
                         </div>
+                        {!form.mismoTelefono && form.telefonoAdmin && <div className="flex justify-between items-center">
+                          <span className="text-xs text-neutral-400 font-medium">Tel. admin</span>
+                          <span className="text-xs font-black text-black">{form.telefonoAdmin}</span>
+                        </div>}
                         {form.plazoPago && form.plazoPago !== '__otros__' && <div className="flex justify-between items-center">
                             <span className="text-xs text-neutral-400 font-medium">Plazo de pago</span>
                             <span className="text-xs font-black text-black">{form.plazoPago}</span>

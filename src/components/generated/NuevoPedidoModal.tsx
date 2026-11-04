@@ -15,6 +15,7 @@ interface Provider {
   lastOrderDate?: string;
   whatsapp: string;
   nombreVentas?: string;
+  diasEntrega?: string[];
 }
 interface Product {
   id: string;
@@ -333,6 +334,7 @@ interface ProviderProp {
   isOrganic?: boolean;
   isFavorite?: boolean;
   lastOrderDate?: string;
+  diasEntrega?: string[];
 }
 interface NuevoPedidoModalProps {
   isOpen: boolean;
@@ -407,6 +409,7 @@ export const NuevoPedidoModal = ({
     isOrganic: p.isOrganic,
     isFavorite: p.isFavorite,
     lastOrderDate: p.lastOrderDate,
+    diasEntrega: p.diasEntrega,
   }));
   useEffect(() => {
     if (!isOpen || !initialProvider) return;
@@ -910,7 +913,12 @@ export const NuevoPedidoModal = ({
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-black text-black text-sm">{selectedProvider?.name}</p>
-                        <p className="text-xs text-neutral-400 mt-0.5">{selectedProvider?.category} · WhatsApp</p>
+                        <p className="text-xs text-neutral-400 mt-0.5">
+                          {selectedProvider?.category} · WhatsApp
+                          {selectedProvider?.diasEntrega && selectedProvider.diasEntrega.length > 0 && (
+                            <span className="ml-1 text-neutral-300">· entrega {selectedProvider.diasEntrega.join(', ')}</span>
+                          )}
+                        </p>
                       </div>
                       <button onClick={() => setStep(1)} className="text-black text-xs font-bold underline underline-offset-2">Cambiar</button>
                     </div>
