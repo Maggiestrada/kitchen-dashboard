@@ -9,6 +9,7 @@ interface Insumo {
   unit: string;
   pricePerKg: number;
   provider: string;
+  gramsPerUnit?: number;
 }
 
 const INGREDIENTE_CATEGORIES = ['Carnes', 'Verduras', 'Lácteos', 'Almacén', 'Pescados', 'Bebidas'];
@@ -44,15 +45,19 @@ const CreateForm: React.FC<{
   const [nombre, setNombre] = useState('');
   const [categoria, setCategoria] = useState(INGREDIENTE_CATEGORIES[0]);
   const [unit, setUnit] = useState('kg');
+  const [gramsPerUnit, setGramsPerUnit] = useState<number | ''>('');
   const [proveedor, setProveedor] = useState('');
   const [showUnitPicker, setShowUnitPicker] = useState(false);
   const [showCategoriaPicker, setShowCategoriaPicker] = useState(false);
   const [showProveedorPicker, setShowProveedorPicker] = useState(false);
   const [error, setError] = useState('');
 
+  const needsConversion = !['kg', 'lt', 'l'].includes(unit.toLowerCase());
+
   const handleSave = () => {
     if (!nombre.trim()) { setError('El nombre es requerido'); return; }
     if (!proveedor.trim()) { setError('El proveedor es requerido'); return; }
+    if (needsConversion && !gramsPerUnit) { setError('Ingresá la conversión a gr'); return; }
 
     const newInsumo: Insumo = {
       id: `custom-${Date.now()}`,
@@ -61,6 +66,7 @@ const CreateForm: React.FC<{
       unit,
       pricePerKg: 0,
       provider: proveedor.trim(),
+      gramsPerUnit: needsConversion && gramsPerUnit ? Number(gramsPerUnit) : undefined,
     };
     onSave(newInsumo);
   };
@@ -194,6 +200,26 @@ const CreateForm: React.FC<{
             )}
           </AnimatePresence>
         </div>
+
+        {/* Conversión a gr (solo para unidades que no son kg/lt) */}
+        {needsConversion && (
+          <div>
+            <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">Conversión a gr</p>
+            <p className="text-[10px] text-neutral-400 mb-2">¿Cuántos gr equivale 1 {unit}? Ej: 1 atado = 80 gr</p>
+            <div className="flex items-center gap-2 bg-neutral-50 border border-neutral-200 rounded-xl px-3.5 py-3">
+              <span className="text-xs text-neutral-400">1 {unit} =</span>
+              <input
+                type="number"
+                inputMode="decimal"
+                value={gramsPerUnit}
+                onChange={e => { setGramsPerUnit(e.target.value === '' ? '' : Number(e.target.value)); setError(''); }}
+                placeholder="80"
+                className="flex-1 bg-transparent text-sm font-medium text-black outline-none tabular-nums"
+              />
+              <span className="text-xs text-neutral-400">gr</span>
+            </div>
+          </div>
+        )}
 
         {/* Proveedor (requerido) */}
         <div>

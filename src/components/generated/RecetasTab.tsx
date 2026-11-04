@@ -16,6 +16,7 @@ interface Insumo {
   unit: string;
   pricePerKg: number;
   provider: string;
+  gramsPerUnit?: number;
 }
 
 interface SubRecetaIngrediente {
@@ -45,6 +46,7 @@ interface RecetaIngrediente {
   nombre: string;
   grams: number;
   wastePercent: number;
+  wasteGrams: number;
   unit: string;
 }
 
@@ -103,15 +105,18 @@ function getInsumoPrecioGramo(insumoId: string, insumos: Insumo[]): number {
   if (!ins) return 0;
   const unit = (ins.unit ?? '').toLowerCase().trim();
   if (['u', 'unid', 'und', 'unidad', 'unidades'].includes(unit)) {
-    return ins.pricePerKg; // price per unit (grams field = qty in units)
+    return ins.pricePerKg; // price per unit
   }
   if (unit === 'kg') {
-    return ins.pricePerKg / 1000; // pricePerKg = price/kg, return price/gram
+    return ins.pricePerKg / 1000; // price per gram
   }
   if (unit === 'l' || unit === 'lt') {
-    return ins.pricePerKg / 1000; // pricePerKg = price/liter, return price/ml
+    return ins.pricePerKg / 1000; // price per ml
   }
-  // default: gr, ml, cc → pricePerKg/1000 = price per gram/ml
+  // atado, paq, docena, sobre, otro → usar gramsPerUnit para calcular precio/gr
+  if (ins.gramsPerUnit && ins.gramsPerUnit > 0) {
+    return ins.pricePerKg / ins.gramsPerUnit;
+  }
   return ins.pricePerKg / 1000;
 }
 
@@ -140,7 +145,7 @@ function getIngCosto(
   insumos: Insumo[],
   subRecetas: SubReceta[]
 ): number {
-  const gramsNeeded = ing.grams * (1 + ing.wastePercent / 100);
+  const gramsNeeded = ing.grams + (ing.wasteGrams ?? 0);
   if (ing.tipo === 'insumo') {
     return getInsumoPrecioGramo(ing.referenciaId, insumos) * gramsNeeded;
   }
@@ -441,6 +446,7 @@ const IngredienteEditRow = ({
     if (['u', 'unid', 'und', 'unidad', 'unidades'].includes(u)) return ins.unit;
     if (u === 'kg') return 'gr';
     if (u === 'lt' || u === 'l') return 'ml';
+    if (ins.gramsPerUnit) return 'gr';
     return ins.unit || ing.unit;
   }, [ing.referenciaId, ing.tipo, ing.unit, insumos]);
 
@@ -476,54 +482,25 @@ const IngredienteEditRow = ({
           />
           <span className="text-[10px] text-neutral-400 shrink-0">{effectiveUnit}</span>
         </div>
-        <div className="relative">
-          <div className="flex items-center gap-1.5 bg-neutral-50 border border-neutral-200 rounded-xl px-2.5 py-2 w-24" title="Porcentaje de la cantidad que se pierde en preparación (limpieza, cocción, etc.)">
-            <span className="text-[10px] text-neutral-400 shrink-0">merma%</span>
-            <input
-              type="number"
-              inputMode="decimal"
-              value={ing.wastePercent || ''}
-              onChange={e => onChange({ ...ing, wastePercent: Math.min(100, parseFloat(e.target.value) || 0) })}
-              onFocus={() => setShowMermaSuggestions(true)}
-              onBlur={() => setTimeout(() => setShowMermaSuggestions(false), 150)}
-              placeholder="0"
-              className="flex-1 bg-transparent text-sm font-medium text-black outline-none tabular-nums w-0 min-w-0"
-              style={{ MozAppearance: 'textfield' } as React.CSSProperties}
-            />
-          </div>
-          <AnimatePresence>
-            {showMermaSuggestions && suggestions && (
-              <motion.div
-                initial={{ opacity: 0, y: -4 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -4 }}
-                transition={{ duration: 0.12 }}
-                className="absolute bottom-full right-0 mb-1.5 bg-white border border-neutral-200 rounded-xl shadow-lg p-2 z-20 min-w-max"
-              >
-                <p className="text-[9px] uppercase tracking-widest text-neutral-400 mb-1.5 px-1">{suggestions.label} · sugerido</p>
-                <div className="flex gap-1.5">
-                  {suggestions.values.map(v => (
-                    <button
-                      key={v}
-                      onMouseDown={e => e.preventDefault()}
-                      onClick={() => { onChange({ ...ing, wastePercent: v }); setShowMermaSuggestions(false); }}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${ing.wastePercent === v ? 'bg-black text-white' : 'bg-neutral-100 text-neutral-600 active:bg-neutral-200'}`}
-                    >
-                      {v}%
-                    </button>
-                  ))}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+        <div className="flex items-center gap-1.5 bg-neutral-50 border border-neutral-200 rounded-xl px-2.5 py-2 w-28" title="Gramos que se pierden en la preparación (limpieza, cocción, etc.)">
+          <span className="text-[10px] text-neutral-400 shrink-0">desperdicio</span>
+          <input
+            type="number"
+            inputMode="decimal"
+            value={ing.wasteGrams || ''}
+            onChange={e => onChange({ ...ing, wasteGrams: parseFloat(e.target.value) || 0, wastePercent: ing.grams > 0 ? (parseFloat(e.target.value) || 0) / ing.grams * 100 : 0 })}
+            placeholder="0"
+            className="flex-1 bg-transparent text-sm font-medium text-black outline-none tabular-nums w-0 min-w-0"
+            style={{ MozAppearance: 'textfield' } as React.CSSProperties}
+          />
+          <span className="text-[10px] text-neutral-400 shrink-0">gr</span>
         </div>
       </div>
-      {/* Feature 6: Merma net quantity feedback */}
-      {ing.wastePercent > 0 && (
+      {(ing.wasteGrams ?? 0) > 0 && (
         <div className="flex items-center gap-1.5 mt-1 pl-6">
           <div className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
           <p className="text-[10px] text-amber-600 font-medium">
-            {ing.grams} {ing.unit} entrada → {Math.round(ing.grams * (1 - ing.wastePercent / 100) * 10) / 10} {ing.unit} netos
+            {ing.grams} gr entrada → {Math.max(0, ing.grams - (ing.wasteGrams ?? 0))} gr netos
           </p>
         </div>
       )}
@@ -738,6 +715,7 @@ const RecetaForm = ({
         nombre: ins.name,
         grams: defaultQty,
         wastePercent: 0,
+        wasteGrams: 0,
         unit: ingUnit,
       }]);
     } else {
@@ -749,6 +727,7 @@ const RecetaForm = ({
         nombre: sub.nombre,
         grams: 50,
         wastePercent: 0,
+        wasteGrams: 0,
         unit: sub.rindeUnit,
       }]);
     }
@@ -994,6 +973,27 @@ const RecetaForm = ({
                 )}
               </div>
             </div>
+
+            {/* Merma total */}
+            {ingredientes.some(i => (i.wasteGrams ?? 0) > 0) && (
+              <div className="bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3.5">
+                <p className="text-[10px] uppercase tracking-widest text-amber-500 font-bold mb-2">Merma total de la receta</p>
+                <div className="space-y-1.5">
+                  {ingredientes.filter(i => (i.wasteGrams ?? 0) > 0).map(i => (
+                    <div key={i.id} className="flex items-center justify-between">
+                      <p className="text-xs text-amber-700 truncate">{i.nombre}</p>
+                      <p className="text-xs font-bold text-amber-700 tabular-nums shrink-0 ml-2">{i.wasteGrams} gr</p>
+                    </div>
+                  ))}
+                  <div className="border-t border-amber-200 pt-1.5 mt-1 flex items-center justify-between">
+                    <p className="text-xs font-bold text-amber-800">Total merma</p>
+                    <p className="text-sm font-black text-amber-800 tabular-nums">
+                      {ingredientes.reduce((s, i) => s + (i.wasteGrams ?? 0), 0)} gr
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Procedimiento */}
             <div>
