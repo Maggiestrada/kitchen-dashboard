@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, ChevronRight, ArrowRight, Check, CheckCircle2, AlertCircle, ExternalLink, CreditCard, Banknote, Receipt, Send, Package, History, Camera, Edit3, Upload, Clock, MessageSquare, StickyNote, ChevronDown, Sparkles, FileText, Eye, Lock, Copy } from 'lucide-react';
+import { X, ChevronRight, ArrowRight, Check, CheckCircle2, AlertCircle, ExternalLink, CreditCard, Banknote, Receipt, Send, Package, History, Camera, Edit3, Upload, Clock, MessageSquare, StickyNote, ChevronDown, Sparkles, FileText, Eye, Lock, Copy, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -105,6 +105,23 @@ const MOCK_ORDER_ITEMS: OrderLineItem[] = [];
 
 const MOCK_AI_SCANS: Record<string, AiInvoiceScan> = {};
 
+const FIXED_MOCK_SCAN: AiInvoiceScan = {
+  scannedAt: '04/11/2025 09:42',
+  total: 18650,
+  invoiceNumber: '0001-00034521',
+  date: '04/11/2025',
+  vendor: 'Proveedor',
+  items: [
+    { id: 'ai-1', name: 'Tomate perita', qty: 10, unit: 'kg', unitPrice: 480, total: 4800 },
+    { id: 'ai-2', name: 'Lechuga mantecosa', qty: 5, unit: 'kg', unitPrice: 320, total: 1600 },
+    { id: 'ai-3', name: 'Zanahoria', qty: 8, unit: 'kg', unitPrice: 290, total: 2320 },
+    { id: 'ai-4', name: 'Cebolla', qty: 12, unit: 'kg', unitPrice: 210, total: 2520 },
+    { id: 'ai-5', name: 'Papa', qty: 15, unit: 'kg', unitPrice: 180, total: 2700 },
+    { id: 'ai-6', name: 'Zapallo', qty: 6, unit: 'kg', unitPrice: 285, total: 1710 },
+    { id: 'ai-7', name: 'Pimiento rojo', qty: 4, unit: 'kg', unitPrice: 750, total: 3000 },
+  ],
+};
+
 // ─── Payment term configs ─────────────────────────────────────────────────────
 
 const PAYMENT_HISTORY_CONFIG: Record<PaymentHistoryEvent['type'], {
@@ -202,6 +219,7 @@ const AiInvoiceDetailSheet = ({
   onUpdateBillingDiscrepancy,
   onSaveItemPrices,
   onSaveOrderPrices,
+  onSaveInvoicePhoto,
 }: {
   order: Order | null;
   isOpen: boolean;
@@ -209,10 +227,12 @@ const AiInvoiceDetailSheet = ({
   onUpdateBillingDiscrepancy?: (orderId: string, resolution: string, newAmount?: number) => void;
   onSaveItemPrices?: (items: { nombre: string; precioUnit: number; unit: string }[]) => void;
   onSaveOrderPrices?: (orderId: string, items: { id: string; precioUnit: number; ivaRate: number }[]) => void;
+  onSaveInvoicePhoto?: (orderId: string, dataUrl: string) => void;
 }) => {
   const [aiScanLoading, setAiScanLoading] = useState(false);
   const [aiScanDone, setAiScanDone] = useState(false);
   const [showAiSection, setShowAiSection] = useState(false);
+  const [localMockScan, setLocalMockScan] = useState<AiInvoiceScan | null>(null);
   const [manualTotalInput, setManualTotalInput] = useState('');
   const [pricesSaved, setPricesSaved] = useState(false);
   const [manualTotalSaved, setManualTotalSaved] = useState(false);
@@ -222,11 +242,26 @@ const AiInvoiceDetailSheet = ({
   const [editTotal, setEditTotal] = useState<number>(0);
   const [fotoAdjuntada, setFotoAdjuntada] = useState(false);
   const [showMpConfirm, setShowMpConfirm] = useState(false);
+  const [localPhotoUrl, setLocalPhotoUrl] = useState<string | null>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !order) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = ev.target?.result as string;
+      setLocalPhotoUrl(dataUrl);
+      setFotoAdjuntada(true);
+      onSaveInvoicePhoto?.(order.id, dataUrl);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
 
   React.useEffect(() => {
     if (isOpen && order) {
       setEditTotal(order.total ?? 0);
-      // Inicializar ítems desde los orderItems reales del pedido
       const realItems: OrderLineItem[] = (order.orderItems ?? []).map(i => ({
         id: i.id,
         nombre: i.name,
@@ -238,7 +273,8 @@ const AiInvoiceDetailSheet = ({
       }));
       setOrderItems(realItems.length > 0 ? realItems : MOCK_ORDER_ITEMS);
       setEditingCircuito(false);
-      setFotoAdjuntada(false);
+      setFotoAdjuntada(!!order.invoiceImageUrl);
+      setLocalPhotoUrl(order.invoiceImageUrl ?? null);
       setManualTotalInput(order.total ? String(order.total) : '');
       setManualTotalSaved(!!order.total);
     }
@@ -258,10 +294,13 @@ const AiInvoiceDetailSheet = ({
       const t = setTimeout(() => {
         setAiScanLoading(false);
         setAiScanDone(true);
+        setLocalMockScan(FIXED_MOCK_SCAN);
+        setShowAiSection(true);
       }, 1800);
       return () => clearTimeout(t);
     } else if (isOpen && scan) {
       setAiScanDone(true);
+      setShowAiSection(true);
     }
   }, [isOpen, hasPhoto, scan]);
   useEffect(() => {
@@ -269,11 +308,16 @@ const AiInvoiceDetailSheet = ({
       const t = setTimeout(() => {
         setAiScanLoading(false);
         setAiScanDone(false);
+        setLocalMockScan(null);
+        setShowAiSection(false);
       }, 350);
       return () => clearTimeout(t);
     }
   }, [isOpen]);
   if (!order) return null;
+
+  const noPricesLoaded = orderItems.length > 0 && orderItems.every(it => it.precioUnit === 0);
+  const showPriceAlert = noPricesLoaded && (order.status === 'received' || order.status === 'discrepancy' || order.status === 'paid_cash');
 
   // Total calculado desde los ítems del pedido (neto + IVA)
   const totalNeto = orderItems.reduce((s, it) => s + (it.cantRecibida || it.cantPedida || 1) * it.precioUnit, 0);
@@ -287,7 +331,7 @@ const AiInvoiceDetailSheet = ({
       ? totalFacturaCalculado
       : (scan?.total ?? 0);
 
-  const activeScan = scan;
+  const activeScan = scan ?? localMockScan;
   const displayItems = order.orderItems ?? [];
   const fullTimeline = [{
     id: 'tl-created',
@@ -370,11 +414,22 @@ const AiInvoiceDetailSheet = ({
               <div className="flex items-center justify-between bg-neutral-50 border border-neutral-100 rounded-2xl px-4 py-4">
                 <div>
                   <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">Estado</p>
-                  <div className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide" style={{
-                backgroundColor: STATUS_CONFIG[order.status].bg,
-                color: STATUS_CONFIG[order.status].text
-              }}>
-                    <span>{STATUS_CONFIG[order.status].label}</span>
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide" style={{
+                  backgroundColor: STATUS_CONFIG[order.status].bg,
+                  color: STATUS_CONFIG[order.status].text
+                }}>
+                      <span>{STATUS_CONFIG[order.status].label}</span>
+                    </div>
+                    {localPhotoUrl && (
+                      <button
+                        onClick={() => downloadInvoice(localPhotoUrl, `factura_${order.provider.replace(/\s+/g, '_')}_${order.id.slice(0, 8)}.jpg`)}
+                        className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-neutral-200 text-neutral-600 text-[10px] font-bold active:scale-95 transition-transform"
+                      >
+                        <Download size={9} strokeWidth={2.5} />
+                        <span>Factura</span>
+                      </button>
+                    )}
                   </div>
                 </div>
                 <div className="text-right">
@@ -383,6 +438,17 @@ const AiInvoiceDetailSheet = ({
                   </div>
               </div>
 
+              {/* Alert: sin precios cargados */}
+              {showPriceAlert && (
+                <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 flex items-start gap-3">
+                  <AlertCircle size={16} className="text-amber-500 mt-0.5 shrink-0" strokeWidth={2.5} />
+                  <div className="flex-1">
+                    <p className="text-xs font-black text-amber-800">Cargá los precios del pedido</p>
+                    <p className="text-[10px] text-amber-600 font-medium mt-0.5">Sin precios no podés costear. Ingresá el subtotal neto de cada producto y guardá.</p>
+                  </div>
+                </motion.div>
+              )}
+
               {/* Detalle del pedido con costos */}
               {(() => {
                 const totalFactura = totalFacturaCalculado;
@@ -390,7 +456,17 @@ const AiInvoiceDetailSheet = ({
                 return (
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">Detalle del pedido</p>
+                      <div>
+                        <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">
+                          {noPricesLoaded ? 'Cargar precios del pedido' : 'Detalle del pedido'}
+                        </p>
+                        {!noPricesLoaded && totalFactura > 0 && (
+                          <p className="text-[10px] text-green-600 font-bold mt-0.5 flex items-center gap-1">
+                            <Check size={9} strokeWidth={3} />
+                            Precios completos
+                          </p>
+                        )}
+                      </div>
                       <div className="flex items-center gap-2">
                         {totalFactura > 0 && (
                           <button
@@ -556,18 +632,61 @@ const AiInvoiceDetailSheet = ({
               {/* Invoice photo */}
               {hasPhoto && <div>
                   <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">Foto de la factura / remito</p>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    className="hidden"
+                    onChange={handleFileChange}
+                  />
                   <div className="bg-neutral-50 border border-neutral-100 rounded-2xl overflow-hidden">
                     <div className="flex items-center gap-3 px-4 py-3 border-b border-neutral-100">
-                      <div className="w-14 h-14 rounded-xl bg-neutral-200 flex items-center justify-center shrink-0">
-                        <Camera size={20} className="text-neutral-400" strokeWidth={1.5} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-black text-neutral-700">factura_{order.id}.jpg</p>
-                        <p className="text-[10px] text-neutral-400 font-medium mt-0.5">Capturado en recepción · {order.receivedAt ?? order.time}</p>
-                        <div className="flex items-center gap-1 mt-1.5">
-                          <CheckCircle2 size={10} className="text-green-500" strokeWidth={2.5} />
-                          <span className="text-[9px] font-bold text-green-600 uppercase tracking-wide">Verificado</span>
+                      {localPhotoUrl ? (
+                        <img
+                          src={localPhotoUrl}
+                          alt="Factura"
+                          className="w-14 h-14 rounded-xl object-cover shrink-0 border border-neutral-200"
+                        />
+                      ) : (
+                        <div className="w-14 h-14 rounded-xl bg-neutral-200 flex items-center justify-center shrink-0">
+                          <Camera size={20} className="text-neutral-400" strokeWidth={1.5} />
                         </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        {localPhotoUrl ? (
+                          <>
+                            <p className="text-xs font-black text-neutral-700">Factura adjuntada</p>
+                            <p className="text-[10px] text-neutral-400 font-medium mt-0.5">{order.receivedAt ?? order.time}</p>
+                            <div className="flex items-center gap-2 mt-1.5">
+                              <button
+                                onClick={() => downloadInvoice(localPhotoUrl!, `factura_${order.provider.replace(/\s+/g, '_')}_${order.id.slice(0, 8)}.jpg`)}
+                                className="flex items-center gap-1 text-[10px] font-black text-black bg-neutral-100 hover:bg-neutral-200 active:scale-95 transition-all px-2.5 py-1 rounded-lg"
+                              >
+                                <Download size={10} strokeWidth={2.5} />
+                                <span>Descargar</span>
+                              </button>
+                              <button
+                                onClick={() => fileInputRef.current?.click()}
+                                className="text-[9px] font-bold text-neutral-400 underline active:opacity-60"
+                              >
+                                Reemplazar
+                              </button>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <p className="text-xs font-black text-neutral-700">Sin foto adjunta</p>
+                            <p className="text-[10px] text-neutral-400 font-medium mt-0.5">Adjuntá la factura o remito del pedido</p>
+                            <button
+                              onClick={() => fileInputRef.current?.click()}
+                              className="mt-1.5 flex items-center gap-1 text-[10px] font-black text-black bg-neutral-100 hover:bg-neutral-200 active:scale-95 transition-all px-2.5 py-1 rounded-lg"
+                            >
+                              <Camera size={10} strokeWidth={2.5} />
+                              <span>Adjuntar foto</span>
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
 
@@ -841,6 +960,7 @@ const ProviderOrdersSheet = ({
   onUpdateBillingDiscrepancy,
   onSaveItemPrices,
   onSaveOrderPrices,
+  onSaveInvoicePhoto,
 }: {
   group: ProviderPaymentGroup | null;
   isOpen: boolean;
@@ -850,6 +970,7 @@ const ProviderOrdersSheet = ({
   onUpdateBillingDiscrepancy: (orderId: string, resolution: string, newAmount?: number) => void;
   onSaveItemPrices?: (items: { nombre: string; precioUnit: number; unit: string }[]) => void;
   onSaveOrderPrices?: (orderId: string, items: { id: string; precioUnit: number; ivaRate: number }[]) => void;
+  onSaveInvoicePhoto?: (orderId: string, dataUrl: string) => void;
 }) => {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [paying, setPaying] = useState(false);
@@ -994,6 +1115,8 @@ const ProviderOrdersSheet = ({
                 const cfg = STATUS_CONFIG[order.status];
                 const hasScan = !!(order.aiInvoiceScan ?? MOCK_AI_SCANS[order.id]);
                 const hasPhoto = order.status === 'received' || order.status === 'discrepancy' || order.status === 'paid_cash';
+                const hasPriceData = order.orderItems && order.orderItems.length > 0 && order.orderItems.some(i => (i.precioUnit ?? 0) > 0);
+                const needsPrices = !isPaid && hasPhoto && order.orderItems && order.orderItems.length > 0 && !hasPriceData;
                 return <button key={order.id} onClick={() => setSelectedOrder(order)} className={`w-full text-left rounded-2xl border overflow-hidden active:scale-[0.985] transition-transform ${isPaid ? 'bg-neutral-50 border-neutral-100' : 'bg-white border-neutral-200'}`}>
                         <div className="flex">
                           <div className="w-1 shrink-0 rounded-l-xl" style={{
@@ -1003,8 +1126,9 @@ const ProviderOrdersSheet = ({
                             <div className="flex items-start justify-between gap-2">
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                                  <p className="text-xs font-black text-neutral-900">Pedido #{order.id}</p>
+                                  <p className="text-xs font-black text-neutral-900">Pedido #{order.id.slice(0, 8)}</p>
                                   {isPaid && <span className="text-[9px] font-bold text-green-700 bg-green-100 px-1.5 py-0.5 rounded-full uppercase">Pagado</span>}
+                                  {needsPrices && <span className="text-[9px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-full uppercase">Sin precios</span>}
                                 </div>
                                 <p className="text-[10px] text-neutral-400 font-medium">{order.category} · {order.items} items</p>
                                 <p className="text-[10px] text-neutral-300 font-medium mt-0.5">{order.weekLabel} · {order.receivedAt ?? order.time}</p>
@@ -1099,7 +1223,7 @@ const ProviderOrdersSheet = ({
           </motion.div>
 
           {/* Order detail sheet */}
-          <AiInvoiceDetailSheet order={selectedOrder} isOpen={selectedOrder !== null} onClose={() => setSelectedOrder(null)} onUpdateBillingDiscrepancy={onUpdateBillingDiscrepancy} onSaveItemPrices={onSaveItemPrices} onSaveOrderPrices={onSaveOrderPrices} />
+          <AiInvoiceDetailSheet order={selectedOrder} isOpen={selectedOrder !== null} onClose={() => setSelectedOrder(null)} onUpdateBillingDiscrepancy={onUpdateBillingDiscrepancy} onSaveItemPrices={onSaveItemPrices} onSaveOrderPrices={onSaveOrderPrices} onSaveInvoicePhoto={onSaveInvoicePhoto} />
 
           <MpConfirmModal
             isOpen={showMpConfirm}
@@ -1115,6 +1239,270 @@ const ProviderOrdersSheet = ({
     </AnimatePresence>;
 };
 
+// ─── Archive helpers ──────────────────────────────────────────────────────────
+
+const getMonthKey = (order: Order): string => {
+  if (order.deliveryDate) {
+    const d = new Date(order.deliveryDate);
+    if (!isNaN(d.getTime())) return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  }
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+};
+
+const getMonthLabel = (key: string): string => {
+  const [year, month] = key.split('-');
+  const d = new Date(parseInt(year), parseInt(month) - 1, 1);
+  return d.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
+};
+
+const dataUrlToBlob = (dataUrl: string): Blob => {
+  const parts = dataUrl.split(',');
+  const mime = parts[0].match(/:(.*?);/)?.[1] ?? 'image/jpeg';
+  const binary = atob(parts[1]);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return new Blob([bytes], { type: mime });
+};
+
+const downloadInvoice = async (dataUrl: string, filename: string) => {
+  try {
+    const blob = dataUrlToBlob(dataUrl);
+    const file = new File([blob], filename, { type: blob.type });
+
+    // Web Share API — funciona en iOS y Android (abre sheet nativo de compartir)
+    if (navigator.share && navigator.canShare?.({ files: [file] })) {
+      await navigator.share({ files: [file], title: filename });
+      return;
+    }
+
+    // Fallback: blob URL + link para desktop/Android Chrome
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.style.display = 'none';
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 10000);
+  } catch {
+    // Último recurso: abrir en nueva pestaña
+    window.open(dataUrl, '_blank');
+  }
+};
+
+const downloadAll = (orders: Order[], prefix: string) => {
+  orders.filter(o => o.invoiceImageUrl).forEach((o, i) => {
+    setTimeout(() => {
+      downloadInvoice(o.invoiceImageUrl!, `${prefix}_${o.provider.replace(/\s+/g, '_')}_${i + 1}.jpg`);
+    }, i * 800);
+  });
+};
+
+// ─── Archivo Tab ──────────────────────────────────────────────────────────────
+
+const ArchivoTab = ({
+  paidOrders,
+  onOpenDetail,
+}: {
+  paidOrders: Order[];
+  onOpenDetail: (order: Order) => void;
+}) => {
+  const [view, setView] = useState<'mes' | 'proveedor'>('mes');
+  const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
+  const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
+
+  const monthGroupMap = paidOrders.reduce<Record<string, { key: string; orders: Order[]; total: number; invoiceCount: number }>>((acc, o) => {
+    const key = getMonthKey(o);
+    if (!acc[key]) acc[key] = { key, orders: [], total: 0, invoiceCount: 0 };
+    acc[key].orders.push(o);
+    acc[key].total += o.total ?? 0;
+    if (o.invoiceImageUrl) acc[key].invoiceCount++;
+    return acc;
+  }, {});
+  const monthGroups = Object.entries(monthGroupMap).sort((a, b) => b[0].localeCompare(a[0])).map(([, v]) => v);
+
+  const providerGroupMap = paidOrders.reduce<Record<string, { name: string; orders: Order[]; total: number; invoiceCount: number }>>((acc, o) => {
+    if (!acc[o.provider]) acc[o.provider] = { name: o.provider, orders: [], total: 0, invoiceCount: 0 };
+    acc[o.provider].orders.push(o);
+    acc[o.provider].total += o.total ?? 0;
+    if (o.invoiceImageUrl) acc[o.provider].invoiceCount++;
+    return acc;
+  }, {});
+  const providerGroups = Object.values(providerGroupMap).sort((a, b) => b.total - a.total);
+
+  const OrderDrillList = ({ orders, prefix }: { orders: Order[]; prefix: string }) => (
+    <div className="space-y-2">
+      {orders.map(order => (
+        <div key={order.id} onClick={() => onOpenDetail(order)} className="w-full text-left bg-white border border-neutral-100 rounded-2xl overflow-hidden active:scale-[0.985] transition-transform cursor-pointer">
+          <div className="flex items-center gap-3 px-3 py-3">
+            {order.invoiceImageUrl ? (
+              <img src={order.invoiceImageUrl} alt="Factura" className="w-12 h-12 rounded-xl object-cover shrink-0 border border-neutral-100" />
+            ) : (
+              <div className="w-12 h-12 rounded-xl bg-neutral-100 flex items-center justify-center shrink-0">
+                <Camera size={16} className="text-neutral-300" strokeWidth={1.5} />
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-black text-neutral-900 truncate">{order.provider}</p>
+              <p className="text-[10px] text-neutral-400 font-medium mt-0.5">{order.items} items · {order.weekLabel ?? order.time}</p>
+              <p className="text-[10px] text-neutral-500 font-bold mt-0.5 tabular-nums">{order.total ? formatMoney(order.total) : '—'}</p>
+            </div>
+            <div className="flex flex-col items-end gap-1.5 shrink-0">
+              {order.invoiceImageUrl ? (
+                <button
+                  onClick={e => { e.stopPropagation(); downloadInvoice(order.invoiceImageUrl!, `factura_${prefix}_${order.provider.replace(/\s+/g, '_')}.jpg`); }}
+                  className="flex items-center gap-1 bg-neutral-100 rounded-lg px-2 py-1 text-[9px] font-bold text-neutral-600 active:scale-95 transition-transform"
+                >
+                  <Download size={9} strokeWidth={2.5} />
+                  <span>Descargar</span>
+                </button>
+              ) : (
+                <span className="text-[9px] text-neutral-300 font-medium">Sin foto</span>
+              )}
+              <ChevronRight size={12} className="text-neutral-300" strokeWidth={2} />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
+  if (selectedMonth) {
+    const group = monthGroupMap[selectedMonth];
+    const label = getMonthLabel(selectedMonth);
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <button onClick={() => setSelectedMonth(null)} className="w-8 h-8 rounded-full border border-neutral-200 flex items-center justify-center active:scale-90 transition-transform">
+            <ChevronRight size={14} strokeWidth={2} className="rotate-180 text-neutral-500" />
+          </button>
+          <div className="flex-1">
+            <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">Archivo</p>
+            <p className="text-base font-black text-black capitalize">{label}</p>
+          </div>
+          {group.invoiceCount > 0 && (
+            <button
+              onClick={() => downloadAll(group.orders, label)}
+              className="flex items-center gap-1.5 bg-black text-white rounded-xl px-3 py-2 text-[11px] font-black active:scale-95 transition-transform"
+            >
+              <Download size={11} strokeWidth={2.5} />
+              <span>Descargar todo</span>
+            </button>
+          )}
+        </div>
+        <p className="text-[10px] text-neutral-400 font-medium">{group.invoiceCount} factura{group.invoiceCount !== 1 ? 's' : ''} · {formatMoney(group.total)} total</p>
+        <OrderDrillList orders={group.orders} prefix={label} />
+      </div>
+    );
+  }
+
+  if (selectedProvider) {
+    const group = providerGroupMap[selectedProvider];
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <button onClick={() => setSelectedProvider(null)} className="w-8 h-8 rounded-full border border-neutral-200 flex items-center justify-center active:scale-90 transition-transform">
+            <ChevronRight size={14} strokeWidth={2} className="rotate-180 text-neutral-500" />
+          </button>
+          <div className="flex-1">
+            <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">Archivo · Proveedor</p>
+            <p className="text-base font-black text-black">{group.name}</p>
+          </div>
+          {group.invoiceCount > 0 && (
+            <button
+              onClick={() => downloadAll(group.orders, group.name)}
+              className="flex items-center gap-1.5 bg-black text-white rounded-xl px-3 py-2 text-[11px] font-black active:scale-95 transition-transform"
+            >
+              <Download size={11} strokeWidth={2.5} />
+              <span>Descargar todo</span>
+            </button>
+          )}
+        </div>
+        <p className="text-[10px] text-neutral-400 font-medium">{group.invoiceCount} factura{group.invoiceCount !== 1 ? 's' : ''} · {formatMoney(group.total)} total · {group.orders.length} pedido{group.orders.length !== 1 ? 's' : ''}</p>
+        <OrderDrillList orders={group.orders} prefix={group.name} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex bg-neutral-100 rounded-xl p-0.5">
+        <button
+          onClick={() => setView('mes')}
+          className={`flex-1 py-2 rounded-[10px] text-xs font-black transition-all ${view === 'mes' ? 'bg-white shadow-sm text-black' : 'text-neutral-400'}`}
+        >
+          Por mes
+        </button>
+        <button
+          onClick={() => setView('proveedor')}
+          className={`flex-1 py-2 rounded-[10px] text-xs font-black transition-all ${view === 'proveedor' ? 'bg-white shadow-sm text-black' : 'text-neutral-400'}`}
+        >
+          Por proveedor
+        </button>
+      </div>
+
+      {paidOrders.length === 0 && (
+        <div className="py-12 flex flex-col items-center gap-3 text-center">
+          <div className="w-14 h-14 rounded-2xl bg-neutral-100 flex items-center justify-center">
+            <History size={24} className="text-neutral-300" />
+          </div>
+          <p className="text-sm font-bold text-neutral-400">Sin pagos archivados</p>
+          <p className="text-xs text-neutral-300">Los pagos realizados aparecerán aquí</p>
+        </div>
+      )}
+
+      {view === 'mes' && monthGroups.map(group => (
+        <button key={group.key} onClick={() => setSelectedMonth(group.key)} className="w-full text-left bg-white border border-neutral-100 rounded-2xl px-4 py-4 active:scale-[0.985] transition-transform">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-black text-neutral-900 capitalize">{getMonthLabel(group.key)}</p>
+                <button
+                  onClick={e => { e.stopPropagation(); if (group.invoiceCount > 0) downloadAll(group.orders, getMonthLabel(group.key)); }}
+                  className={`flex items-center gap-1 text-[9px] font-bold rounded-lg px-2 py-0.5 active:scale-95 transition-all ${group.invoiceCount > 0 ? 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200' : 'bg-neutral-50 text-neutral-300 cursor-default'}`}
+                >
+                  <Download size={8} strokeWidth={2.5} />
+                  <span>Descargar facturas</span>
+                </button>
+              </div>
+              <p className="text-[10px] text-neutral-400 font-medium mt-0.5">
+                {group.invoiceCount} factura{group.invoiceCount !== 1 ? 's' : ''} · {group.orders.length} pedido{group.orders.length !== 1 ? 's' : ''}
+              </p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <p className="text-sm font-black text-black tabular-nums">{formatMoney(group.total)}</p>
+              <ChevronRight size={16} strokeWidth={2} className="text-neutral-300" />
+            </div>
+          </div>
+        </button>
+      ))}
+
+      {view === 'proveedor' && providerGroups.map(group => (
+        <button key={group.name} onClick={() => setSelectedProvider(group.name)} className="w-full text-left bg-white border border-neutral-100 rounded-2xl px-4 py-4 active:scale-[0.985] transition-transform">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              <div className="w-10 h-10 rounded-xl bg-neutral-100 flex items-center justify-center text-sm font-black shrink-0 text-neutral-600">
+                {group.name.charAt(0)}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-black text-neutral-900 truncate">{group.name}</p>
+                <p className="text-[10px] text-neutral-400 font-medium mt-0.5">
+                  {group.invoiceCount} factura{group.invoiceCount !== 1 ? 's' : ''} · {group.orders.length} pedido{group.orders.length !== 1 ? 's' : ''}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <p className="text-sm font-black text-black tabular-nums">{formatMoney(group.total)}</p>
+              <ChevronRight size={16} strokeWidth={2} className="text-neutral-300" />
+            </div>
+          </div>
+        </button>
+      ))}
+    </div>
+  );
+};
+
 // ─── Main PagosTab with Provider Groups ──────────────────────────────────────
 
 export const PagosTabEnhanced = ({
@@ -1125,6 +1513,7 @@ export const PagosTabEnhanced = ({
   onUpdateBillingDiscrepancy,
   onSaveItemPrices,
   onSaveOrderPrices,
+  onSaveInvoicePhoto,
   canView = true,
 }: {
   orders: Order[];
@@ -1134,11 +1523,14 @@ export const PagosTabEnhanced = ({
   onUpdateBillingDiscrepancy: (orderId: string, resolution: string, newAmount?: number) => void;
   onSaveItemPrices?: (items: { nombre: string; precioUnit: number; unit: string }[]) => void;
   onSaveOrderPrices?: (orderId: string, items: { id: string; precioUnit: number; ivaRate: number }[]) => void;
+  onSaveInvoicePhoto?: (orderId: string, dataUrl: string) => void;
   canView?: boolean;
 }) => {
   const [selectedGroup, setSelectedGroup] = useState<ProviderPaymentGroup | null>(null);
   const [showTarifaConfig, setShowTarifaConfig] = useState(false);
   const [tarifaInput, setTarifaInput] = useState(() => localStorage.getItem('insuma_tarifa_hora') ?? '');
+  const [activeView, setActiveView] = useState<'pendientes' | 'archivo'>('pendientes');
+  const [archivoDetailOrder, setArchivoDetailOrder] = useState<Order | null>(null);
   const payableOrders = orders.filter(o => (o.status === 'received' || o.status === 'discrepancy' || o.status === 'paid_cash') && o.paymentStatus !== 'paid_digital' && o.paymentStatus !== 'confirmed');
   const paidOrders = orders.filter(o => o.paymentStatus === 'paid_digital' || o.paymentStatus === 'confirmed');
 
@@ -1228,22 +1620,43 @@ export const PagosTabEnhanced = ({
         <div>
           <h2 className="text-xl font-black text-black leading-tight">Pagos</h2>
           <p className="text-[11px] text-neutral-400 font-medium mt-0.5">
-            {providerGroups.length} proveedor{providerGroups.length !== 1 ? 'es' : ''} pendiente{providerGroups.length !== 1 ? 's' : ''}
+            {activeView === 'pendientes'
+              ? `${providerGroups.length} proveedor${providerGroups.length !== 1 ? 'es' : ''} pendiente${providerGroups.length !== 1 ? 's' : ''}`
+              : `${paidOrders.length} pago${paidOrders.length !== 1 ? 's' : ''} archivado${paidOrders.length !== 1 ? 's' : ''}`
+            }
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowTarifaConfig(true)}
-            className="flex items-center gap-1.5 bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2 text-[11px] font-bold text-neutral-600 active:scale-95 transition-transform"
-          >
-            <Clock size={11} strokeWidth={2.5} />
-            <span>{localStorage.getItem('insuma_tarifa_hora') ? `$${localStorage.getItem('insuma_tarifa_hora')}/h` : 'Tarifa'}</span>
-          </button>
-          <div className="bg-neutral-50 border border-neutral-100 rounded-xl px-3 py-2 text-right">
-            <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest mb-1">Total</p>
-            <p className="text-base font-black text-black tabular-nums">{formatMoney(totalPendiente)}</p>
-          </div>
+          {activeView === 'pendientes' && <>
+            <button
+              onClick={() => setShowTarifaConfig(true)}
+              className="flex items-center gap-1.5 bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2 text-[11px] font-bold text-neutral-600 active:scale-95 transition-transform"
+            >
+              <Clock size={11} strokeWidth={2.5} />
+              <span>{localStorage.getItem('insuma_tarifa_hora') ? `$${localStorage.getItem('insuma_tarifa_hora')}/h` : 'Tarifa'}</span>
+            </button>
+            <div className="bg-neutral-50 border border-neutral-100 rounded-xl px-3 py-2 text-right">
+              <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest mb-1">Total</p>
+              <p className="text-base font-black text-black tabular-nums">{formatMoney(totalPendiente)}</p>
+            </div>
+          </>}
         </div>
+      </div>
+
+      {/* Pendientes | Archivo toggle */}
+      <div className="flex bg-neutral-100 rounded-xl p-0.5">
+        <button
+          onClick={() => setActiveView('pendientes')}
+          className={`flex-1 py-2.5 rounded-[10px] text-xs font-black transition-all ${activeView === 'pendientes' ? 'bg-white shadow-sm text-black' : 'text-neutral-400'}`}
+        >
+          Pendientes
+        </button>
+        <button
+          onClick={() => setActiveView('archivo')}
+          className={`flex-1 py-2.5 rounded-[10px] text-xs font-black transition-all ${activeView === 'archivo' ? 'bg-white shadow-sm text-black' : 'text-neutral-400'}`}
+        >
+          Archivo
+        </button>
       </div>
 
       {/* Tarifa hora config modal */}
@@ -1305,87 +1718,97 @@ export const PagosTabEnhanced = ({
         )}
       </AnimatePresence>
 
-      {/* Overdue warning */}
-      {providerGroups.some(g => g.isOverdue) && <div className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 flex items-center gap-3">
-          <AlertCircle size={16} className="text-red-500 shrink-0" strokeWidth={2.5} />
-          <div className="flex-1">
-            <p className="text-xs font-black text-red-800">Pagos vencidos</p>
-            <p className="text-[10px] text-red-600 font-medium mt-0.5">
-              {providerGroups.filter(g => g.isOverdue).length} proveedor{providerGroups.filter(g => g.isOverdue).length !== 1 ? 'es' : ''} con vencimiento superado
-            </p>
-          </div>
-        </div>}
+      {activeView === 'pendientes' && <>
+        {/* Overdue warning */}
+        {providerGroups.some(g => g.isOverdue) && <div className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 flex items-center gap-3">
+            <AlertCircle size={16} className="text-red-500 shrink-0" strokeWidth={2.5} />
+            <div className="flex-1">
+              <p className="text-xs font-black text-red-800">Pagos vencidos</p>
+              <p className="text-[10px] text-red-600 font-medium mt-0.5">
+                {providerGroups.filter(g => g.isOverdue).length} proveedor{providerGroups.filter(g => g.isOverdue).length !== 1 ? 'es' : ''} con vencimiento superado
+              </p>
+            </div>
+          </div>}
 
-      {/* Provider groups sorted by due date */}
-      {providerGroups.length > 0 && <div className="space-y-2">
-          <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">Por vencimiento</p>
-          {providerGroups.map(group => <button key={group.providerName} onClick={() => setSelectedGroup(group)} className={`w-full text-left rounded-2xl border overflow-hidden active:scale-[0.985] transition-transform ${group.isOverdue ? 'bg-red-50 border-red-200' : 'bg-white border-neutral-100'}`}>
-              <div className="px-4 py-3.5">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-black shrink-0 ${group.isOverdue ? 'bg-red-500 text-white' : 'bg-black text-white'}`}>
-                      <span>{group.providerName.charAt(0)}</span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-black text-sm text-neutral-900 leading-tight truncate">{group.providerName}</p>
-                      <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase ${group.isOverdue ? 'bg-red-100 text-red-700' : 'bg-neutral-100 text-neutral-500'}`}>
-                          {group.paymentTermLabel}
-                        </span>
-                        <span className="text-[10px] text-neutral-400 font-medium">
-                          {group.orders.length} pedido{group.orders.length !== 1 ? 's' : ''}
-                        </span>
+        {/* Provider groups sorted by due date */}
+        {providerGroups.length > 0 && <div className="space-y-2">
+            <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">Por vencimiento</p>
+            {providerGroups.map(group => <button key={group.providerName} onClick={() => setSelectedGroup(group)} className={`w-full text-left rounded-2xl border overflow-hidden active:scale-[0.985] transition-transform ${group.isOverdue ? 'bg-red-50 border-red-200' : 'bg-white border-neutral-100'}`}>
+                <div className="px-4 py-3.5">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-black shrink-0 ${group.isOverdue ? 'bg-red-500 text-white' : 'bg-black text-white'}`}>
+                        <span>{group.providerName.charAt(0)}</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-black text-sm text-neutral-900 leading-tight truncate">{group.providerName}</p>
+                        <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase ${group.isOverdue ? 'bg-red-100 text-red-700' : 'bg-neutral-100 text-neutral-500'}`}>
+                            {group.paymentTermLabel}
+                          </span>
+                          <span className="text-[10px] text-neutral-400 font-medium">
+                            {group.orders.length} pedido{group.orders.length !== 1 ? 's' : ''}
+                          </span>
+                        </div>
                       </div>
                     </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <p className={`text-base font-black tabular-nums ${group.isOverdue ? 'text-red-700' : 'text-black'}`}>
+                        {formatMoney(group.totalPending)}
+                      </p>
+                      <ChevronRight size={16} strokeWidth={2} className={group.isOverdue ? 'text-red-300' : 'text-neutral-300'} />
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <p className={`text-base font-black tabular-nums ${group.isOverdue ? 'text-red-700' : 'text-black'}`}>
-                      {formatMoney(group.totalPending)}
-                    </p>
-                    <ChevronRight size={16} strokeWidth={2} className={group.isOverdue ? 'text-red-300' : 'text-neutral-300'} />
+                  {group.orders.some(o => o.hasBillingDiscrepancy) && <div className="mt-2 flex items-center gap-1 bg-orange-50 border border-orange-100 rounded-lg px-2 py-1">
+                      <Receipt size={9} className="text-orange-500 shrink-0" strokeWidth={2.5} />
+                      <span className="text-[9px] font-bold text-orange-700 uppercase">Diferencia de factura pendiente</span>
+                    </div>}
+                </div>
+              </button>)}
+          </div>}
+
+        {/* Paid providers (compact summary) */}
+        {paidGroups.length > 0 && <div className="space-y-2 pt-2">
+            <div className="h-px bg-neutral-100" />
+            <div className="flex items-center justify-between pt-1">
+              <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">Pagados</p>
+              <button onClick={() => setActiveView('archivo')} className="text-[10px] font-bold text-neutral-400 underline underline-offset-2 active:opacity-60">Ver archivo →</button>
+            </div>
+            {paidGroups.map(group => <div key={group.providerName} className="bg-neutral-50 border border-neutral-100 rounded-2xl px-4 py-3 flex items-center justify-between opacity-70">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-green-100 flex items-center justify-center text-sm font-black shrink-0 text-green-700">
+                    <span>{group.providerName.charAt(0)}</span>
+                  </div>
+                  <div>
+                    <p className="text-sm font-black text-neutral-700 leading-tight">{group.providerName}</p>
+                    <p className="text-[10px] text-neutral-400 font-medium">{group.orders.length} pedido{group.orders.length !== 1 ? 's' : ''}</p>
                   </div>
                 </div>
-                {group.orders.some(o => o.hasBillingDiscrepancy) && <div className="mt-2 flex items-center gap-1 bg-orange-50 border border-orange-100 rounded-lg px-2 py-1">
-                    <Receipt size={9} className="text-orange-500 shrink-0" strokeWidth={2.5} />
-                    <span className="text-[9px] font-bold text-orange-700 uppercase">Diferencia de factura pendiente</span>
-                  </div>}
-              </div>
-            </button>)}
-        </div>}
-
-      {/* Paid providers */}
-      {paidGroups.length > 0 && <div className="space-y-2 pt-2">
-          <div className="h-px bg-neutral-100" />
-          <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest pt-1">Pagados</p>
-          {paidGroups.map(group => <div key={group.providerName} className="bg-neutral-50 border border-neutral-100 rounded-2xl px-4 py-3 flex items-center justify-between opacity-70">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-green-100 flex items-center justify-center text-sm font-black shrink-0 text-green-700">
-                  <span>{group.providerName.charAt(0)}</span>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <p className="text-sm font-black text-neutral-400 tabular-nums">{formatMoney(group.total)}</p>
+                  <div className="flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-green-100">
+                    <CheckCircle2 size={9} className="text-green-600" strokeWidth={2.5} />
+                    <span className="text-[9px] font-bold text-green-700 uppercase">Pagado</span>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm font-black text-neutral-700 leading-tight">{group.providerName}</p>
-                  <p className="text-[10px] text-neutral-400 font-medium">{group.orders.length} pedido{group.orders.length !== 1 ? 's' : ''}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-1.5 shrink-0">
-                <p className="text-sm font-black text-neutral-400 tabular-nums">{formatMoney(group.total)}</p>
-                <div className="flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-green-100">
-                  <CheckCircle2 size={9} className="text-green-600" strokeWidth={2.5} />
-                  <span className="text-[9px] font-bold text-green-700 uppercase">Pagado</span>
-                </div>
-              </div>
-            </div>)}
-        </div>}
+              </div>)}
+          </div>}
 
-      {providerGroups.length === 0 && paidGroups.length === 0 && <div className="py-16 flex flex-col items-center gap-3 text-center">
-          <div className="w-14 h-14 rounded-2xl bg-neutral-100 flex items-center justify-center">
-            <CreditCard size={24} className="text-neutral-300" />
-          </div>
-          <p className="text-sm font-bold text-neutral-400">Sin pagos pendientes</p>
-          <p className="text-xs text-neutral-300">Los pedidos recibidos aparecerán aquí</p>
-        </div>}
+        {providerGroups.length === 0 && paidGroups.length === 0 && <div className="py-16 flex flex-col items-center gap-3 text-center">
+            <div className="w-14 h-14 rounded-2xl bg-neutral-100 flex items-center justify-center">
+              <CreditCard size={24} className="text-neutral-300" />
+            </div>
+            <p className="text-sm font-bold text-neutral-400">Sin pagos pendientes</p>
+            <p className="text-xs text-neutral-300">Los pedidos recibidos aparecerán aquí</p>
+          </div>}
+      </>}
 
-      <ProviderOrdersSheet group={syncedSelectedGroup} isOpen={selectedGroup !== null} onClose={() => setSelectedGroup(null)} onConfirmCash={onConfirmCash} onPayDigital={onPayDigital} onUpdateBillingDiscrepancy={onUpdateBillingDiscrepancy} onSaveItemPrices={onSaveItemPrices} onSaveOrderPrices={onSaveOrderPrices} />
+      {activeView === 'archivo' && (
+        <ArchivoTab paidOrders={paidOrders} onOpenDetail={setArchivoDetailOrder} />
+      )}
+
+      <ProviderOrdersSheet group={syncedSelectedGroup} isOpen={selectedGroup !== null} onClose={() => setSelectedGroup(null)} onConfirmCash={onConfirmCash} onPayDigital={onPayDigital} onUpdateBillingDiscrepancy={onUpdateBillingDiscrepancy} onSaveItemPrices={onSaveItemPrices} onSaveOrderPrices={onSaveOrderPrices} onSaveInvoicePhoto={onSaveInvoicePhoto} />
+      <AiInvoiceDetailSheet order={archivoDetailOrder} isOpen={archivoDetailOrder !== null} onClose={() => setArchivoDetailOrder(null)} onSaveInvoicePhoto={onSaveInvoicePhoto} />
     </motion.div>;
 };
 
