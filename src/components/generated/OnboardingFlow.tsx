@@ -210,7 +210,7 @@ const slide = {
 
 // ─── Main OnboardingFlow ──────────────────────────────────────────────────────
 
-export const OnboardingFlow: React.FC<{ onComplete: () => void; authUserId?: string; inviteCode?: string }> = ({ onComplete, authUserId, inviteCode }) => {
+export const OnboardingFlow: React.FC<{ onComplete: () => void; authUserId?: string; authUserEmail?: string; inviteCode?: string }> = ({ onComplete, authUserId, authUserEmail, inviteCode }) => {
   const [step, setStep] = useState(1);
   const [direction, setDirection] = useState(1);
 
@@ -219,7 +219,7 @@ export const OnboardingFlow: React.FC<{ onComplete: () => void; authUserId?: str
   // Step 2
   const [tipoNegocio, setTipoNegocio] = useState<NegocioConfig['tipo'] | ''>('');
   // Step 3 — Auth
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(authUserEmail ?? '');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
@@ -372,7 +372,7 @@ export const OnboardingFlow: React.FC<{ onComplete: () => void; authUserId?: str
               onBack={() => goTo(1)}>
               <div className="grid grid-cols-2 gap-3 pb-4">
                 {TIPOS_NEGOCIO.map(tipo => (
-                  <button key={tipo.id} onClick={() => { setTipoNegocio(tipo.id); setTimeout(() => goTo(4), 180); }}
+                  <button key={tipo.id} onClick={() => { setTipoNegocio(tipo.id); setTimeout(() => goTo(authUserId ? 5 : 4), 180); }}
                     className="flex flex-col items-start gap-3 p-5 rounded-2xl border-2 transition-all active:scale-[0.97]"
                     style={{
                       border: tipoNegocio === tipo.id ? '2px solid #fff' : '2px solid rgba(255,255,255,0.25)',
@@ -498,7 +498,7 @@ export const OnboardingFlow: React.FC<{ onComplete: () => void; authUserId?: str
             transition={{ type: 'spring', damping: 30, stiffness: 340 }}
             className="absolute inset-0">
             <BlueScreen step={4} total={5} title="Elegí tu plan" subtitle="Podés cambiar o cancelar cuando quieras."
-              onBack={() => goTo(4)}
+              onBack={() => goTo(authUserId ? 2 : 4)}
               footer={<WhiteBtn onClick={() => goTo(6)}>Continuar →</WhiteBtn>}>
               <div className="space-y-3 py-2">
                 {/* Prueba gratis */}

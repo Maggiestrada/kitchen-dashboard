@@ -189,6 +189,7 @@ function App() {
         <motion.div key="onboarding" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
           <OnboardingFlow
             authUserId={authUser?.id}
+            authUserEmail={authUser?.email}
             inviteCode={pendingInviteCode}
             onComplete={() => setAppState('app')}
           />
