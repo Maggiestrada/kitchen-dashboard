@@ -108,7 +108,7 @@ function App() {
       localStorage.setItem('insuma_onboarding_ok', '1');
       setAppState('app');
     } else {
-      setAppState('invite_code');
+      setAppState('onboarding');
     }
   };
 
