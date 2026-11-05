@@ -327,7 +327,7 @@ const AiInvoiceDetailSheet = ({
 
   const noPricesLoaded = orderItems.length > 0 && orderItems.every(it => it.precioUnit === 0);
   const activeScanForAlert = scan ?? localMockScan;
-  const showPriceAlert = noPricesLoaded && !activeScanForAlert && (order.status === 'received' || order.status === 'discrepancy' || order.status === 'paid_cash');
+  const showPriceAlert = noPricesLoaded && aiScanDone && !activeScanForAlert && (order.status === 'received' || order.status === 'discrepancy' || order.status === 'paid_cash');
 
   // Total calculado desde los ítems del pedido (neto + IVA)
   const totalNeto = orderItems.reduce((s, it) => s + (it.cantRecibida || it.cantPedida || 1) * it.precioUnit, 0);

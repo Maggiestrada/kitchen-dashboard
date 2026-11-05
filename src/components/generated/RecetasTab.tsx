@@ -21,7 +21,7 @@ interface Insumo {
 
 interface SubRecetaIngrediente {
   id: string;
-  tipo: 'insumo' | 'subreceta';
+  tipo: 'insumo' | 'subreceta' | 'receta';
   referenciaId: string;
   nombre: string;
   grams: number;
@@ -41,7 +41,7 @@ interface SubReceta {
 
 interface RecetaIngrediente {
   id: string;
-  tipo: 'insumo' | 'subreceta';
+  tipo: 'insumo' | 'subreceta' | 'receta';
   referenciaId: string;
   nombre: string;
   grams: number;
@@ -140,14 +140,31 @@ function getSubRecetaCostoPorGramo(
   return total / sub.rinde;
 }
 
+function getRecetaCostoPorGramo(
+  recetaId: string,
+  recetas: Receta[],
+  insumos: Insumo[],
+  subRecetas: SubReceta[]
+): number {
+  const rec = recetas.find(r => r.id === recetaId);
+  if (!rec || !rec.rindeGramos || rec.rindeGramos <= 0) return 0;
+  const ingTotal = rec.ingredientes.reduce((s, i) => s + getIngCosto(i, insumos, subRecetas, recetas), 0);
+  const extraTotal = (rec.ingredientesExtra ?? []).reduce((s, e) => s + (e.qty ?? 1) * e.costo, 0);
+  return (ingTotal + extraTotal) / rec.rindeGramos;
+}
+
 function getIngCosto(
   ing: RecetaIngrediente,
   insumos: Insumo[],
-  subRecetas: SubReceta[]
+  subRecetas: SubReceta[],
+  recetas: Receta[] = []
 ): number {
   const gramsNeeded = ing.grams + (ing.wasteGrams ?? 0);
   if (ing.tipo === 'insumo') {
     return getInsumoPrecioGramo(ing.referenciaId, insumos) * gramsNeeded;
+  }
+  if (ing.tipo === 'receta') {
+    return getRecetaCostoPorGramo(ing.referenciaId, recetas, insumos, subRecetas) * gramsNeeded;
   }
   return getSubRecetaCostoPorGramo(ing.referenciaId, subRecetas, insumos) * gramsNeeded;
 }
@@ -159,10 +176,11 @@ function getTarifaHora(): number {
 function getRecetaCostoPorPorcion(
   receta: Receta,
   insumos: Insumo[],
-  subRecetas: SubReceta[]
+  subRecetas: SubReceta[],
+  recetas: Receta[] = []
 ): number {
   const ingTotal = receta.ingredientes.reduce(
-    (s, i) => s + getIngCosto(i, insumos, subRecetas),
+    (s, i) => s + getIngCosto(i, insumos, subRecetas, recetas),
     0
   );
   const extraTotal = (receta.ingredientesExtra ?? []).reduce((s, e) => s + (e.qty ?? 1) * e.costo, 0);
@@ -231,16 +249,19 @@ const INITIAL_RECETAS: Receta[] = [];
 
 type PickerResult =
   | { tipo: 'insumo'; item: Insumo }
-  | { tipo: 'subreceta'; item: SubReceta };
+  | { tipo: 'subreceta'; item: SubReceta }
+  | { tipo: 'receta'; item: Receta };
 
 const IngredientePicker = ({
   insumos,
   subRecetas,
+  recetas = [],
   onAdd,
-  placeholder = 'Agregar ingrediente o sub-receta...',
+  placeholder = 'Agregar ingrediente, sub-receta o receta...',
 }: {
   insumos: Insumo[];
   subRecetas: SubReceta[];
+  recetas?: Receta[];
   onAdd: (result: PickerResult) => void;
   placeholder?: string;
 }) => {
@@ -255,7 +276,10 @@ const IngredientePicker = ({
   const filteredSubs = q.length > 0
     ? subRecetas.filter(s => s.nombre.toLowerCase().includes(q)).slice(0, 3)
     : [];
-  const hasResults = filteredInsumos.length > 0 || filteredSubs.length > 0;
+  const filteredRecetas = q.length > 0
+    ? recetas.filter(r => r.nombre.toLowerCase().includes(q)).slice(0, 3)
+    : [];
+  const hasResults = filteredInsumos.length > 0 || filteredSubs.length > 0 || filteredRecetas.length > 0;
 
   const handleSelect = (result: PickerResult) => {
     onAdd(result);
@@ -309,6 +333,29 @@ const IngredientePicker = ({
                       <div className="min-w-0">
                         <p className="text-sm text-black truncate">{sub.nombre}</p>
                         <p className="text-[10px] text-neutral-400">Rinde {sub.rinde}{sub.rindeUnit}</p>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+            {filteredRecetas.length > 0 && (
+              <div>
+                <p className="px-3 pt-2 pb-1 text-[9px] uppercase tracking-widest text-neutral-400 font-normal">Recetas</p>
+                {filteredRecetas.map(rec => (
+                  <button
+                    key={rec.id}
+                    onMouseDown={e => e.preventDefault()}
+                    onClick={() => handleSelect({ tipo: 'receta', item: rec })}
+                    className="w-full text-left px-3 py-2.5 flex items-center justify-between gap-2 border-b border-neutral-50 last:border-0 active:bg-neutral-50 transition-colors"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="w-5 h-5 rounded-full bg-orange-100 flex items-center justify-center shrink-0">
+                        <ChefHat size={10} className="text-orange-500" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm text-black truncate">{rec.nombre}</p>
+                        <p className="text-[10px] text-neutral-400">{rec.categoria}{rec.rindeGramos ? ` · Rinde ${formatGrams(rec.rindeGramos)}` : ''}</p>
                       </div>
                     </div>
                   </button>
@@ -456,9 +503,11 @@ const IngredienteEditRow = ({
   return (
     <div className="py-3 border-b border-neutral-50 last:border-0">
       <div className="flex items-center gap-2 mb-2">
-        <div className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 ${ing.tipo === 'subreceta' ? 'bg-violet-100' : 'bg-neutral-100'}`}>
+        <div className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 ${ing.tipo === 'subreceta' ? 'bg-violet-100' : ing.tipo === 'receta' ? 'bg-orange-100' : 'bg-neutral-100'}`}>
           {ing.tipo === 'subreceta'
             ? <ChefHat size={8} className="text-violet-600" />
+            : ing.tipo === 'receta'
+            ? <ChefHat size={8} className="text-orange-500" />
             : <Package size={8} className="text-neutral-500" />}
         </div>
         <p className="flex-1 text-sm text-black truncate">{ing.nombre}</p>
@@ -522,9 +571,11 @@ const SubIngredienteEditRow = ({
 }) => (
   <div className="py-3 border-b border-neutral-50 last:border-0">
     <div className="flex items-center gap-2 mb-2">
-      <div className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 ${ing.tipo === 'subreceta' ? 'bg-violet-100' : 'bg-neutral-100'}`}>
+      <div className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 ${ing.tipo === 'subreceta' ? 'bg-violet-100' : ing.tipo === 'receta' ? 'bg-orange-100' : 'bg-neutral-100'}`}>
         {ing.tipo === 'subreceta'
           ? <ChefHat size={8} className="text-violet-600" />
+          : ing.tipo === 'receta'
+          ? <ChefHat size={8} className="text-orange-500" />
           : <Package size={8} className="text-neutral-500" />}
       </div>
       <p className="flex-1 text-sm text-black truncate">{ing.nombre}</p>
@@ -664,6 +715,7 @@ const RecetaForm = ({
   initial,
   insumos,
   subRecetas,
+  recetas: allRecetas = [],
   onSave,
   onClose,
 }: {
@@ -671,6 +723,7 @@ const RecetaForm = ({
   initial?: Receta;
   insumos: Insumo[];
   subRecetas: SubReceta[];
+  recetas?: Receta[];
   onSave: (r: Receta) => void;
   onClose: () => void;
 }) => {
@@ -718,6 +771,18 @@ const RecetaForm = ({
         wastePercent: 0,
         wasteGrams: 0,
         unit: ingUnit,
+      }]);
+    } else if (result.tipo === 'receta') {
+      const rec = result.item as Receta;
+      setIngredientes(prev => [...prev, {
+        id: `ri-${Date.now()}`,
+        tipo: 'receta',
+        referenciaId: rec.id,
+        nombre: rec.nombre,
+        grams: 100,
+        wastePercent: 0,
+        wasteGrams: 0,
+        unit: 'gr',
       }]);
     } else {
       const sub = result.item as SubReceta;
@@ -888,7 +953,7 @@ const RecetaForm = ({
                   ))}
                 </div>
               )}
-              <IngredientePicker insumos={insumos} subRecetas={subRecetas} onAdd={handleAdd} />
+              <IngredientePicker insumos={insumos} subRecetas={subRecetas} recetas={allRecetas.filter(r => r.id !== initial?.id)} onAdd={handleAdd} />
             </div>
 
             {/* Ingredientes extra */}
@@ -1261,7 +1326,7 @@ const RecetaDetailView = ({
 
   if (!receta) return null;
   const color = CATEGORIA_COLORS[receta.categoria] ?? '#6B7280';
-  const costo = getRecetaCostoPorPorcion(receta, insumos, subRecetas);
+  const costo = getRecetaCostoPorPorcion(receta, insumos, subRecetas, recetas);
   const pct = receta.precioVenta && receta.precioVenta > 0 ? costo / receta.precioVenta : 0;
 
   return (
@@ -1464,13 +1529,15 @@ const RecetaDetailView = ({
               <div className="space-y-2">
                 {receta.ingredientes.map(ing => {
                   const scaledGrams = ing.grams * multiplicador;
-                  const ingCosto = getIngCosto(ing, insumos, subRecetas) * multiplicador;
+                  const ingCosto = getIngCosto(ing, insumos, subRecetas, recetas) * multiplicador;
                   return (
                     <div key={ing.id} className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
-                        <div className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 ${ing.tipo === 'subreceta' ? 'bg-violet-100' : 'bg-neutral-100'}`}>
+                        <div className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 ${ing.tipo === 'subreceta' ? 'bg-violet-100' : ing.tipo === 'receta' ? 'bg-orange-100' : 'bg-neutral-100'}`}>
                           {ing.tipo === 'subreceta'
                             ? <ChefHat size={8} className="text-violet-600" />
+                            : ing.tipo === 'receta'
+                            ? <ChefHat size={8} className="text-orange-500" />
                             : <Package size={8} className="text-neutral-500" />}
                         </div>
                         <p className="text-sm text-black truncate">{ing.nombre}</p>
@@ -1714,9 +1781,11 @@ const SubRecetaDetailView = ({
                   return (
                     <div key={ing.id} className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
-                        <div className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 ${ing.tipo === 'subreceta' ? 'bg-violet-100' : 'bg-neutral-100'}`}>
+                        <div className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 ${ing.tipo === 'subreceta' ? 'bg-violet-100' : ing.tipo === 'receta' ? 'bg-orange-100' : 'bg-neutral-100'}`}>
                           {ing.tipo === 'subreceta'
                             ? <ChefHat size={8} className="text-violet-600" />
+                            : ing.tipo === 'receta'
+                            ? <ChefHat size={8} className="text-orange-500" />
                             : <Package size={8} className="text-neutral-500" />}
                         </div>
                         <p className="text-sm text-black truncate">{ing.nombre}</p>
@@ -1754,7 +1823,7 @@ const RecetaCard: React.FC<{
   subRecetas?: SubReceta[];
 }> = ({ receta, onClick, onEdit, canViewCosts, insumos = [], subRecetas = [] }) => {
   const color = CATEGORIA_COLORS[receta.categoria] ?? '#6B7280';
-  const costoPorcion = getRecetaCostoPorPorcion(receta, insumos, subRecetas);
+  const costoPorcion = getRecetaCostoPorPorcion(receta, insumos, subRecetas, recetas);
   const fc = receta.precioVenta && receta.precioVenta > 0 ? costoPorcion / receta.precioVenta * 100 : null;
   const fcColor = fc === null ? null : fc < 30 ? '#22C55E' : fc < 40 ? '#F59E0B' : '#EF4444';
   return (
@@ -1847,7 +1916,7 @@ const FoodCostView = ({
 }) => {
 
   const rows = recetas.map(r => {
-    const costo = getRecetaCostoPorPorcion(r, insumos, subRecetas);
+    const costo = getRecetaCostoPorPorcion(r, insumos, subRecetas, recetas);
     const precio = r.precioVenta ?? 0;
     const sugerido = costo * 5;
     const pct = precio > 0 ? costo / precio : 0;
@@ -2046,7 +2115,7 @@ export const RecetasTab: React.FC<{ canViewCosts?: boolean; customInsumos?: Insu
     if (isFirstRender.current) { isFirstRender.current = false; return; }
     const today = new Date().toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit' });
     setRecetas(prev => prev.map(r => {
-      const costo = getRecetaCostoPorPorcion(r, insumos, subRecetas);
+      const costo = getRecetaCostoPorPorcion(r, insumos, subRecetas, recetas);
       if (costo === 0) return r;
       const history = r.costoHistory ?? [];
       if (history.length > 0 && history[history.length - 1].date === today) {
@@ -2402,14 +2471,14 @@ export const RecetasTab: React.FC<{ canViewCosts?: boolean; customInsumos?: Insu
                     // Calcular food cost combinado
                     const allRows = [
                       ...recetasComida.map(r => {
-                        const costo = getRecetaCostoPorPorcion(r, insumos, subRecetas);
+                        const costo = getRecetaCostoPorPorcion(r, insumos, subRecetas, recetas);
                         const precio = r.precioVenta ?? 0;
                         return { nombre: r.nombre, costo, precio, pct: precio > 0 ? costo / precio : 0 };
                       }),
                       ...menu.bebidas.map(b => {
                         if (b.tipo === 'receta' && b.recetaId) {
                           const rec = recetas.find(r => r.id === b.recetaId);
-                          const costo = rec ? getRecetaCostoPorPorcion(rec, insumos, subRecetas) : 0;
+                          const costo = rec ? getRecetaCostoPorPorcion(rec, insumos, subRecetas, recetas) : 0;
                           const precio = b.precioVenta;
                           return { nombre: b.nombre, costo, precio, pct: precio > 0 ? costo / precio : 0 };
                         }
@@ -2536,7 +2605,7 @@ export const RecetasTab: React.FC<{ canViewCosts?: boolean; customInsumos?: Insu
                                   let costo = 0;
                                   if (beb.tipo === 'receta' && beb.recetaId) {
                                     const rec = recetas.find(r => r.id === beb.recetaId);
-                                    costo = rec ? getRecetaCostoPorPorcion(rec, insumos, subRecetas) : 0;
+                                    costo = rec ? getRecetaCostoPorPorcion(rec, insumos, subRecetas, recetas) : 0;
                                   } else {
                                     costo = beb.insumoId
                                       ? (insumos.find(i => i.id === beb.insumoId)?.pricePerKg ?? beb.costoUnitario ?? 0)
@@ -2615,6 +2684,7 @@ export const RecetasTab: React.FC<{ canViewCosts?: boolean; customInsumos?: Insu
         initial={recetaEditing}
         insumos={insumos}
         subRecetas={subRecetas}
+        recetas={recetas}
         onSave={handleSaveReceta}
         onClose={() => setRecetaFormOpen(false)}
       />

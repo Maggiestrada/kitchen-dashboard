@@ -94,7 +94,51 @@ interface Provider {
 
 // ─── Static Data ──────────────────────────────────────────────────────────────
 
-const MOCK_ORDERS: Order[] = [];
+const MOCK_ORDERS: Order[] = [
+  {
+    id: 'demo-1', provider: 'Fura', providerPhone: '+5491156937934',
+    category: 'Carnes', status: 'waiting', time: '08:30', items: 3, total: 0,
+    paymentStatus: 'pending', weekLabel: 'Esta semana', paymentHistory: [],
+    orderItems: [
+      { id: 'oi-1a', name: 'Asado', requestedQty: 4, receivedQty: 0, unit: 'kg', status: 'pending', alertMsg: '' },
+      { id: 'oi-1b', name: 'Pollo entero', requestedQty: 6, receivedQty: 0, unit: 'kg', status: 'pending', alertMsg: '' },
+      { id: 'oi-1c', name: 'Lomo', requestedQty: 2, receivedQty: 0, unit: 'kg', status: 'pending', alertMsg: '' },
+    ],
+  },
+  {
+    id: 'demo-2', provider: '4 estaciones', providerPhone: '+5491150496176',
+    category: 'Verduras', status: 'on_way', time: '09:15', items: 4, total: 0,
+    paymentStatus: 'pending', weekLabel: 'Esta semana', paymentHistory: [],
+    orderItems: [
+      { id: 'oi-2a', name: 'Tomate perita', requestedQty: 5, receivedQty: 0, unit: 'kg', status: 'pending', alertMsg: '' },
+      { id: 'oi-2b', name: 'Rúcula', requestedQty: 2, receivedQty: 0, unit: 'kg', status: 'pending', alertMsg: '' },
+      { id: 'oi-2c', name: 'Cebolla morada', requestedQty: 3, receivedQty: 0, unit: 'kg', status: 'pending', alertMsg: '' },
+      { id: 'oi-2d', name: 'Zucchini', requestedQty: 2, receivedQty: 0, unit: 'kg', status: 'pending', alertMsg: '' },
+    ],
+  },
+  {
+    id: 'demo-3', provider: 'Soleil', providerPhone: '+5491128324242',
+    category: 'Almacén', status: 'received', time: '07:45', items: 3, total: 18400,
+    paymentStatus: 'pending', weekLabel: 'Esta semana', paymentHistory: [],
+    orderItems: [
+      { id: 'oi-3a', name: 'Harina 000', requestedQty: 10, receivedQty: 10, unit: 'kg', status: 'ok', alertMsg: '', precioUnit: 980 },
+      { id: 'oi-3b', name: 'Aceite de girasol', requestedQty: 5, receivedQty: 5, unit: 'lt', status: 'ok', alertMsg: '', precioUnit: 1200 },
+      { id: 'oi-3c', name: 'Azúcar', requestedQty: 4, receivedQty: 4, unit: 'kg', status: 'ok', alertMsg: '', precioUnit: 850 },
+    ],
+  },
+  {
+    id: 'demo-4', provider: 'Zuccardi', providerPhone: '+5491165310391',
+    category: 'Bebidas', status: 'discrepancy', time: '10:00', items: 2, total: 32000,
+    paymentStatus: 'pending', weekLabel: 'Esta semana', paymentHistory: [],
+    alerts: [
+      { id: 'alt-1', type: 'missing_item', itemName: 'Vino Malbec 750ml', orderedQty: 12, receivedQty: 8, unit: 'botellas', resolved: false }
+    ],
+    orderItems: [
+      { id: 'oi-4a', name: 'Vino Malbec 750ml', requestedQty: 12, receivedQty: 8, unit: 'botellas', status: 'discrepancy', alertMsg: 'Faltan 4 botellas', precioUnit: 2800 },
+      { id: 'oi-4b', name: 'Vino Cabernet 750ml', requestedQty: 6, receivedQty: 6, unit: 'botellas', status: 'ok', alertMsg: '', precioUnit: 2600 },
+    ],
+  },
+];
 const INITIAL_PROVIDERS: Provider[] = [
   { id: 'e8ccfe93', name: 'Zuccardi', category: 'Bebidas', telefono: '+5491165310391', nombreVentas: 'Sergio / fernanda doll', email: 'sarregui@familiazuccardi.com', cuit: '30-51787491-0', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'], plazoPago: '15 días' },
   { id: 'prov1', name: 'Fura', category: 'Carnes', telefono: '+5491156937934', nombreVentas: 'Ariel', email: 'comprobantesfura@gmail.com', cuit: '3694464056', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'], plazoPago: '7 días' },
@@ -1185,9 +1229,24 @@ export const InsumaKitchenDashboard = ({ authUserEmail, onSignOut }: { authUserE
   const [customInsumos, setCustomInsumos] = useState<{ id: string; name: string; category: string; unit: string; pricePerKg: number; provider: string }[]>(() => {
     try {
       const saved = localStorage.getItem('insuma_insumos');
-      if (saved) { const arr = JSON.parse(saved); if (Array.isArray(arr)) return arr; }
+      if (saved) { const arr = JSON.parse(saved); if (Array.isArray(arr) && arr.length > 0) return arr; }
     } catch { /* ignore */ }
-    return [];
+    return [
+      { id: 'ci-asado', name: 'Asado', category: 'Carnes', unit: 'kg', pricePerKg: 8200, provider: 'Fura' },
+      { id: 'ci-pollo', name: 'Pollo entero', category: 'Carnes', unit: 'kg', pricePerKg: 5800, provider: 'Fura' },
+      { id: 'ci-lomo', name: 'Lomo', category: 'Carnes', unit: 'kg', pricePerKg: 18500, provider: 'Criollo' },
+      { id: 'ci-vacio', name: 'Vacío', category: 'Carnes', unit: 'kg', pricePerKg: 10200, provider: 'Fura' },
+      { id: 'ci-tomate', name: 'Tomate perita', category: 'Verduras', unit: 'kg', pricePerKg: 1800, provider: '4 estaciones' },
+      { id: 'ci-rucula', name: 'Rúcula', category: 'Verduras', unit: 'kg', pricePerKg: 3200, provider: '4 estaciones' },
+      { id: 'ci-cebolla', name: 'Cebolla morada', category: 'Verduras', unit: 'kg', pricePerKg: 1600, provider: '4 estaciones' },
+      { id: 'ci-zucchini', name: 'Zucchini', category: 'Verduras', unit: 'kg', pricePerKg: 2400, provider: '4 estaciones' },
+      { id: 'ci-harina', name: 'Harina 000', category: 'Almacén', unit: 'kg', pricePerKg: 980, provider: 'Soleil' },
+      { id: 'ci-aceite', name: 'Aceite de girasol', category: 'Almacén', unit: 'lt', pricePerKg: 1200, provider: 'Soleil' },
+      { id: 'ci-azucar', name: 'Azúcar', category: 'Almacén', unit: 'kg', pricePerKg: 850, provider: 'Soleil' },
+      { id: 'ci-huevos', name: 'Huevos', category: 'Lácteos', unit: 'u', pricePerKg: 320, provider: 'Adrian huevos' },
+      { id: 'ci-manteca', name: 'Manteca', category: 'Lácteos', unit: 'kg', pricePerKg: 4800, provider: 'Adrian huevos' },
+      { id: 'ci-crema', name: 'Crema de leche', category: 'Lácteos', unit: 'lt', pricePerKg: 2800, provider: 'Adrian huevos' },
+    ];
   });
   const [showRecepcion, setShowRecepcion] = useState(false);
   // Dynamic users & business (cargado desde Supabase)
@@ -1615,7 +1674,7 @@ export const InsumaKitchenDashboard = ({ authUserEmail, onSignOut }: { authUserE
       };
     }
   });
-  const pendingPayments = todayOrders.filter(o => (o.status === 'received' || o.status === 'discrepancy' || o.status === 'paid_cash') && o.paymentStatus !== 'paid_digital' && o.paymentStatus !== 'confirmed').length;
+  const pendingPayments = todayOrders.filter(o => (o.status === 'received' || o.status === 'discrepancy') && o.paymentStatus !== 'paid_digital' && o.paymentStatus !== 'confirmed').length;
   const pendingReceptionOrders = todayOrders.filter(o => o.status === 'on_way' || o.status === 'waiting');
   const statCards = [{
     id: 'stat-act',

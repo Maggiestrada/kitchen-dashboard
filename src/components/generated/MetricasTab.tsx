@@ -31,11 +31,9 @@ type AreaKey = keyof AreaData;
 
 // ─── Mock Data ────────────────────────────────────────────────────────────────
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const MONTHS_DATA: MonthData[] = [];
-const _MONTHS_DATA_UNUSED = [{
-  month: 'Noviembre 2024',
-  shortMonth: 'Nov',
+const MONTHS_DATA: MonthData[] = [{
+  month: 'Septiembre 2025',
+  shortMonth: 'Sep',
   total: 187400,
   areas: {
     Carnes: {
@@ -386,6 +384,84 @@ const _MONTHS_DATA_UNUSED = [{
         values: [3800, 4200, 3600]
       }]
     }
+  }
+}, {
+  month: 'Octubre 2025',
+  shortMonth: 'Oct',
+  total: 214600,
+  areas: {
+    Carnes: { total: 72600, items: [
+      { id: 'c1', name: 'Asado x kg', values: [8200, 9100, 10400] },
+      { id: 'c2', name: 'Pollo entero x kg', values: [6300, 5800, 7800] },
+      { id: 'c3', name: 'Lomo x kg', values: [14200, 15600, 18200] },
+      { id: 'c4', name: 'Vacío x kg', values: [9800, 10200, 12400] },
+      { id: 'c5', name: 'Cerdo costilla x kg', values: [5400, 4900, 6800] },
+    ]},
+    Verduras: { total: 44800, items: [
+      { id: 'v1', name: 'Tomate x kg', values: [3200, 3800, 5200] },
+      { id: 'v2', name: 'Lechuga x u', values: [1800, 2100, 1900] },
+      { id: 'v3', name: 'Cebolla x kg', values: [2400, 2200, 3100] },
+      { id: 'v4', name: 'Papa x kg', values: [4800, 5200, 6400] },
+      { id: 'v5', name: 'Zanahoria x kg', values: [1600, 1800, 1900] },
+    ]},
+    Bebidas: { total: 36800, items: [
+      { id: 'b1', name: 'Agua mineral x lt', values: [4200, 4800, 5100] },
+      { id: 'b2', name: 'Gaseosa x lt', values: [5600, 5200, 7200] },
+      { id: 'b3', name: 'Cerveza x lt', values: [7800, 8200, 9400] },
+      { id: 'b4', name: 'Vino x lt', values: [9400, 10200, 11800] },
+    ]},
+    Limpieza: { total: 20800, items: [
+      { id: 'l1', name: 'Detergente x lt', values: [2800, 3100, 3200] },
+      { id: 'l2', name: 'Desinfectante x lt', values: [3400, 3200, 4100] },
+      { id: 'l3', name: 'Guantes x par', values: [1200, 1400, 1600] },
+      { id: 'l4', name: 'Trapos de piso x u', values: [900, 800, 1100] },
+    ]},
+    Almacén: { total: 39600, items: [
+      { id: 'a1', name: 'Harina 000 x kg', values: [8400, 9200, 10200] },
+      { id: 'a2', name: 'Aceite girasol x lt', values: [6200, 5800, 7400] },
+      { id: 'a3', name: 'Azúcar x kg', values: [2400, 2600, 2800] },
+      { id: 'a4', name: 'Sal x kg', values: [800, 900, 950] },
+      { id: 'a5', name: 'Arroz x kg', values: [3800, 4200, 4600] },
+    ]},
+  }
+}, {
+  month: 'Noviembre 2025',
+  shortMonth: 'Nov',
+  total: 198200,
+  areas: {
+    Carnes: { total: 68400, items: [
+      { id: 'c1', name: 'Asado x kg', values: [9100, 10400, 9800] },
+      { id: 'c2', name: 'Pollo entero x kg', values: [5800, 7800, 7200] },
+      { id: 'c3', name: 'Lomo x kg', values: [15600, 18200, 17400] },
+      { id: 'c4', name: 'Vacío x kg', values: [10200, 12400, 11200] },
+      { id: 'c5', name: 'Cerdo costilla x kg', values: [4900, 6800, 5800] },
+    ]},
+    Verduras: { total: 38600, items: [
+      { id: 'v1', name: 'Tomate x kg', values: [3800, 5200, 4400] },
+      { id: 'v2', name: 'Lechuga x u', values: [2100, 1900, 1800] },
+      { id: 'v3', name: 'Cebolla x kg', values: [2200, 3100, 2800] },
+      { id: 'v4', name: 'Papa x kg', values: [5200, 6400, 5600] },
+      { id: 'v5', name: 'Zanahoria x kg', values: [1800, 1900, 1600] },
+    ]},
+    Bebidas: { total: 32200, items: [
+      { id: 'b1', name: 'Agua mineral x lt', values: [4800, 5100, 4600] },
+      { id: 'b2', name: 'Gaseosa x lt', values: [5200, 7200, 6400] },
+      { id: 'b3', name: 'Cerveza x lt', values: [8200, 9400, 8600] },
+      { id: 'b4', name: 'Vino x lt', values: [10200, 11800, 10400] },
+    ]},
+    Limpieza: { total: 18400, items: [
+      { id: 'l1', name: 'Detergente x lt', values: [3100, 3200, 2900] },
+      { id: 'l2', name: 'Desinfectante x lt', values: [3200, 4100, 3600] },
+      { id: 'l3', name: 'Guantes x par', values: [1400, 1600, 1400] },
+      { id: 'l4', name: 'Trapos de piso x u', values: [800, 1100, 900] },
+    ]},
+    Almacén: { total: 40600, items: [
+      { id: 'a1', name: 'Harina 000 x kg', values: [9200, 10200, 10800] },
+      { id: 'a2', name: 'Aceite girasol x lt', values: [5800, 7400, 7200] },
+      { id: 'a3', name: 'Azúcar x kg', values: [2600, 2800, 2600] },
+      { id: 'a4', name: 'Sal x kg', values: [900, 950, 900] },
+      { id: 'a5', name: 'Arroz x kg', values: [4200, 4600, 4600] },
+    ]},
   }
 }];
 // ─── Area colors ──────────────────────────────────────────────────────────────
@@ -761,22 +837,136 @@ const maxItemVal = (item: ItemDetail) => Math.max(...item.values, 1);
 // ─── Main MetricasTab ─────────────────────────────────────────────────────────
 
 export const MetricasTab = () => {
-  return <motion.div key="tab-metricas" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="px-4 pt-4 pb-24">
-    {/* Header */}
-    <div className="mb-6">
-      <h2 className="text-xl font-black text-black leading-tight">Métricas</h2>
-      <p className="text-[11px] text-neutral-400 font-medium mt-0.5">Gastos por categoría</p>
-    </div>
+  const [monthIdx, setMonthIdx] = useState(MONTHS_DATA.length - 1);
+  const [selectedArea, setSelectedArea] = useState<AreaKey | null>(null);
+  const month = MONTHS_DATA[monthIdx];
 
-    {/* Empty state */}
-    <div className="flex flex-col items-center justify-center py-20 text-center">
-      <div className="w-16 h-16 rounded-2xl bg-neutral-100 flex items-center justify-center mb-4">
-        <BarChart2 size={28} strokeWidth={1.5} className="text-neutral-400" />
+  const prevMonth = monthIdx > 0 ? MONTHS_DATA[monthIdx - 1] : null;
+  const totalDiff = prevMonth ? month.total - prevMonth.total : 0;
+  const totalPct = prevMonth && prevMonth.total > 0 ? (totalDiff / prevMonth.total * 100).toFixed(1) : null;
+  const totalIsUp = totalDiff > 0;
+
+  // Compare with 3-month average
+  const allTotals = MONTHS_DATA.map(m => m.total);
+  const avg3 = allTotals.reduce((s, v) => s + v, 0) / allTotals.length;
+
+  return (
+    <motion.div key="tab-metricas" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="px-4 pt-4 pb-24 space-y-5">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-black text-black leading-tight">Métricas</h2>
+          <p className="text-[11px] text-neutral-400 font-medium mt-0.5">Gastos por categoría</p>
+        </div>
       </div>
-      <p className="text-base font-black text-neutral-800 leading-tight mb-1">Sin datos todavía</p>
-      <p className="text-sm text-neutral-400 font-medium max-w-[220px] leading-relaxed">
-        Los gastos por área aparecerán aquí cuando tengas pedidos registrados.
-      </p>
-    </div>
-  </motion.div>;
+
+      {/* Month selector */}
+      <div className="flex bg-neutral-100 rounded-xl p-0.5">
+        {MONTHS_DATA.map((m, i) => (
+          <button
+            key={m.shortMonth}
+            onClick={() => setMonthIdx(i)}
+            className={`flex-1 py-2.5 rounded-[10px] text-xs font-black transition-all ${i === monthIdx ? 'bg-white shadow-sm text-black' : 'text-neutral-400'}`}
+          >
+            {m.shortMonth}
+          </button>
+        ))}
+      </div>
+
+      {/* KPI total */}
+      <div className="bg-neutral-50 border border-neutral-100 rounded-2xl px-5 py-4 flex items-center justify-between">
+        <div>
+          <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">Total gastado</p>
+          <p className="text-3xl font-black text-black tabular-nums leading-none">{formatMoney(month.total)}</p>
+          {totalPct !== null && (
+            <p className={`text-[11px] font-bold mt-1.5 flex items-center gap-1 ${totalIsUp ? 'text-red-500' : 'text-emerald-600'}`}>
+              {totalIsUp ? <TrendingUp size={11} strokeWidth={2.5} /> : <TrendingDown size={11} strokeWidth={2.5} />}
+              {totalIsUp ? '+' : ''}{totalPct}% vs {prevMonth?.shortMonth}
+            </p>
+          )}
+        </div>
+        <div className="text-right">
+          <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">Prom. 3 meses</p>
+          <p className="text-lg font-black text-neutral-500 tabular-nums">{formatMoneyShort(Math.round(avg3))}</p>
+        </div>
+      </div>
+
+      {/* 3-month trend chart */}
+      <div className="bg-white border border-neutral-100 rounded-2xl p-4">
+        <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-3">Evolución 3 meses</p>
+        <div className="h-32">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={MONTHS_DATA.map(m => ({ month: m.shortMonth, value: m.total }))} barSize={40}>
+              <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 700, fill: '#9CA3AF' }} />
+              <YAxis hide />
+              <CartesianGrid vertical={false} stroke="#F3F4F6" />
+              <Tooltip
+                formatter={((value: number) => [formatMoney(value ?? 0), 'Total']) as any}
+                contentStyle={{ border: 'none', borderRadius: 12, boxShadow: '0 4px 20px rgba(0,0,0,0.1)', fontSize: 11, fontWeight: 700 }}
+                cursor={{ fill: 'rgba(0,0,0,0.04)', radius: 6 }}
+              />
+              <Bar dataKey="value" radius={[8, 8, 0, 0]}>
+                {MONTHS_DATA.map((m, i) => (
+                  <Cell key={i} fill={i === monthIdx ? '#171717' : '#D1D5DB'} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Area breakdown */}
+      <div>
+        <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">Por categoría · tocá para detallar</p>
+        <div className="space-y-2">
+          {AREA_KEYS.map(area => {
+            const areaData = month.areas[area];
+            const prevAreaData = prevMonth?.areas[area];
+            const diff = prevAreaData ? areaData.total - prevAreaData.total : 0;
+            const pct = prevAreaData && prevAreaData.total > 0 ? (diff / prevAreaData.total * 100).toFixed(0) : null;
+            const isUp = diff > 0;
+            const colors = AREA_COLORS[area];
+            const pctOfTotal = month.total > 0 ? (areaData.total / month.total * 100) : 0;
+            return (
+              <button
+                key={area}
+                onClick={() => setSelectedArea(area)}
+                className="w-full text-left bg-white border border-neutral-100 rounded-2xl px-4 py-3.5 active:scale-[0.985] transition-transform"
+              >
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: colors.light }}>
+                      <Package size={13} style={{ color: colors.primary }} strokeWidth={2.5} />
+                    </div>
+                    <p className="text-sm font-black text-black">{area}</p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {pct !== null && (
+                      <div className={`flex items-center gap-0.5 text-[9px] font-black px-1.5 py-0.5 rounded-full ${isUp ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`}>
+                        {isUp ? <TrendingUp size={8} strokeWidth={3} /> : <TrendingDown size={8} strokeWidth={3} />}
+                        <span>{isUp ? '+' : ''}{pct}%</span>
+                      </div>
+                    )}
+                    <p className="text-sm font-black text-black tabular-nums">{formatMoney(areaData.total)}</p>
+                    <ChevronRight size={14} className="text-neutral-300" strokeWidth={2} />
+                  </div>
+                </div>
+                {/* Progress bar */}
+                <div className="h-1.5 bg-neutral-100 rounded-full overflow-hidden">
+                  <div className="h-full rounded-full transition-all" style={{ width: `${pctOfTotal}%`, backgroundColor: colors.primary }} />
+                </div>
+                <p className="text-[10px] text-neutral-400 font-medium mt-1">{pctOfTotal.toFixed(0)}% del total</p>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <AreaDetailSheet
+        area={selectedArea}
+        isOpen={selectedArea !== null}
+        onClose={() => setSelectedArea(null)}
+      />
+    </motion.div>
+  );
 };
