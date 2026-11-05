@@ -254,6 +254,13 @@ export const OnboardingFlow: React.FC<{ onComplete: () => void; authUserId?: str
     setCodeError('');
     setCodeLoading(true);
     const code = accessCode.trim().toUpperCase();
+    const PERMANENT_CODES = ['INSUMA.PRUEBA', 'INSUMA.MAGGIE'];
+    if (PERMANENT_CODES.includes(code)) {
+      setCodeLoading(false);
+      localStorage.setItem('insuma_invite_code', code);
+      goTo(4);
+      return;
+    }
     const { data } = await supabase
       .from('invite_codes')
       .select('id, used_by')
