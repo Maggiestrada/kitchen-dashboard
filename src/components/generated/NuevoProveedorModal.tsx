@@ -17,6 +17,7 @@ interface ProveedorForm {
   alias: string;
   diasEntrega: string[];
   plazoPago: string;
+  emiteFactura: boolean;
 }
 
 export interface ProveedorCompleto {
@@ -30,6 +31,7 @@ export interface ProveedorCompleto {
   alias: string;
   diasEntrega: string[];
   plazoPago: string;
+  emiteFactura: boolean;
 }
 
 // ─── Static Data ──────────────────────────────────────────────────────────────
@@ -132,6 +134,7 @@ const EMPTY_FORM: ProveedorForm = {
   alias: '',
   diasEntrega: [],
   plazoPago: '',
+  emiteFactura: true,
 };
 
 // ─── Step Indicator ───────────────────────────────────────────────────────────
@@ -236,6 +239,7 @@ export const NuevoProveedorModal = ({
         alias: form.alias,
         diasEntrega: form.diasEntrega,
         plazoPago: form.plazoPago === '__otros__' ? '' : form.plazoPago,
+        emiteFactura: form.emiteFactura,
       });
       resetAndClose();
     }, 1400);
@@ -408,6 +412,20 @@ export const NuevoProveedorModal = ({
             duration: 0.2
           }} className="flex flex-col flex-1 overflow-hidden">
                   <div className="flex-1 overflow-y-auto px-5 pt-5 pb-4 space-y-5">
+
+                    {/* Emite factura toggle */}
+                    <div className="flex items-center justify-between bg-neutral-50 border border-neutral-100 rounded-2xl px-4 py-3">
+                      <div>
+                        <p className="text-xs font-black text-neutral-800">Emite factura</p>
+                        <p className="text-[10px] text-neutral-400 font-medium mt-0.5">¿Este proveedor entrega comprobante fiscal?</p>
+                      </div>
+                      <button
+                        onClick={() => setForm(prev => ({ ...prev, emiteFactura: !prev.emiteFactura }))}
+                        className={`w-12 h-6 rounded-full transition-all relative shrink-0 ${form.emiteFactura ? 'bg-black' : 'bg-neutral-200'}`}
+                      >
+                        <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-all ${form.emiteFactura ? 'right-0.5' : 'left-0.5'}`} />
+                      </button>
+                    </div>
 
                     {/* Info banner */}
                     <div className="bg-neutral-50 border border-neutral-100 rounded-2xl px-4 py-3 flex items-start gap-3">

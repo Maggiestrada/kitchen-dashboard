@@ -444,9 +444,12 @@ export const NuevoPedidoModal = ({
   const linkedProducts = selectedProvider
     ? products.filter(p => p.provider && p.provider === selectedProvider.name)
     : [];
+  const otherProducts = selectedProvider
+    ? products.filter(p => !p.provider || p.provider !== selectedProvider.name)
+    : [];
   const filteredProducts = isSearching
     ? products.filter(p => p.name.toLowerCase().includes(productSearch.toLowerCase()))
-    : linkedProducts;
+    : [...linkedProducts, ...otherProducts];
   const setQty = useCallback((productId: string, name: string, unit: string, qty: number) => {
     if (qty <= 0) {
       setCart(prev => {
@@ -835,36 +838,60 @@ export const NuevoPedidoModal = ({
                       </div>}
 
                     {/* Available products */}
-                    {filteredProducts.filter(p => !cart[p.id]).length > 0 && <div>
-                        <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-2 mt-1">
-                          {isSearching ? 'Resultados' : 'Insumos del proveedor'}
-                        </p>
+                    {/* Linked products */}
+                    {!isSearching && linkedProducts.filter(p => !cart[p.id]).length > 0 && <div>
+                        <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-2 mt-1">Habituales con este proveedor</p>
                         <div className="space-y-2">
-                          {filteredProducts.filter(p => !cart[p.id]).map(product => <div key={product.id} className="bg-white border border-neutral-100 rounded-2xl">
+                          {linkedProducts.filter(p => !cart[p.id]).map(product => <div key={product.id} className="bg-white border border-neutral-100 rounded-2xl">
                               <div className="flex items-center justify-between px-4 py-3.5">
                                 <div className="flex-1 min-w-0 pr-3">
                                   <p className="font-bold text-black text-sm leading-tight">{product.name}</p>
-                                  {product.lastQty && <p className="text-[11px] text-neutral-400 mt-0.5">
-                                    <span>Último: </span>
-                                    <span className="font-bold text-neutral-600">{product.lastQty} {product.unit}</span>
-                                  </p>}
+                                  {product.lastQty && <p className="text-[11px] text-neutral-400 mt-0.5">Último: <span className="font-bold text-neutral-600">{product.lastQty} {product.unit}</span></p>}
                                 </div>
                                 <button onClick={() => setQty(product.id, product.name, product.unit, product.lastQty ?? 1)} className="flex items-center gap-1.5 bg-black text-white text-xs font-bold px-3 py-2 rounded-xl active:scale-95 transition-transform shrink-0">
-                                  <Plus size={13} strokeWidth={2.5} />
-                                  <span>Agregar</span>
+                                  <Plus size={13} strokeWidth={2.5} /><span>Agregar</span>
                                 </button>
                               </div>
                             </div>)}
                         </div>
                       </div>}
 
-                    {/* Empty state: no linked insumos and not searching */}
-                    {!isSearching && cartItems.length === 0 && linkedProducts.length === 0 && <div className="py-12 flex flex-col items-center gap-3 text-center">
-                        <div className="w-12 h-12 rounded-2xl bg-neutral-100 flex items-center justify-center">
-                          <Package size={22} className="text-neutral-400" />
+                    {/* Other products */}
+                    {!isSearching && otherProducts.filter(p => !cart[p.id]).length > 0 && <div className="mt-3">
+                        <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-2">Otros insumos</p>
+                        <div className="space-y-2">
+                          {otherProducts.filter(p => !cart[p.id]).map(product => <div key={product.id} className="bg-white border border-neutral-100 rounded-2xl">
+                              <div className="flex items-center justify-between px-4 py-3.5">
+                                <div className="flex-1 min-w-0 pr-3">
+                                  <p className="font-bold text-black text-sm leading-tight">{product.name}</p>
+                                  {product.lastQty && <p className="text-[11px] text-neutral-400 mt-0.5">Último: <span className="font-bold text-neutral-600">{product.lastQty} {product.unit}</span></p>}
+                                  {product.provider && <p className="text-[10px] text-neutral-300 mt-0.5">Habitual: {product.provider}</p>}
+                                </div>
+                                <button onClick={() => setQty(product.id, product.name, product.unit, product.lastQty ?? 1)} className="flex items-center gap-1.5 bg-neutral-100 text-neutral-700 text-xs font-bold px-3 py-2 rounded-xl active:scale-95 transition-transform shrink-0">
+                                  <Plus size={13} strokeWidth={2.5} /><span>Agregar</span>
+                                </button>
+                              </div>
+                            </div>)}
                         </div>
-                        <p className="text-sm font-bold text-neutral-400">No hay insumos vinculados</p>
-                        <p className="text-xs text-neutral-300">Buscá un producto arriba para agregarlo al pedido,{'\n'}o creá un insumo nuevo desde Recetas</p>
+                      </div>}
+
+                    {/* Search results */}
+                    {isSearching && filteredProducts.filter(p => !cart[p.id]).length > 0 && <div>
+                        <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-2 mt-1">Resultados</p>
+                        <div className="space-y-2">
+                          {filteredProducts.filter(p => !cart[p.id]).map(product => <div key={product.id} className="bg-white border border-neutral-100 rounded-2xl">
+                              <div className="flex items-center justify-between px-4 py-3.5">
+                                <div className="flex-1 min-w-0 pr-3">
+                                  <p className="font-bold text-black text-sm leading-tight">{product.name}</p>
+                                  {product.lastQty && <p className="text-[11px] text-neutral-400 mt-0.5">Último: <span className="font-bold text-neutral-600">{product.lastQty} {product.unit}</span></p>}
+                                  {product.provider && <p className="text-[10px] text-neutral-300 mt-0.5">Habitual: {product.provider}</p>}
+                                </div>
+                                <button onClick={() => setQty(product.id, product.name, product.unit, product.lastQty ?? 1)} className="flex items-center gap-1.5 bg-black text-white text-xs font-bold px-3 py-2 rounded-xl active:scale-95 transition-transform shrink-0">
+                                  <Plus size={13} strokeWidth={2.5} /><span>Agregar</span>
+                                </button>
+                              </div>
+                            </div>)}
+                        </div>
                       </div>}
 
                     {/* Empty search state */}

@@ -1442,6 +1442,42 @@ export const InsumaKitchenDashboard = ({ authUserEmail, onSignOut }: { authUserE
       };
     }));
   }, []);
+  const handleReorderAlertItem = useCallback((orderId: string, itemName: string, providerName: string) => {
+    const sourceOrder = todayOrders.find(o => o.id === orderId);
+    const prov = providers.find(p => p.name === providerName);
+    const newOrderId = crypto.randomUUID();
+    const orderItem: OrderItem = {
+      id: crypto.randomUUID(),
+      name: itemName,
+      requestedQty: 1,
+      receivedQty: 0,
+      unit: 'u',
+      status: 'pending' as const,
+      alertMsg: '',
+    };
+    const newOrder: Order = {
+      id: newOrderId,
+      provider: providerName,
+      providerPhone: sourceOrder?.providerPhone ?? prov?.telefono,
+      providerAlias: prov?.alias,
+      providerCbu: prov?.cbu,
+      category: 'Pedido',
+      status: 'waiting' as OrderStatus,
+      time: new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }),
+      items: 1,
+      total: 0,
+      paymentStatus: 'pending',
+      weekLabel: 'Esta semana',
+      paymentHistory: [],
+      orderItems: [orderItem],
+    };
+    setTodayOrders(prev => [newOrder, ...prev]);
+  }, [todayOrders, providers]);
+
+  const handleUpdateOrderDate = useCallback((orderId: string, newDate: string) => {
+    setTodayOrders(prev => prev.map(o => o.id !== orderId ? o : { ...o, deliveryDate: newDate }));
+  }, []);
+
   const handleConfirmCash = useCallback((orderId: string) => {
     setTodayOrders(prev => prev.map(o => {
       if (o.id !== orderId) return o;
@@ -1820,7 +1856,7 @@ export const InsumaKitchenDashboard = ({ authUserEmail, onSignOut }: { authUserE
 
         {activeTab === 'alertas' && <AlertasTab orders={todayOrders} onResolve={handleResolveAlert} />}
         {activeTab === 'recibidos' && <RecibidosTab orders={todayOrders} />}
-        {activeTab === 'pagos' && <PagosTabEnhanced orders={todayOrders} providers={providers} onConfirmCash={handleConfirmCash} onPayDigital={handlePayDigital} onUpdateBillingDiscrepancy={handleUpdateBillingDiscrepancy} onSaveItemPrices={handleSaveItemPrices} onSaveOrderPrices={handleSaveOrderPrices} onSaveInvoicePhoto={handleSaveInvoicePhoto} canView={activeUser.role === 'admin'} />}
+        {activeTab === 'pagos' && <PagosTabEnhanced orders={todayOrders} providers={providers} onConfirmCash={handleConfirmCash} onPayDigital={handlePayDigital} onUpdateBillingDiscrepancy={handleUpdateBillingDiscrepancy} onSaveItemPrices={handleSaveItemPrices} onSaveOrderPrices={handleSaveOrderPrices} onSaveInvoicePhoto={handleSaveInvoicePhoto} onResolveAlert={handleResolveAlert} onReorderAlertItem={handleReorderAlertItem} onUpdateOrderDate={handleUpdateOrderDate} canView={activeUser.role === 'admin'} />}
         {activeTab === 'recetas' && <RecetasTab canViewCosts={activeUser.role === 'admin'} customInsumos={customInsumos} lastPriceUpdate={lastPriceUpdate} />}
         {activeTab === 'metricas' && <MetricasTab />}
 

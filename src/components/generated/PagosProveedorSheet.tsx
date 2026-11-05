@@ -220,6 +220,9 @@ const AiInvoiceDetailSheet = ({
   onSaveItemPrices,
   onSaveOrderPrices,
   onSaveInvoicePhoto,
+  onResolveAlert,
+  onReorderAlertItem,
+  onUpdateOrderDate,
 }: {
   order: Order | null;
   isOpen: boolean;
@@ -228,6 +231,9 @@ const AiInvoiceDetailSheet = ({
   onSaveItemPrices?: (items: { nombre: string; precioUnit: number; unit: string }[]) => void;
   onSaveOrderPrices?: (orderId: string, items: { id: string; precioUnit: number; ivaRate: number }[]) => void;
   onSaveInvoicePhoto?: (orderId: string, dataUrl: string) => void;
+  onResolveAlert?: (orderId: string, alertId: string) => void;
+  onReorderAlertItem?: (orderId: string, itemName: string, providerName: string) => void;
+  onUpdateOrderDate?: (orderId: string, newDate: string) => void;
 }) => {
   const [aiScanLoading, setAiScanLoading] = useState(false);
   const [aiScanDone, setAiScanDone] = useState(false);
@@ -236,6 +242,9 @@ const AiInvoiceDetailSheet = ({
   const [manualTotalInput, setManualTotalInput] = useState('');
   const [pricesSaved, setPricesSaved] = useState(false);
   const [manualTotalSaved, setManualTotalSaved] = useState(false);
+  // Editar fecha
+  const [editingDate, setEditingDate] = useState(false);
+  const [dateInput, setDateInput] = useState('');
   // Editar circuito de compra state
   const [editingCircuito, setEditingCircuito] = useState(false);
   const [orderItems, setOrderItems] = useState<OrderLineItem[]>(MOCK_ORDER_ITEMS);
@@ -437,6 +446,34 @@ const AiInvoiceDetailSheet = ({
                     <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-0.5">Total</p>
                     <p className="text-2xl font-black text-black tabular-nums leading-none">{formatMoney(totalEfectivo)}</p>
                   </div>
+              </div>
+
+              {/* Fecha del pedido (editable) */}
+              <div className="flex items-center justify-between bg-neutral-50 border border-neutral-100 rounded-2xl px-4 py-3">
+                <div>
+                  <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-0.5">Fecha del pedido</p>
+                  {editingDate ? (
+                    <div className="flex items-center gap-2 mt-1">
+                      <input
+                        type="date"
+                        value={dateInput}
+                        onChange={e => setDateInput(e.target.value)}
+                        className="text-xs font-bold text-black bg-white border border-neutral-200 rounded-lg px-2 py-1 outline-none"
+                        autoFocus
+                      />
+                      <button onClick={() => { onUpdateOrderDate?.(order.id, dateInput); setEditingDate(false); }} className="text-[10px] font-black text-white bg-black px-2 py-1 rounded-lg active:scale-95">OK</button>
+                      <button onClick={() => setEditingDate(false)} className="text-[10px] font-bold text-neutral-400 px-1 py-1 active:scale-95">✕</button>
+                    </div>
+                  ) : (
+                    <p className="text-xs font-bold text-black">{order.deliveryDate ? new Date(order.deliveryDate).toLocaleDateString('es-AR') : order.time ?? '—'}</p>
+                  )}
+                </div>
+                {!editingDate && (
+                  <button onClick={() => { setDateInput(order.deliveryDate ?? ''); setEditingDate(true); }} className="flex items-center gap-1 text-[10px] font-black text-neutral-500 bg-neutral-100 px-2.5 py-1.5 rounded-xl active:scale-95 transition-transform">
+                    <Edit3 size={10} strokeWidth={2.5} />
+                    <span>Editar</span>
+                  </button>
+                )}
               </div>
 
               {/* Alert: sin precios cargados */}
@@ -886,15 +923,51 @@ const AiInvoiceDetailSheet = ({
               {/* Alerts */}
               {order.alerts && order.alerts.length > 0 && <div>
                   <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">Alertas de recepción</p>
-                  <div className="space-y-2">
-                    {order.alerts.map(alert => <div key={alert.id} className={`rounded-xl border px-3 py-2.5 flex items-start gap-2 ${alert.resolved ? 'bg-neutral-50 border-neutral-100' : 'bg-red-50 border-red-200'}`}>
-                        <AlertCircle size={12} strokeWidth={2.5} className={`mt-0.5 shrink-0 ${alert.resolved ? 'text-neutral-400' : 'text-red-500'}`} />
-                        <div className="flex-1 min-w-0">
-                          <p className={`text-xs font-bold ${alert.resolved ? 'text-neutral-400 line-through' : 'text-red-900'}`}>{alert.itemName}</p>
-                          <p className={`text-[10px] font-medium mt-0.5 ${alert.resolved ? 'text-neutral-400' : 'text-red-600'}`}>{alert.message}</p>
+                  <div className="space-y-3">
+                    {order.alerts.map(alert => (
+                      <div key={alert.id} className={`rounded-2xl border overflow-hidden ${alert.resolved ? 'bg-neutral-50 border-neutral-100' : 'bg-red-50 border-red-200'}`}>
+                        <div className="px-3 py-2.5 flex items-start gap-2">
+                          <AlertCircle size={12} strokeWidth={2.5} className={`mt-0.5 shrink-0 ${alert.resolved ? 'text-neutral-400' : 'text-red-500'}`} />
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-xs font-bold ${alert.resolved ? 'text-neutral-400 line-through' : 'text-red-900'}`}>{alert.itemName}</p>
+                            <p className={`text-[10px] font-medium mt-0.5 ${alert.resolved ? 'text-neutral-400' : 'text-red-600'}`}>{alert.message}</p>
+                          </div>
+                          {alert.resolved && <span className="text-[9px] font-bold text-green-700 bg-green-100 px-1.5 py-0.5 rounded-full uppercase shrink-0">OK</span>}
                         </div>
-                        {alert.resolved && <span className="text-[9px] font-bold text-green-700 bg-green-100 px-1.5 py-0.5 rounded-full uppercase shrink-0">OK</span>}
-                      </div>)}
+                        {!alert.resolved && (
+                          <div className="border-t border-red-100 px-3 py-2.5 flex items-center gap-2 flex-wrap">
+                            {/* WhatsApp */}
+                            {order.providerPhone && (
+                              <a
+                                href={`https://wa.me/${order.providerPhone.replace(/\D/g, '')}?text=${encodeURIComponent(`Hola! Te escribo por el pedido #${order.id}. Faltó: ${alert.itemName}`)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-1.5 bg-green-500 text-white text-[10px] font-bold px-2.5 py-1.5 rounded-xl active:scale-95 transition-transform"
+                              >
+                                <WaIcon size={11} color="white" />
+                                <span>WhatsApp</span>
+                              </a>
+                            )}
+                            {/* Re-pedido */}
+                            <button
+                              onClick={() => onReorderAlertItem?.(order.id, alert.itemName, order.provider)}
+                              className="flex items-center gap-1 text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-1.5 rounded-xl active:scale-95 transition-transform"
+                            >
+                              <Package size={10} strokeWidth={2.5} />
+                              <span>Vuelve a traerlo</span>
+                            </button>
+                            {/* Resolver */}
+                            <button
+                              onClick={() => onResolveAlert?.(order.id, alert.id)}
+                              className="flex items-center gap-1 text-[10px] font-bold text-green-700 bg-green-50 border border-green-200 px-2.5 py-1.5 rounded-xl active:scale-95 transition-transform"
+                            >
+                              <Check size={10} strokeWidth={3} />
+                              <span>Ya está resuelto</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 </div>}
 
@@ -962,6 +1035,9 @@ const ProviderOrdersSheet = ({
   onSaveItemPrices,
   onSaveOrderPrices,
   onSaveInvoicePhoto,
+  onResolveAlert,
+  onReorderAlertItem,
+  onUpdateOrderDate,
 }: {
   group: ProviderPaymentGroup | null;
   isOpen: boolean;
@@ -972,6 +1048,9 @@ const ProviderOrdersSheet = ({
   onSaveItemPrices?: (items: { nombre: string; precioUnit: number; unit: string }[]) => void;
   onSaveOrderPrices?: (orderId: string, items: { id: string; precioUnit: number; ivaRate: number }[]) => void;
   onSaveInvoicePhoto?: (orderId: string, dataUrl: string) => void;
+  onResolveAlert?: (orderId: string, alertId: string) => void;
+  onReorderAlertItem?: (orderId: string, itemName: string, providerName: string) => void;
+  onUpdateOrderDate?: (orderId: string, newDate: string) => void;
 }) => {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [paying, setPaying] = useState(false);
@@ -1224,7 +1303,7 @@ const ProviderOrdersSheet = ({
           </motion.div>
 
           {/* Order detail sheet */}
-          <AiInvoiceDetailSheet order={selectedOrder} isOpen={selectedOrder !== null} onClose={() => setSelectedOrder(null)} onUpdateBillingDiscrepancy={onUpdateBillingDiscrepancy} onSaveItemPrices={onSaveItemPrices} onSaveOrderPrices={onSaveOrderPrices} onSaveInvoicePhoto={onSaveInvoicePhoto} />
+          <AiInvoiceDetailSheet order={selectedOrder} isOpen={selectedOrder !== null} onClose={() => setSelectedOrder(null)} onUpdateBillingDiscrepancy={onUpdateBillingDiscrepancy} onSaveItemPrices={onSaveItemPrices} onSaveOrderPrices={onSaveOrderPrices} onSaveInvoicePhoto={onSaveInvoicePhoto} onResolveAlert={onResolveAlert} onReorderAlertItem={onReorderAlertItem} onUpdateOrderDate={onUpdateOrderDate} />
 
           <MpConfirmModal
             isOpen={showMpConfirm}
@@ -1515,6 +1594,9 @@ export const PagosTabEnhanced = ({
   onSaveItemPrices,
   onSaveOrderPrices,
   onSaveInvoicePhoto,
+  onResolveAlert,
+  onReorderAlertItem,
+  onUpdateOrderDate,
   canView = true,
 }: {
   orders: Order[];
@@ -1525,6 +1607,9 @@ export const PagosTabEnhanced = ({
   onSaveItemPrices?: (items: { nombre: string; precioUnit: number; unit: string }[]) => void;
   onSaveOrderPrices?: (orderId: string, items: { id: string; precioUnit: number; ivaRate: number }[]) => void;
   onSaveInvoicePhoto?: (orderId: string, dataUrl: string) => void;
+  onResolveAlert?: (orderId: string, alertId: string) => void;
+  onReorderAlertItem?: (orderId: string, itemName: string, providerName: string) => void;
+  onUpdateOrderDate?: (orderId: string, newDate: string) => void;
   canView?: boolean;
 }) => {
   const [selectedGroup, setSelectedGroup] = useState<ProviderPaymentGroup | null>(null);
@@ -1808,8 +1893,8 @@ export const PagosTabEnhanced = ({
         <ArchivoTab paidOrders={paidOrders} onOpenDetail={setArchivoDetailOrder} />
       )}
 
-      <ProviderOrdersSheet group={syncedSelectedGroup} isOpen={selectedGroup !== null} onClose={() => setSelectedGroup(null)} onConfirmCash={onConfirmCash} onPayDigital={onPayDigital} onUpdateBillingDiscrepancy={onUpdateBillingDiscrepancy} onSaveItemPrices={onSaveItemPrices} onSaveOrderPrices={onSaveOrderPrices} onSaveInvoicePhoto={onSaveInvoicePhoto} />
-      <AiInvoiceDetailSheet order={archivoDetailOrder} isOpen={archivoDetailOrder !== null} onClose={() => setArchivoDetailOrder(null)} onSaveInvoicePhoto={onSaveInvoicePhoto} />
+      <ProviderOrdersSheet group={syncedSelectedGroup} isOpen={selectedGroup !== null} onClose={() => setSelectedGroup(null)} onConfirmCash={onConfirmCash} onPayDigital={onPayDigital} onUpdateBillingDiscrepancy={onUpdateBillingDiscrepancy} onSaveItemPrices={onSaveItemPrices} onSaveOrderPrices={onSaveOrderPrices} onSaveInvoicePhoto={onSaveInvoicePhoto} onResolveAlert={onResolveAlert} onReorderAlertItem={onReorderAlertItem} onUpdateOrderDate={onUpdateOrderDate} />
+      <AiInvoiceDetailSheet order={archivoDetailOrder} isOpen={archivoDetailOrder !== null} onClose={() => setArchivoDetailOrder(null)} onSaveInvoicePhoto={onSaveInvoicePhoto} onResolveAlert={onResolveAlert} onReorderAlertItem={onReorderAlertItem} onUpdateOrderDate={onUpdateOrderDate} />
     </motion.div>;
 };
 

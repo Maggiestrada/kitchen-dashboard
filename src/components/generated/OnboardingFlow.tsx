@@ -121,8 +121,8 @@ const AgregarUsuarioSheet: React.FC<{
 
   const handleSave = () => {
     if (!nombre.trim()) { setError('El nombre es requerido'); return; }
-    if (rol === 'admin' && pin.length !== 4) { setError('El PIN debe tener 4 dígitos'); return; }
-    onSave({ id: `usr-${Date.now()}`, nombre: nombre.trim(), rol, pin: rol === 'admin' ? pin : undefined });
+    if (pin.length !== 4) { setError('El PIN debe tener 4 dígitos'); return; }
+    onSave({ id: `usr-${Date.now()}`, nombre: nombre.trim(), rol, pin });
   };
 
   return (
@@ -150,7 +150,7 @@ const AgregarUsuarioSheet: React.FC<{
               autoFocus
               className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-3.5 py-3 text-sm text-black outline-none placeholder-neutral-400 focus:border-neutral-400 transition-colors" />
           </div>
-          {rol === 'admin' && (
+          {(
             <div>
               <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-2">PIN de acceso (4 dígitos)</p>
               <div className="flex gap-1.5 justify-center mb-3">
