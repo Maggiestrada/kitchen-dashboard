@@ -1386,14 +1386,21 @@ const downloadAll = (orders: Order[], prefix: string) => {
 
 const ArchivoTab = ({
   paidOrders,
+  providers = [],
   onOpenDetail,
 }: {
   paidOrders: Order[];
+  providers?: { name: string; plazoPago?: string; emiteFactura?: boolean }[];
   onOpenDetail: (order: Order) => void;
 }) => {
   const [view, setView] = useState<'mes' | 'proveedor'>('mes');
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
+
+  const getEmiteFactura = (providerName: string) => {
+    const p = providers.find(p => p.name === providerName);
+    return p?.emiteFactura ?? null;
+  };
 
   const monthGroupMap = paidOrders.reduce<Record<string, { key: string; orders: Order[]; total: number; invoiceCount: number }>>((acc, o) => {
     const key = getMonthKey(o);
@@ -1454,6 +1461,10 @@ const ArchivoTab = ({
   if (selectedMonth) {
     const group = monthGroupMap[selectedMonth];
     const label = getMonthLabel(selectedMonth);
+    const conFactura = group.orders.filter(o => getEmiteFactura(o.provider) === true);
+    const sinFactura = group.orders.filter(o => getEmiteFactura(o.provider) !== true);
+    const totalConFactura = conFactura.reduce((s, o) => s + (o.total ?? 0), 0);
+    const totalSinFactura = sinFactura.reduce((s, o) => s + (o.total ?? 0), 0);
     return (
       <div className="space-y-4">
         <div className="flex items-center gap-3">
@@ -1474,8 +1485,35 @@ const ArchivoTab = ({
             </button>
           )}
         </div>
-        <p className="text-[10px] text-neutral-400 font-medium">{group.invoiceCount} factura{group.invoiceCount !== 1 ? 's' : ''} · {formatMoney(group.total)} total</p>
-        <OrderDrillList orders={group.orders} prefix={label} />
+        {/* Con/sin factura totals */}
+        <div className="grid grid-cols-2 gap-2">
+          <div className="bg-blue-50 border border-blue-100 rounded-xl px-3 py-2.5">
+            <p className="text-[9px] font-black text-blue-500 uppercase tracking-widest mb-0.5">Con factura</p>
+            <p className="text-sm font-black text-blue-800 tabular-nums">{formatMoney(totalConFactura)}</p>
+            <p className="text-[10px] text-blue-400 font-medium">{conFactura.length} pedido{conFactura.length !== 1 ? 's' : ''}</p>
+          </div>
+          <div className="bg-amber-50 border border-amber-100 rounded-xl px-3 py-2.5">
+            <p className="text-[9px] font-black text-amber-500 uppercase tracking-widest mb-0.5">Sin factura</p>
+            <p className="text-sm font-black text-amber-800 tabular-nums">{formatMoney(totalSinFactura)}</p>
+            <p className="text-[10px] text-amber-400 font-medium">{sinFactura.length} pedido{sinFactura.length !== 1 ? 's' : ''}</p>
+          </div>
+        </div>
+        {conFactura.length > 0 && (
+          <div>
+            <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-500 inline-block" />Con factura
+            </p>
+            <OrderDrillList orders={conFactura} prefix={label} />
+          </div>
+        )}
+        {sinFactura.length > 0 && (
+          <div>
+            <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" />Sin factura
+            </p>
+            <OrderDrillList orders={sinFactura} prefix={label} />
+          </div>
+        )}
       </div>
     );
   }
@@ -1603,7 +1641,7 @@ export const PagosTabEnhanced = ({
   canView = true,
 }: {
   orders: Order[];
-  providers?: { name: string; plazoPago?: string }[];
+  providers?: { name: string; plazoPago?: string; emiteFactura?: boolean }[];
   onConfirmCash: (orderId: string) => void;
   onPayDigital: (orderId: string) => void;
   onUpdateBillingDiscrepancy: (orderId: string, resolution: string, newAmount?: number) => void;
@@ -1938,7 +1976,7 @@ export const PagosTabEnhanced = ({
       })()}
 
       {activeView === 'archivo' && (
-        <ArchivoTab paidOrders={paidOrders} onOpenDetail={setArchivoDetailOrder} />
+        <ArchivoTab paidOrders={paidOrders} providers={providers} onOpenDetail={setArchivoDetailOrder} />
       )}
 
       <ProviderOrdersSheet group={syncedSelectedGroup} isOpen={selectedGroup !== null} onClose={() => setSelectedGroup(null)} onConfirmCash={onConfirmCash} onPayDigital={onPayDigital} onUpdateBillingDiscrepancy={onUpdateBillingDiscrepancy} onSaveItemPrices={onSaveItemPrices} onSaveOrderPrices={onSaveOrderPrices} onSaveInvoicePhoto={onSaveInvoicePhoto} onResolveAlert={onResolveAlert} onReorderAlertItem={onReorderAlertItem} onUpdateOrderDate={onUpdateOrderDate} />

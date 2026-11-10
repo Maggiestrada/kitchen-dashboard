@@ -90,6 +90,7 @@ interface Provider {
   cuit?: string;
   diasEntrega?: string[];
   plazoPago?: string;
+  emiteFactura?: boolean;
 }
 
 // ─── Static Data ──────────────────────────────────────────────────────────────
@@ -215,22 +216,22 @@ const MOCK_ORDERS: Order[] = [
   },
 ];
 const INITIAL_PROVIDERS: Provider[] = [
-  { id: 'e8ccfe93', name: 'Zuccardi', category: 'Bebidas', telefono: '+5491165310391', nombreVentas: 'Sergio / fernanda doll', email: 'sarregui@familiazuccardi.com', cuit: '30-51787491-0', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'], plazoPago: '15 días' },
-  { id: 'prov1', name: 'Fura', category: 'Carnes', telefono: '+5491156937934', nombreVentas: 'Ariel', email: 'comprobantesfura@gmail.com', cuit: '3694464056', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'], plazoPago: '7 días' },
-  { id: 'prov2', name: 'Santo berraco', category: 'Carnes', telefono: '+5491122506002', nombreVentas: 'Santo berraco', email: 'santoberraco@gmail.com', cbu: '0070028320000009570717', cuit: '30716480719', diasEntrega: ['Lun', 'Mié'], plazoPago: '7 días' },
-  { id: 'prov3', name: 'Cocorokeen', category: 'Bebidas', telefono: '+5491170040501', cuit: '30-71421721-2', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'] },
-  { id: 'prov4', name: 'Patricia Graffer', category: 'Verduras', telefono: '+5492226472711', nombreVentas: 'Patricia Graffer', diasEntrega: ['Mié'] },
-  { id: 'prov5', name: 'The grocery', category: 'Verduras', telefono: '+5491167083458', nombreVentas: 'Daniel central', email: 'thegrocerypalermo@gmail.com', mpAlias: 'thegrocery-distribu', cbu: '000003100020299695455', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'], plazoPago: '7 días' },
-  { id: 'a4eb5955', name: '4 estaciones', category: 'Verduras', telefono: '+5491150496176', nombreVentas: 'Pablo bonano', email: 'bolsonorganicoentucasa@gmail.com', alias: '4estaciones.producto', cbu: '0720084788000002275404', cuit: '20-27282431-3', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'], plazoPago: '7 días' },
-  { id: 'prov6', name: 'Gabi verduleria', category: 'Verduras', telefono: '+5491136294534' },
-  { id: 'prov7', name: 'Barrio chino', category: 'Verduras', telefono: '+5491140969494', nombreVentas: 'Mari', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'] },
-  { id: 'prov8', name: 'Kaiken', category: 'Bebidas', telefono: '+5491167073332' },
-  { id: 'prov9', name: 'Adrian huevos', category: 'Lácteos', telefono: '+5491165461043', nombreVentas: 'Adrian Alejandro Cambón', alias: 'PERRO.TEATRO.GROSOR', cbu: '00702418 30004017164628', cuit: '20267604062', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'], plazoPago: '7 días' },
-  { id: 'prov10', name: 'Coppola', category: 'Bebidas', telefono: '+5491165462877', nombreVentas: 'Nadia', cbu: '19100506-55005000934546', cuit: '20-17367047-9', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'] },
-  { id: 'prov11', name: 'Soleil', category: 'Almacén', telefono: '+5491128324242', nombreVentas: 'Sol', alias: 'LE.SOLEIL', cbu: '0720476488000000166036', cuit: '2728 44 73 510', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'], plazoPago: '7 días' },
-  { id: 'prov12', name: 'Quilmes', category: 'Bebidas', telefono: '+5491135810054', nombreVentas: 'Gonzalo casco' },
-  { id: 'prov13', name: 'Criollo', category: 'Carnes', telefono: '+5491163512001', nombreVentas: 'Juan Pablo', cbu: '1910057555005702004132', cuit: '30-70887901-7', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'], plazoPago: '1 días' },
-  { id: 'prov14', name: 'alyser', category: 'Otros', telefono: '+5491164872924', nombreVentas: 'Belen' },
+  { id: 'e8ccfe93', name: 'Zuccardi', category: 'Bebidas', telefono: '+5491165310391', nombreVentas: 'Sergio / fernanda doll', email: 'sarregui@familiazuccardi.com', cuit: '30-51787491-0', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'], plazoPago: '15 días', emiteFactura: true },
+  { id: 'prov1', name: 'Fura', category: 'Carnes', telefono: '+5491156937934', nombreVentas: 'Ariel', email: 'comprobantesfura@gmail.com', cuit: '3694464056', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'], plazoPago: '7 días', emiteFactura: true },
+  { id: 'prov2', name: 'Santo berraco', category: 'Carnes', telefono: '+5491122506002', nombreVentas: 'Santo berraco', email: 'santoberraco@gmail.com', cbu: '0070028320000009570717', cuit: '30716480719', diasEntrega: ['Lun', 'Mié'], plazoPago: '7 días', emiteFactura: false },
+  { id: 'prov3', name: 'Cocorokeen', category: 'Bebidas', telefono: '+5491170040501', cuit: '30-71421721-2', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'], emiteFactura: true },
+  { id: 'prov4', name: 'Patricia Graffer', category: 'Verduras', telefono: '+5492226472711', nombreVentas: 'Patricia Graffer', diasEntrega: ['Mié'], emiteFactura: false },
+  { id: 'prov5', name: 'The grocery', category: 'Verduras', telefono: '+5491167083458', nombreVentas: 'Daniel central', email: 'thegrocerypalermo@gmail.com', mpAlias: 'thegrocery-distribu', cbu: '000003100020299695455', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'], plazoPago: '7 días', emiteFactura: false },
+  { id: 'a4eb5955', name: '4 estaciones', category: 'Verduras', telefono: '+5491150496176', nombreVentas: 'Pablo bonano', email: 'bolsonorganicoentucasa@gmail.com', alias: '4estaciones.producto', cbu: '0720084788000002275404', cuit: '20-27282431-3', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'], plazoPago: '7 días', emiteFactura: false },
+  { id: 'prov6', name: 'Gabi verduleria', category: 'Verduras', telefono: '+5491136294534', emiteFactura: false },
+  { id: 'prov7', name: 'Barrio chino', category: 'Verduras', telefono: '+5491140969494', nombreVentas: 'Mari', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'], emiteFactura: false },
+  { id: 'prov8', name: 'Kaiken', category: 'Bebidas', telefono: '+5491167073332', emiteFactura: true },
+  { id: 'prov9', name: 'Adrian huevos', category: 'Lácteos', telefono: '+5491165461043', nombreVentas: 'Adrian Alejandro Cambón', alias: 'PERRO.TEATRO.GROSOR', cbu: '00702418 30004017164628', cuit: '20267604062', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'], plazoPago: '7 días', emiteFactura: false },
+  { id: 'prov10', name: 'Coppola', category: 'Bebidas', telefono: '+5491165462877', nombreVentas: 'Nadia', cbu: '19100506-55005000934546', cuit: '20-17367047-9', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'], emiteFactura: true },
+  { id: 'prov11', name: 'Soleil', category: 'Almacén', telefono: '+5491128324242', nombreVentas: 'Sol', alias: 'LE.SOLEIL', cbu: '0720476488000000166036', cuit: '2728 44 73 510', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'], plazoPago: '7 días', emiteFactura: true },
+  { id: 'prov12', name: 'Quilmes', category: 'Bebidas', telefono: '+5491135810054', nombreVentas: 'Gonzalo casco', emiteFactura: true },
+  { id: 'prov13', name: 'Criollo', category: 'Carnes', telefono: '+5491163512001', nombreVentas: 'Juan Pablo', cbu: '1910057555005702004132', cuit: '30-70887901-7', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'], plazoPago: '1 días', emiteFactura: true },
+  { id: 'prov14', name: 'alyser', category: 'Otros', telefono: '+5491164872924', nombreVentas: 'Belen', emiteFactura: false },
   { id: 'prov15', name: 'La chacrita', category: 'Carnes', telefono: '+5493468524428', nombreVentas: 'La chacrita', alias: 'alcaparra.pecan', cbu: '0150501601000201164397', cuit: '20-25537629-3', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'], plazoPago: '7 días' },
   { id: 'prov16', name: 'Juan grande', category: 'Otros', telefono: '+5491160211545', nombreVentas: 'Ignacio grande', diasEntrega: ['Jue'], plazoPago: '10 días' },
   { id: 'prov17', name: 'la meson', category: 'Otros', telefono: '+5491155608565', nombreVentas: 'La meson', alias: 'LOMO.MARCO.PIOLA', cbu: '00700221-20000004018937', cuit: '3070 82 48 238', diasEntrega: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie'], plazoPago: '1 días' },

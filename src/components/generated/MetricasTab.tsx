@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Minus, BarChart2, Package, Search, X, ChefHat, ArrowUp, ArrowDown } from 'lucide-react';
+import { ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Minus, BarChart2, Package, Search, X, ChefHat, ArrowUp, ArrowDown, Upload, FileText, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -885,6 +885,147 @@ const AreaDetailSheet = ({
 };
 const maxItemVal = (item: ItemDetail) => Math.max(...item.values, 1);
 
+// ─── POS Upload Section ───────────────────────────────────────────────────────
+
+interface POSRow { plato: string; porciones: number; ventaTotal: number; costoEstimado: number; margen: number; }
+
+const POS_DEMO_ROWS: POSRow[] = [
+  { plato: 'Pollo asado',          porciones: 189, ventaTotal: 284_000, costoEstimado: 134_000, margen: 52.8 },
+  { plato: 'Milanesa napolitana',  porciones: 164, ventaTotal: 263_000, costoEstimado: 149_000, margen: 43.3 },
+  { plato: 'Pasta al tomate',      porciones: 151, ventaTotal: 198_000, costoEstimado: 87_000,  margen: 56.1 },
+  { plato: 'Crema pastelera',      porciones: 118, ventaTotal: 112_000, costoEstimado: 48_000,  margen: 57.1 },
+  { plato: 'Risotto de hongos',    porciones: 91,  ventaTotal: 182_000, costoEstimado: 103_000, margen: 43.4 },
+  { plato: 'Ensalada césar',       porciones: 52,  ventaTotal: 78_000,  costoEstimado: 29_000,  margen: 62.8 },
+  { plato: 'Sopa de verduras',     porciones: 22,  ventaTotal: 28_000,  costoEstimado: 14_000,  margen: 50.0 },
+];
+
+const POSUploadSection = () => {
+  const [status, setStatus] = useState<'idle' | 'processing' | 'done'>('idle');
+  const [fileName, setFileName] = useState('');
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const handleFile = (file: File) => {
+    setFileName(file.name);
+    setStatus('processing');
+    setTimeout(() => setStatus('done'), 1800);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const f = e.dataTransfer.files[0];
+    if (f) handleFile(f);
+  };
+
+  const totalVenta = POS_DEMO_ROWS.reduce((s, r) => s + r.ventaTotal, 0);
+  const totalCosto = POS_DEMO_ROWS.reduce((s, r) => s + r.costoEstimado, 0);
+  const margenGlobal = totalVenta > 0 ? ((totalVenta - totalCosto) / totalVenta * 100).toFixed(1) : '0';
+
+  return (
+    <div>
+      <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">Cruce con POS</p>
+
+      {status === 'idle' && (
+        <div
+          onDrop={handleDrop}
+          onDragOver={e => e.preventDefault()}
+          onClick={() => fileRef.current?.click()}
+          className="border-2 border-dashed border-neutral-200 rounded-2xl px-4 py-8 flex flex-col items-center gap-3 cursor-pointer active:scale-[0.985] transition-transform bg-neutral-50"
+        >
+          <div className="w-12 h-12 rounded-2xl bg-white border border-neutral-200 flex items-center justify-center">
+            <Upload size={20} className="text-neutral-400" strokeWidth={1.5} />
+          </div>
+          <div className="text-center">
+            <p className="text-sm font-black text-neutral-700">Subir export del POS</p>
+            <p className="text-[11px] text-neutral-400 font-medium mt-0.5">PDF o Excel de Fudo, Lightspeed, Restoo…</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[9px] font-bold text-neutral-400 bg-neutral-200 px-2 py-0.5 rounded-full">.PDF</span>
+            <span className="text-[9px] font-bold text-neutral-400 bg-neutral-200 px-2 py-0.5 rounded-full">.XLSX</span>
+            <span className="text-[9px] font-bold text-neutral-400 bg-neutral-200 px-2 py-0.5 rounded-full">.CSV</span>
+          </div>
+          <input ref={fileRef} type="file" accept=".pdf,.xlsx,.csv,.xls" className="hidden" onChange={e => { if (e.target.files?.[0]) handleFile(e.target.files[0]); }} />
+        </div>
+      )}
+
+      {status === 'processing' && (
+        <div className="bg-white border border-neutral-100 rounded-2xl px-4 py-6 flex flex-col items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-neutral-100 flex items-center justify-center">
+            <RefreshCw size={18} className="text-neutral-500 animate-spin" strokeWidth={2} />
+          </div>
+          <div className="text-center">
+            <p className="text-sm font-black text-neutral-800">Procesando…</p>
+            <p className="text-[11px] text-neutral-400 font-medium mt-0.5">{fileName}</p>
+          </div>
+          <p className="text-[10px] text-neutral-300 font-medium">Cruzando ventas con costos de insumos</p>
+        </div>
+      )}
+
+      {status === 'done' && (
+        <div className="space-y-3">
+          {/* File tag */}
+          <div className="flex items-center gap-2 bg-green-50 border border-green-100 rounded-xl px-3 py-2">
+            <CheckCircle2 size={13} className="text-green-500 shrink-0" strokeWidth={2} />
+            <p className="text-xs font-bold text-green-800 flex-1 truncate">{fileName}</p>
+            <span className="text-[9px] font-black text-green-600 bg-green-100 px-1.5 py-0.5 rounded-full uppercase">⚡ Simulado</span>
+            <button onClick={() => { setStatus('idle'); setFileName(''); }} className="text-neutral-400 active:opacity-60">
+              <X size={12} strokeWidth={2} />
+            </button>
+          </div>
+
+          {/* Global KPIs */}
+          <div className="grid grid-cols-3 gap-2">
+            <div className="bg-neutral-50 border border-neutral-100 rounded-xl px-2 py-2.5 text-center">
+              <p className="text-[9px] font-black text-neutral-400 uppercase tracking-widest mb-0.5">Venta</p>
+              <p className="text-xs font-black text-black tabular-nums">{formatMoneyShort(totalVenta)}</p>
+            </div>
+            <div className="bg-neutral-50 border border-neutral-100 rounded-xl px-2 py-2.5 text-center">
+              <p className="text-[9px] font-black text-neutral-400 uppercase tracking-widest mb-0.5">Costo</p>
+              <p className="text-xs font-black text-black tabular-nums">{formatMoneyShort(totalCosto)}</p>
+            </div>
+            <div className="bg-green-50 border border-green-100 rounded-xl px-2 py-2.5 text-center">
+              <p className="text-[9px] font-black text-green-500 uppercase tracking-widest mb-0.5">Margen</p>
+              <p className="text-xs font-black text-green-700 tabular-nums">{margenGlobal}%</p>
+            </div>
+          </div>
+
+          {/* Per-dish table */}
+          <div className="bg-white border border-neutral-100 rounded-2xl overflow-hidden">
+            <div className="px-4 py-2.5 border-b border-neutral-50 grid grid-cols-4 gap-1">
+              <p className="text-[9px] font-black text-neutral-400 uppercase tracking-widest col-span-2">Plato</p>
+              <p className="text-[9px] font-black text-neutral-400 uppercase tracking-widest text-right">Venta</p>
+              <p className="text-[9px] font-black text-neutral-400 uppercase tracking-widest text-right">Margen</p>
+            </div>
+            {POS_DEMO_ROWS.map(row => (
+              <div key={row.plato} className="px-4 py-2.5 border-b border-neutral-50 last:border-0 grid grid-cols-4 gap-1 items-center">
+                <div className="col-span-2 min-w-0">
+                  <p className="text-xs font-bold text-neutral-800 truncate">{row.plato}</p>
+                  <p className="text-[9px] text-neutral-400 font-medium">{row.porciones} porc.</p>
+                </div>
+                <p className="text-xs font-black text-black tabular-nums text-right">{formatMoneyShort(row.ventaTotal)}</p>
+                <div className="flex justify-end">
+                  <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full tabular-nums ${row.margen >= 50 ? 'bg-green-50 text-green-700' : row.margen >= 40 ? 'bg-amber-50 text-amber-700' : 'bg-red-50 text-red-600'}`}>
+                    {row.margen}%
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Alert low margin */}
+          {POS_DEMO_ROWS.some(r => r.margen < 45) && (
+            <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
+              <AlertCircle size={13} className="text-amber-500 shrink-0 mt-0.5" strokeWidth={2} />
+              <p className="text-[11px] font-medium text-amber-700 leading-snug">
+                {POS_DEMO_ROWS.filter(r => r.margen < 45).map(r => r.plato).join(', ')} tienen margen bajo — revisá costos de insumos.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 // ─── Plato Drill Sheet ────────────────────────────────────────────────────────
 
 const PlatoDrillSheet = ({
@@ -1327,6 +1468,9 @@ export const MetricasTab = () => {
           </p>
         </div>
       )}
+
+      {/* POS Upload */}
+      {!search && <POSUploadSection />}
 
       <AreaDetailSheet
         area={selectedArea}
