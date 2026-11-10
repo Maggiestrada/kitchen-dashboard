@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { LayoutDashboard, Truck, PackageCheck, Plus, Search, Bell, ChevronRight, Clock, AlertCircle, CheckCircle2, Wallet, Store, CreditCard, Leaf, X, ArrowRight, ChevronDown, Calendar, Banknote, Check, ExternalLink, History, Receipt, Send, MessageSquare, StickyNote, Edit3, Upload, Camera, Package, BarChart2, BookOpen, Lock, User, Trash2, MessageCircle } from 'lucide-react';
+import { LayoutDashboard, Truck, PackageCheck, Plus, Search, Bell, ChevronRight, Clock, AlertCircle, CheckCircle2, Wallet, Store, CreditCard, Leaf, X, ArrowRight, ChevronDown, Calendar, Banknote, Check, ExternalLink, History, Receipt, Send, MessageSquare, StickyNote, Edit3, Upload, Camera, Package, BarChart2, BookOpen, Lock, User, Trash2, MessageCircle, TrendingUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { NuevoPedidoModal } from './NuevoPedidoModal';
 import { NuevoProveedorModal } from './NuevoProveedorModal';
@@ -702,6 +702,7 @@ const OrderDetailSheet = ({
 // ─── InsumosTab ───────────────────────────────────────────────────────────────
 
 type InsumoItem = { id: string; name: string; category: string; unit: string; pricePerKg: number; provider: string; gramsPerUnit?: number };
+type PriceHistEntry = { price: number; date: string };
 
 const UNIT_OPTIONS = ['kg', 'gr', 'lt', 'ml', 'u', 'docena', 'cajón', 'atado'];
 const INSUMO_CATEGORIES = ['Carnes', 'Verduras', 'Almacén', 'Lácteos', 'Bebidas', 'Pescados', 'Limpieza', 'Otros'];
@@ -724,6 +725,7 @@ const InsumosTab = ({
   const [editing, setEditing] = useState<InsumoItem | null>(null);
   const [showNew, setShowNew] = useState(false);
   const [draft, setDraft] = useState<Partial<InsumoItem>>({});
+  const [priceHist, setPriceHist] = useState<PriceHistEntry[]>([]);
 
   const cats = ['Todos', ...INSUMO_CATEGORIES];
   const filtered = insumos.filter(i => {
@@ -737,7 +739,11 @@ const InsumosTab = ({
     items: filtered.filter(i => i.category === cat),
   })).filter(g => g.items.length > 0);
 
-  const openEdit = (item: InsumoItem) => { setDraft({ ...item }); setEditing(item); };
+  const openEdit = (item: InsumoItem) => {
+    setDraft({ ...item });
+    setEditing(item);
+    try { setPriceHist(JSON.parse(localStorage.getItem(`insuma_price_hist_${item.id}`) ?? '[]')); } catch { setPriceHist([]); }
+  };
   const openNew = () => { setDraft({ category: 'Almacén', unit: 'kg', pricePerKg: 0, provider: '' }); setShowNew(true); };
 
   const saveEdit = () => {
@@ -846,6 +852,30 @@ const InsumosTab = ({
                   </p>
                   <input type="number" value={draft.pricePerKg ?? ''} onChange={e => setDraft(d => ({ ...d, pricePerKg: parseFloat(e.target.value) || 0 }))} placeholder="0" className="w-full px-3 py-2.5 rounded-xl bg-neutral-100 text-sm text-neutral-900 outline-none" />
                 </div>
+                {/* Historial de precios */}
+                {!isNew && priceHist.length > 0 && (() => {
+                  const last = priceHist[priceHist.length - 1];
+                  const pct = last.price > 0 ? Math.round(((draft.pricePerKg ?? 0) - last.price) / last.price * 100) : 0;
+                  return (
+                    <div>
+                      <p className="text-[10px] uppercase tracking-widest text-neutral-400 mb-2">Historial de precios</p>
+                      <div className="space-y-1">
+                        {[...priceHist].reverse().slice(0, 4).map((h, idx) => {
+                          const isFirst = idx === 0;
+                          const diff = isFirst && priceHist.length > 0 ? pct : (idx < priceHist.length - 1 ? Math.round((h.price - priceHist[priceHist.length - 2 - idx]?.price) / (priceHist[priceHist.length - 2 - idx]?.price || 1) * 100) : 0);
+                          return (
+                            <div key={idx} className="flex items-center justify-between px-3 py-2 rounded-xl bg-neutral-50">
+                              <span className="text-xs text-neutral-500">{h.date}</span>
+                              <span className="text-xs font-normal text-neutral-700">${h.price.toLocaleString('es-AR')}</span>
+                              {isFirst && pct !== 0 && <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${pct > 0 ? 'bg-orange-100 text-orange-600' : 'bg-green-100 text-green-600'}`}>{pct > 0 ? '↑' : '↓'}{Math.abs(pct)}%</span>}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 {draft.unit === 'u' && (
                   <div>
                     <p className="text-[10px] uppercase tracking-widest text-neutral-400 mb-1">Gramos por unidad (opcional)</p>
@@ -1636,11 +1666,44 @@ export const InsumaKitchenDashboard = ({ authUserEmail, onSignOut }: { authUserE
   const [showPinModal, setShowPinModal] = useState(false);
   const [pinInput, setPinInput] = useState('');
   const [lastPriceUpdate, setLastPriceUpdate] = useState<number | undefined>(undefined);
+  const [tarifaHora, setTarifaHora] = useState<number>(() => parseFloat(localStorage.getItem('insuma_tarifa_hora') ?? '0') || 0);
+  const [margenUmbral, setMargenUmbral] = useState<number>(() => parseFloat(localStorage.getItem('insuma_margen_umbral') ?? '30') || 30);
+  const [showConfig, setShowConfig] = useState(false);
+  const [marginAlerts, setMarginAlerts] = useState<{recetaId: string; nombre: string; margen: number; insumoNombre: string}[]>(() => {
+    try { return JSON.parse(localStorage.getItem('insuma_margin_alerts') ?? '[]'); } catch { return []; }
+  });
   const [pinError, setPinError] = useState(false);
   const [pendingAdmin, setPendingAdmin] = useState<UserProfile | null>(null);
   const [showPinReset, setShowPinReset] = useState(false);
   const swipeStartX = React.useRef<number | null>(null);
   const swipeStartY = React.useRef<number | null>(null);
+
+  // Recalcular alertas de margen cuando cambia un insumo
+  const recalcMarginAlerts = (nextInsumos: typeof customInsumos, umbral: number) => {
+    try {
+      const recetas = JSON.parse(localStorage.getItem('insuma_recetas') ?? '[]') as Array<{id:string;nombre:string;porciones:number;precioVenta?:number;ingredientes:Array<{tipo:string;referenciaId:string;grams:number;wasteGrams:number}>}>;
+      const alerts: typeof marginAlerts = [];
+      recetas.forEach(rec => {
+        if (!rec.precioVenta || rec.precioVenta === 0) return;
+        const costoIng = rec.ingredientes.reduce((sum, ing) => {
+          if (ing.tipo !== 'insumo') return sum;
+          const ins = nextInsumos.find(i => i.id === ing.referenciaId);
+          if (!ins) return sum;
+          const gramsNetos = (ing.grams ?? 0) - (ing.wasteGrams ?? 0);
+          return sum + (ins.pricePerKg / 1000) * gramsNetos;
+        }, 0);
+        const costoPorcion = costoIng / (rec.porciones || 1);
+        const margen = ((rec.precioVenta - costoPorcion) / rec.precioVenta) * 100;
+        if (margen < umbral) {
+          const insumoNombre = rec.ingredientes.find(i => i.tipo === 'insumo' && nextInsumos.find(ins => ins.id === i.referenciaId))?.referenciaId ?? '';
+          const ins = nextInsumos.find(i => i.id === insumoNombre);
+          alerts.push({ recetaId: rec.id, nombre: rec.nombre, margen: Math.round(margen), insumoNombre: ins?.name ?? 'insumo' });
+        }
+      });
+      setMarginAlerts(alerts);
+      localStorage.setItem('insuma_margin_alerts', JSON.stringify(alerts));
+    } catch { /* ignore */ }
+  };
 
   // Cargar datos desde Supabase al montar
   useEffect(() => {
@@ -2041,7 +2104,7 @@ export const InsumaKitchenDashboard = ({ authUserEmail, onSignOut }: { authUserE
   }, {
     id: 'stat-alr',
     label: 'Alertas',
-    value: allUnresolvedAlerts.length,
+    value: allUnresolvedAlerts.length + marginAlerts.length,
     color: '#EF4444',
     onClick: () => setActiveTab('alertas')
   }, {
@@ -2240,6 +2303,56 @@ export const InsumaKitchenDashboard = ({ authUserEmail, onSignOut }: { authUserE
                 <PackageCheck size={17} strokeWidth={1.75} />
               </button>
             </div>
+
+            {/* Calendario semanal de entregas */}
+            {(() => {
+              const DAY_LABELS = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+              const today = new Date();
+              const todayNum = today.getDay(); // 0=Dom
+              // Build Mon-Sun week starting from last Monday
+              const monday = new Date(today);
+              monday.setDate(today.getDate() - ((todayNum + 6) % 7));
+              const week = Array.from({ length: 7 }, (_, i) => {
+                const d = new Date(monday);
+                d.setDate(monday.getDate() + i);
+                return d;
+              });
+              const DIAS_ES: Record<string, number> = { Dom: 0, Lun: 1, Mar: 2, Mié: 3, Jue: 4, Vie: 5, Sáb: 6 };
+              return (
+                <div>
+                  <p className="text-[10px] uppercase tracking-widest text-neutral-400 mb-2">Calendario semanal</p>
+                  <div className="flex gap-1.5 overflow-x-auto pb-1">
+                    {week.map((day, idx) => {
+                      const dayNum = day.getDay();
+                      const dayLabel = DAY_LABELS[dayNum];
+                      const isToday = day.toDateString() === today.toDateString();
+                      const delivProviders = providers.filter(p => (p.diasEntrega ?? []).some(d => DIAS_ES[d] === dayNum));
+                      const activeOnDay = todayOrders.filter(o => {
+                        const prov = providers.find(p => p.name === o.provider);
+                        return (prov?.diasEntrega ?? []).some(d => DIAS_ES[d] === dayNum) && ['waiting','on_way'].includes(o.status);
+                      });
+                      return (
+                        <div key={idx} className={`shrink-0 flex flex-col items-center rounded-2xl px-2 py-2.5 min-w-[52px] transition-colors ${isToday ? 'bg-black text-white' : delivProviders.length > 0 ? 'bg-neutral-100' : 'bg-neutral-50'}`}>
+                          <span className={`text-[9px] uppercase tracking-wide font-normal ${isToday ? 'text-white/60' : 'text-neutral-400'}`}>{dayLabel}</span>
+                          <span className={`text-sm font-normal mt-0.5 ${isToday ? 'text-white' : 'text-neutral-900'}`}>{day.getDate()}</span>
+                          {activeOnDay.length > 0 && (
+                            <div className="mt-1.5 flex flex-col gap-0.5 w-full">
+                              {activeOnDay.slice(0,2).map(o => (
+                                <span key={o.id} className={`text-[8px] leading-tight rounded-md px-1 py-0.5 truncate max-w-[44px] ${isToday ? 'bg-white/20 text-white' : 'bg-[#38BDF8]/20 text-[#0369a1]'}`}>{o.provider.split(' ')[0]}</span>
+                              ))}
+                              {activeOnDay.length > 2 && <span className={`text-[8px] ${isToday ? 'text-white/50' : 'text-neutral-400'}`}>+{activeOnDay.length - 2}</span>}
+                            </div>
+                          )}
+                          {activeOnDay.length === 0 && delivProviders.length > 0 && (
+                            <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-neutral-300" />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
             {pendingReceptionOrders.length === 0 ? <div className="py-16 flex flex-col items-center gap-3 text-center">
                 <div className="w-12 h-12 rounded-2xl bg-green-50 border border-green-100 flex items-center justify-center"><CheckCircle2 size={22} className="text-green-400" strokeWidth={1.5} /></div>
                 <p className="text-sm font-normal text-neutral-400">Todo recepcionado</p>
@@ -2277,17 +2390,45 @@ export const InsumaKitchenDashboard = ({ authUserEmail, onSignOut }: { authUserE
               })()}
           </motion.div>}
 
-        {activeTab === 'alertas' && <AlertasTab orders={todayOrders} onResolve={handleResolveAlert} onReorder={handleReorderAlertItem} />}
+        {activeTab === 'alertas' && <>
+          <AlertasTab orders={todayOrders} onResolve={handleResolveAlert} onReorder={handleReorderAlertItem} />
+          {marginAlerts.length > 0 && (
+            <div className="px-4 pb-4">
+              <p className="text-[10px] uppercase tracking-widest text-neutral-400 mb-2 mt-1">Alerta de rentabilidad</p>
+              <div className="space-y-2">
+                {marginAlerts.map(a => (
+                  <div key={a.recetaId} className="flex items-start gap-3 px-4 py-3.5 rounded-2xl bg-red-50 border border-red-100">
+                    <TrendingUp size={16} className="text-red-500 shrink-0 mt-0.5" strokeWidth={2} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-normal text-red-900 leading-tight">{a.nombre}</p>
+                      <p className="text-xs text-red-500 mt-0.5">Margen {a.margen}% — por debajo del {margenUmbral}% configurado</p>
+                    </div>
+                    <button onClick={() => { const next = marginAlerts.filter(x => x.recetaId !== a.recetaId); setMarginAlerts(next); localStorage.setItem('insuma_margin_alerts', JSON.stringify(next)); }} className="text-red-300 active:text-red-500 shrink-0"><X size={14} /></button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>}
         {activeTab === 'recibidos' && <RecibidosTab orders={todayOrders} />}
         {activeTab === 'pagos' && <PagosTabEnhanced orders={todayOrders} providers={providers} onConfirmCash={handleConfirmCash} onPayDigital={handlePayDigital} onUpdateBillingDiscrepancy={handleUpdateBillingDiscrepancy} onSaveItemPrices={handleSaveItemPrices} onSaveOrderPrices={handleSaveOrderPrices} onSaveInvoicePhoto={handleSaveInvoicePhoto} onResolveAlert={handleResolveAlert} onReorderAlertItem={handleReorderAlertItem} onUpdateOrderDate={handleUpdateOrderDate} canView={activeUser.role === 'admin'} />}
         {activeTab === 'insumos' && <InsumosTab
           insumos={customInsumos}
           providers={providers}
           onUpdate={updated => {
+            const prev = customInsumos.find(i => i.id === updated.id);
+            // Guardar historial de precio si cambió
+            if (prev && prev.pricePerKg !== updated.pricePerKg) {
+              const histKey = `insuma_price_hist_${updated.id}`;
+              const hist: {price: number; date: string}[] = (() => { try { return JSON.parse(localStorage.getItem(histKey) ?? '[]'); } catch { return []; } })();
+              hist.push({ price: prev.pricePerKg, date: new Date().toISOString().slice(0,10) });
+              localStorage.setItem(histKey, JSON.stringify(hist.slice(-10)));
+            }
             const next = customInsumos.map(i => i.id === updated.id ? updated : i);
             setCustomInsumos(next);
             localStorage.setItem('insuma_insumos', JSON.stringify(next));
             setLastPriceUpdate(Date.now());
+            recalcMarginAlerts(next, margenUmbral);
           }}
           onAdd={item => {
             const next = [...customInsumos, item];
@@ -2451,6 +2592,51 @@ export const InsumaKitchenDashboard = ({ authUserEmail, onSignOut }: { authUserE
                 );
               })}
             </div>
+            {/* Configuración */}
+            <div className="mt-5 pt-4 border-t border-neutral-100">
+              <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-3">Configuración</p>
+              <div className="space-y-3">
+                <div>
+                  <p className="text-xs text-neutral-500 mb-1">Costo de hora de trabajo ($)</p>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      value={tarifaHora || ''}
+                      onChange={e => setTarifaHora(parseFloat(e.target.value) || 0)}
+                      placeholder="Ej: 2500"
+                      className="flex-1 px-3 py-2 rounded-xl bg-neutral-100 text-sm text-neutral-900 outline-none"
+                    />
+                    <button
+                      onClick={() => { localStorage.setItem('insuma_tarifa_hora', String(tarifaHora)); }}
+                      className="px-3 py-2 rounded-xl bg-black text-white text-xs font-normal"
+                    >
+                      Guardar
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-neutral-400 mt-1">Se usa para calcular mano de obra en recetas.</p>
+                </div>
+                <div>
+                  <p className="text-xs text-neutral-500 mb-1">Umbral mínimo de margen (%)</p>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      value={margenUmbral}
+                      onChange={e => setMargenUmbral(parseFloat(e.target.value) || 30)}
+                      placeholder="30"
+                      className="flex-1 px-3 py-2 rounded-xl bg-neutral-100 text-sm text-neutral-900 outline-none"
+                    />
+                    <button
+                      onClick={() => { localStorage.setItem('insuma_margen_umbral', String(margenUmbral)); recalcMarginAlerts(customInsumos, margenUmbral); }}
+                      className="px-3 py-2 rounded-xl bg-black text-white text-xs font-normal"
+                    >
+                      Guardar
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-neutral-400 mt-1">Si una receta baja de este margen, aparece una alerta.</p>
+                </div>
+              </div>
+            </div>
+
             <button
               onClick={() => {
                 setShowUserMenu(false);
