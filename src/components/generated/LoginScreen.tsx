@@ -24,7 +24,7 @@ const GoogleIcon = () => (
   </svg>
 );
 
-export const LoginScreen: React.FC = () => {
+export const LoginScreen: React.FC<{ onDemoLogin?: () => void }> = ({ onDemoLogin }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -70,6 +70,16 @@ export const LoginScreen: React.FC = () => {
           )}
           <span>{loading ? 'Conectando...' : 'Continuar con Google'}</span>
         </button>
+
+        {onDemoLogin && (
+          <button
+            onClick={onDemoLogin}
+            className="w-full mt-3 rounded-2xl py-3 flex items-center justify-center gap-2 text-sm font-medium text-white/80 active:scale-[0.98] transition-all"
+            style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.25)' }}
+          >
+            Ver demo sin cuenta
+          </button>
+        )}
 
         {error && (
           <p className="text-center text-xs text-red-200 mt-3">{error}</p>

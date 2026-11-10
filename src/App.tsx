@@ -170,7 +170,10 @@ function App() {
       )}
       {appState === 'login' && (
         <motion.div key="login" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-          <LoginScreen />
+          <LoginScreen onDemoLogin={() => {
+            setAuthUser({ id: 'demo', email: 'demo@insuma.app' });
+            setAppState('app');
+          }} />
         </motion.div>
       )}
       {appState === 'invite_code' && (
