@@ -100,6 +100,7 @@ const MOCK_ORDERS: Order[] = [
     id: 'demo-1', provider: 'Fura', providerPhone: '+5491156937934',
     category: 'Carnes', status: 'waiting', time: '08:30', items: 3, total: 0,
     paymentStatus: 'pending', weekLabel: 'Esta semana', paymentHistory: [],
+    deliveryDate: new Date().toISOString().slice(0, 10),
     orderItems: [
       { id: 'oi-1a', name: 'Asado', requestedQty: 4, receivedQty: 0, unit: 'kg', status: 'pending', alertMsg: '' },
       { id: 'oi-1b', name: 'Pollo entero', requestedQty: 6, receivedQty: 0, unit: 'kg', status: 'pending', alertMsg: '' },
@@ -110,6 +111,7 @@ const MOCK_ORDERS: Order[] = [
     id: 'demo-2', provider: '4 estaciones', providerPhone: '+5491150496176',
     category: 'Verduras', status: 'on_way', time: '09:15', items: 4, total: 0,
     paymentStatus: 'pending', weekLabel: 'Esta semana', paymentHistory: [],
+    deliveryDate: new Date().toISOString().slice(0, 10),
     orderItems: [
       { id: 'oi-2a', name: 'Tomate perita', requestedQty: 5, receivedQty: 0, unit: 'kg', status: 'pending', alertMsg: '' },
       { id: 'oi-2b', name: 'Rúcula', requestedQty: 2, receivedQty: 0, unit: 'kg', status: 'pending', alertMsg: '' },
@@ -1670,7 +1672,15 @@ export const InsumaKitchenDashboard = ({ authUserEmail, onSignOut }: { authUserE
   const [margenUmbral, setMargenUmbral] = useState<number>(() => parseFloat(localStorage.getItem('insuma_margen_umbral') ?? '30') || 30);
   const [showConfig, setShowConfig] = useState(false);
   const [marginAlerts, setMarginAlerts] = useState<{recetaId: string; nombre: string; margen: number; insumoNombre: string}[]>(() => {
-    try { return JSON.parse(localStorage.getItem('insuma_margin_alerts') ?? '[]'); } catch { return []; }
+    try {
+      const saved = JSON.parse(localStorage.getItem('insuma_margin_alerts') ?? 'null');
+      if (saved) return saved;
+      // Demo: alerta pre-seeded para la demo
+      return [
+        { recetaId: 'demo-receta-risotto', nombre: 'Risotto de hongos', margen: 18, insumoNombre: 'Hongos porcini' },
+        { recetaId: 'demo-receta-lomito', nombre: 'Lomito especial', margen: 22, insumoNombre: 'Lomo' },
+      ];
+    } catch { return []; }
   });
   const [pinError, setPinError] = useState(false);
   const [pendingAdmin, setPendingAdmin] = useState<UserProfile | null>(null);
