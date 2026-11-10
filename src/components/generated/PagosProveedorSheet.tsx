@@ -1807,90 +1807,135 @@ export const PagosTabEnhanced = ({
         )}
       </AnimatePresence>
 
-      {activeView === 'pendientes' && <>
-        {/* Overdue warning */}
-        {providerGroups.some(g => g.isOverdue) && <div className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 flex items-center gap-3">
+      {activeView === 'pendientes' && (() => {
+        // ── helpers ──────────────────────────────────────────────────────────
+        const parseOrderDate = (o: Order): Date => {
+          if (o.deliveryDate) {
+            const iso = new Date(o.deliveryDate);
+            if (!isNaN(iso.getTime())) return iso;
+            const parts = o.deliveryDate.split('/');
+            if (parts.length >= 2) {
+              const y = parts.length >= 3 ? parseInt(parts[2]) : new Date().getFullYear();
+              const d = new Date(y, parseInt(parts[1]) - 1, parseInt(parts[0]));
+              if (!isNaN(d.getTime())) return d;
+            }
+          }
+          return new Date();
+        };
+        const getMonthKeyLocal = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+        const getMonthLabelLocal = (key: string) => { const [y,m] = key.split('-'); return new Date(parseInt(y), parseInt(m)-1, 1).toLocaleDateString('es-AR', { month: 'long', year: 'numeric' }); };
+        const getMondayKey = (d: Date) => { const day = d.getDay(); const diff = (day === 0 ? -6 : 1 - day); const mon = new Date(d); mon.setDate(d.getDate() + diff); return mon.toISOString().slice(0,10); };
+        const getWeekLabel = (mondayKey: string) => { const mon = new Date(mondayKey); const sun = new Date(mon); sun.setDate(mon.getDate()+6); const fmt = (x: Date) => `${x.getDate()} ${x.toLocaleDateString('es-AR',{month:'short'})}`; return `${fmt(mon)} – ${fmt(sun)}`; };
+
+        // ── build month→week→providerGroup tree ──────────────────────────────
+        type WeekBucket = { weekKey: string; weekLabel: string; groups: ProviderPaymentGroup[]; total: number };
+        type MonthBucket = { monthKey: string; monthLabel: string; weeks: WeekBucket[]; total: number };
+
+        const monthMap: Record<string, MonthBucket> = {};
+        providerGroups.forEach(group => {
+          // use the earliest order date in the group
+          const repDate = group.orders.reduce<Date>((earliest, o) => {
+            const d = parseOrderDate(o); return d < earliest ? d : earliest;
+          }, parseOrderDate(group.orders[0]));
+          const mk = getMonthKeyLocal(repDate);
+          const wk = getMondayKey(repDate);
+          if (!monthMap[mk]) monthMap[mk] = { monthKey: mk, monthLabel: getMonthLabelLocal(mk), weeks: [], total: 0 };
+          const mo = monthMap[mk];
+          mo.total += group.totalPending;
+          let week = mo.weeks.find(w => w.weekKey === wk);
+          if (!week) { week = { weekKey: wk, weekLabel: getWeekLabel(wk), groups: [], total: 0 }; mo.weeks.push(week); }
+          week.groups.push(group);
+          week.total += group.totalPending;
+        });
+        const monthBuckets = Object.values(monthMap).sort((a,b) => b.monthKey.localeCompare(a.monthKey));
+        monthBuckets.forEach(mo => mo.weeks.sort((a,b) => b.weekKey.localeCompare(a.weekKey)));
+
+        const ProviderCard = ({ group }: { group: ProviderPaymentGroup }) => (
+          <button onClick={() => setSelectedGroup(group)} className={`w-full text-left rounded-2xl border overflow-hidden active:scale-[0.985] transition-transform ${group.isOverdue ? 'bg-red-50 border-red-200' : 'bg-white border-neutral-100'}`}>
+            <div className="px-4 py-3.5">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-black shrink-0 ${group.isOverdue ? 'bg-red-500 text-white' : 'bg-black text-white'}`}>
+                    <span>{group.providerName.charAt(0)}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-black text-sm text-neutral-900 leading-tight truncate">{group.providerName}</p>
+                    <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase ${group.isOverdue ? 'bg-red-100 text-red-700' : 'bg-neutral-100 text-neutral-500'}`}>{group.paymentTermLabel}</span>
+                      <span className="text-[10px] text-neutral-400 font-medium">{group.orders.length} pedido{group.orders.length !== 1 ? 's' : ''}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <p className={`text-base font-black tabular-nums ${group.isOverdue ? 'text-red-700' : 'text-black'}`}>{formatMoney(group.totalPending)}</p>
+                  <ChevronRight size={16} strokeWidth={2} className={group.isOverdue ? 'text-red-300' : 'text-neutral-300'} />
+                </div>
+              </div>
+              {group.orders.some(o => o.hasBillingDiscrepancy) && <div className="mt-2 flex items-center gap-1 bg-orange-50 border border-orange-100 rounded-lg px-2 py-1"><Receipt size={9} className="text-orange-500 shrink-0" strokeWidth={2.5} /><span className="text-[9px] font-bold text-orange-700 uppercase">Diferencia de factura pendiente</span></div>}
+            </div>
+          </button>
+        );
+
+        return <>
+          {/* Overdue warning */}
+          {providerGroups.some(g => g.isOverdue) && <div className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 flex items-center gap-3">
             <AlertCircle size={16} className="text-red-500 shrink-0" strokeWidth={2.5} />
             <div className="flex-1">
               <p className="text-xs font-black text-red-800">Pagos vencidos</p>
-              <p className="text-[10px] text-red-600 font-medium mt-0.5">
-                {providerGroups.filter(g => g.isOverdue).length} proveedor{providerGroups.filter(g => g.isOverdue).length !== 1 ? 'es' : ''} con vencimiento superado
-              </p>
+              <p className="text-[10px] text-red-600 font-medium mt-0.5">{providerGroups.filter(g => g.isOverdue).length} proveedor{providerGroups.filter(g => g.isOverdue).length !== 1 ? 'es' : ''} con vencimiento superado</p>
             </div>
           </div>}
 
-        {/* Provider groups sorted by due date */}
-        {providerGroups.length > 0 && <div className="space-y-2">
-            <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">Por vencimiento</p>
-            {providerGroups.map(group => <button key={group.providerName} onClick={() => setSelectedGroup(group)} className={`w-full text-left rounded-2xl border overflow-hidden active:scale-[0.985] transition-transform ${group.isOverdue ? 'bg-red-50 border-red-200' : 'bg-white border-neutral-100'}`}>
-                <div className="px-4 py-3.5">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-black shrink-0 ${group.isOverdue ? 'bg-red-500 text-white' : 'bg-black text-white'}`}>
-                        <span>{group.providerName.charAt(0)}</span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-black text-sm text-neutral-900 leading-tight truncate">{group.providerName}</p>
-                        <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase ${group.isOverdue ? 'bg-red-100 text-red-700' : 'bg-neutral-100 text-neutral-500'}`}>
-                            {group.paymentTermLabel}
-                          </span>
-                          <span className="text-[10px] text-neutral-400 font-medium">
-                            {group.orders.length} pedido{group.orders.length !== 1 ? 's' : ''}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <p className={`text-base font-black tabular-nums ${group.isOverdue ? 'text-red-700' : 'text-black'}`}>
-                        {formatMoney(group.totalPending)}
-                      </p>
-                      <ChevronRight size={16} strokeWidth={2} className={group.isOverdue ? 'text-red-300' : 'text-neutral-300'} />
-                    </div>
+          {/* Month → Week → Provider */}
+          {monthBuckets.map(mo => (
+            <div key={mo.monthKey} className="space-y-3">
+              {/* Month header */}
+              <div className="flex items-center justify-between">
+                <p className="text-[11px] font-black text-neutral-700 uppercase tracking-widest capitalize">{mo.monthLabel}</p>
+                <p className="text-[11px] font-black text-neutral-500 tabular-nums">{formatMoney(mo.total)}</p>
+              </div>
+              {mo.weeks.map(week => (
+                <div key={week.weekKey} className="space-y-2">
+                  {/* Week header */}
+                  <div className="flex items-center justify-between px-1">
+                    <p className="text-[10px] font-bold text-neutral-400">{week.weekLabel}</p>
+                    <p className="text-[10px] font-bold text-neutral-400 tabular-nums">{formatMoney(week.total)}</p>
                   </div>
-                  {group.orders.some(o => o.hasBillingDiscrepancy) && <div className="mt-2 flex items-center gap-1 bg-orange-50 border border-orange-100 rounded-lg px-2 py-1">
-                      <Receipt size={9} className="text-orange-500 shrink-0" strokeWidth={2.5} />
-                      <span className="text-[9px] font-bold text-orange-700 uppercase">Diferencia de factura pendiente</span>
-                    </div>}
+                  {week.groups.map(group => <ProviderCard key={group.providerName} group={group} />)}
                 </div>
-              </button>)}
-          </div>}
+              ))}
+              <div className="h-px bg-neutral-100" />
+            </div>
+          ))}
 
-        {/* Paid providers (compact summary) */}
-        {paidGroups.length > 0 && <div className="space-y-2 pt-2">
-            <div className="h-px bg-neutral-100" />
-            <div className="flex items-center justify-between pt-1">
+          {/* Paid providers (compact summary) */}
+          {paidGroups.length > 0 && <div className="space-y-2 pt-1">
+            <div className="flex items-center justify-between">
               <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">Pagados</p>
               <button onClick={() => setActiveView('archivo')} className="text-[10px] font-bold text-neutral-400 underline underline-offset-2 active:opacity-60">Ver archivo →</button>
             </div>
             {paidGroups.map(group => <div key={group.providerName} className="bg-neutral-50 border border-neutral-100 rounded-2xl px-4 py-3 flex items-center justify-between opacity-70">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-green-100 flex items-center justify-center text-sm font-black shrink-0 text-green-700">
-                    <span>{group.providerName.charAt(0)}</span>
-                  </div>
-                  <div>
-                    <p className="text-sm font-black text-neutral-700 leading-tight">{group.providerName}</p>
-                    <p className="text-[10px] text-neutral-400 font-medium">{group.orders.length} pedido{group.orders.length !== 1 ? 's' : ''}</p>
-                  </div>
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-green-100 flex items-center justify-center text-sm font-black shrink-0 text-green-700"><span>{group.providerName.charAt(0)}</span></div>
+                <div>
+                  <p className="text-sm font-black text-neutral-700 leading-tight">{group.providerName}</p>
+                  <p className="text-[10px] text-neutral-400 font-medium">{group.orders.length} pedido{group.orders.length !== 1 ? 's' : ''}</p>
                 </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <p className="text-sm font-black text-neutral-400 tabular-nums">{formatMoney(group.total)}</p>
-                  <div className="flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-green-100">
-                    <CheckCircle2 size={9} className="text-green-600" strokeWidth={2.5} />
-                    <span className="text-[9px] font-bold text-green-700 uppercase">Pagado</span>
-                  </div>
-                </div>
-              </div>)}
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <p className="text-sm font-black text-neutral-400 tabular-nums">{formatMoney(group.total)}</p>
+                <div className="flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-green-100"><CheckCircle2 size={9} className="text-green-600" strokeWidth={2.5} /><span className="text-[9px] font-bold text-green-700 uppercase">Pagado</span></div>
+              </div>
+            </div>)}
           </div>}
 
-        {providerGroups.length === 0 && paidGroups.length === 0 && <div className="py-16 flex flex-col items-center gap-3 text-center">
-            <div className="w-14 h-14 rounded-2xl bg-neutral-100 flex items-center justify-center">
-              <CreditCard size={24} className="text-neutral-300" />
-            </div>
+          {providerGroups.length === 0 && paidGroups.length === 0 && <div className="py-16 flex flex-col items-center gap-3 text-center">
+            <div className="w-14 h-14 rounded-2xl bg-neutral-100 flex items-center justify-center"><CreditCard size={24} className="text-neutral-300" /></div>
             <p className="text-sm font-bold text-neutral-400">Sin pagos pendientes</p>
             <p className="text-xs text-neutral-300">Los pedidos recibidos aparecerán aquí</p>
           </div>}
-      </>}
+        </>;
+      })()}
 
       {activeView === 'archivo' && (
         <ArchivoTab paidOrders={paidOrders} onOpenDetail={setArchivoDetailOrder} />

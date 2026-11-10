@@ -1881,7 +1881,8 @@ const RecetaCard: React.FC<{
   canViewCosts?: boolean;
   insumos?: Insumo[];
   subRecetas?: SubReceta[];
-}> = ({ receta, onClick, onEdit, canViewCosts, insumos = [], subRecetas = [] }) => {
+  recetas?: Receta[];
+}> = ({ receta, onClick, onEdit, canViewCosts, insumos = [], subRecetas = [], recetas = [] }) => {
   const color = CATEGORIA_COLORS[receta.categoria] ?? '#6B7280';
   const costoPorcion = getRecetaCostoPorPorcion(receta, insumos, subRecetas, recetas);
   const fc = receta.precioVenta && receta.precioVenta > 0 ? costoPorcion / receta.precioVenta * 100 : null;
@@ -2368,7 +2369,7 @@ export const RecetasTab: React.FC<{ canViewCosts?: boolean; customInsumos?: Insu
                 ) : (
                   <div className="grid grid-cols-2 gap-3">
                     {filtered.map(r => (
-                      <RecetaCard key={r.id} receta={r} onClick={() => openRecetaDetail(r)} canViewCosts={canViewCosts} insumos={insumos} subRecetas={subRecetas} />
+                      <RecetaCard key={r.id} receta={r} onClick={() => openRecetaDetail(r)} canViewCosts={canViewCosts} insumos={insumos} subRecetas={subRecetas} recetas={recetas} />
                     ))}
                   </div>
                 );
