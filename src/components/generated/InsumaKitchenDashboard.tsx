@@ -1026,14 +1026,17 @@ const OrderSummarySheet = ({
 
 const AlertasTab = ({
   orders,
-  onResolve
+  onResolve,
+  onReorder
 }: {
   orders: Order[];
   onResolve: (orderId: string, alertId: string) => void;
+  onReorder: (orderId: string, itemName: string, providerName: string) => void;
 }) => {
   const allAlerts = orders.flatMap(o => (o.alerts ?? []).map(a => ({
     ...a,
-    orderProvider: o.provider
+    orderProvider: o.provider,
+    orderPhone: o.providerPhone ?? '',
   })));
   const unresolved = allAlerts.filter(a => !a.resolved);
   const resolved = allAlerts.filter(a => a.resolved);
@@ -1061,14 +1064,38 @@ const AlertasTab = ({
                 <div className="flex items-start gap-2 mb-3">
                   <AlertCircle size={14} strokeWidth={2} className="text-red-500 shrink-0 mt-0.5" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-normal text-red-900 leading-tight">{alert.itemName}</p>
+                    <p className="text-sm font-bold text-red-900 leading-tight">{alert.itemName}</p>
                     <p className="text-xs font-normal text-red-600 mt-0.5 leading-snug">{alert.message}</p>
                     <p className="text-[10px] text-red-400 mt-1 font-normal">{alert.orderProvider} · {alert.timestamp}</p>
                   </div>
                 </div>
-                <button onClick={() => onResolve(alert.orderId, alert.id)} className="w-full py-2.5 rounded-xl bg-black text-white text-xs font-normal flex items-center justify-center gap-2 active:scale-95 transition-transform">
-                  <Check size={13} strokeWidth={2} /><span>Marcar como resuelto</span>
-                </button>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {alert.orderPhone && (
+                    <a
+                      href={`https://wa.me/${alert.orderPhone.replace(/\D/g, '')}?text=${encodeURIComponent(`Hola! Te escribo por el pedido. Faltó: ${alert.itemName}`)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 bg-green-500 text-white text-[10px] font-bold px-3 py-2 rounded-xl active:scale-95 transition-transform"
+                    >
+                      <WaIcon size={11} color="white" />
+                      <span>WhatsApp</span>
+                    </a>
+                  )}
+                  <button
+                    onClick={() => onReorder(alert.orderId, alert.itemName, alert.orderProvider)}
+                    className="flex items-center gap-1.5 text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-3 py-2 rounded-xl active:scale-95 transition-transform"
+                  >
+                    <Package size={10} strokeWidth={2.5} />
+                    <span>Vuelve a traerlo</span>
+                  </button>
+                  <button
+                    onClick={() => onResolve(alert.orderId, alert.id)}
+                    className="flex items-center gap-1.5 text-[10px] font-bold text-green-700 bg-green-50 border border-green-200 px-3 py-2 rounded-xl active:scale-95 transition-transform"
+                  >
+                    <Check size={10} strokeWidth={3} />
+                    <span>Ya está resuelto</span>
+                  </button>
+                </div>
               </div>
             </div>)}
         </div>}
@@ -2008,7 +2035,7 @@ export const InsumaKitchenDashboard = ({ authUserEmail, onSignOut }: { authUserE
               })()}
           </motion.div>}
 
-        {activeTab === 'alertas' && <AlertasTab orders={todayOrders} onResolve={handleResolveAlert} />}
+        {activeTab === 'alertas' && <AlertasTab orders={todayOrders} onResolve={handleResolveAlert} onReorder={handleReorderAlertItem} />}
         {activeTab === 'recibidos' && <RecibidosTab orders={todayOrders} />}
         {activeTab === 'pagos' && <PagosTabEnhanced orders={todayOrders} providers={providers} onConfirmCash={handleConfirmCash} onPayDigital={handlePayDigital} onUpdateBillingDiscrepancy={handleUpdateBillingDiscrepancy} onSaveItemPrices={handleSaveItemPrices} onSaveOrderPrices={handleSaveOrderPrices} onSaveInvoicePhoto={handleSaveInvoicePhoto} onResolveAlert={handleResolveAlert} onReorderAlertItem={handleReorderAlertItem} onUpdateOrderDate={handleUpdateOrderDate} canView={activeUser.role === 'admin'} />}
         {activeTab === 'recetas' && <RecetasTab canViewCosts={activeUser.role === 'admin'} customInsumos={customInsumos} lastPriceUpdate={lastPriceUpdate} />}
