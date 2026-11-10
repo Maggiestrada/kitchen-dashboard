@@ -699,22 +699,223 @@ const OrderDetailSheet = ({
   </AnimatePresence>;
 };
 
+// ─── InsumosTab ───────────────────────────────────────────────────────────────
+
+type InsumoItem = { id: string; name: string; category: string; unit: string; pricePerKg: number; provider: string; gramsPerUnit?: number };
+
+const UNIT_OPTIONS = ['kg', 'gr', 'lt', 'ml', 'u', 'docena', 'cajón', 'atado'];
+const INSUMO_CATEGORIES = ['Carnes', 'Verduras', 'Almacén', 'Lácteos', 'Bebidas', 'Pescados', 'Limpieza', 'Otros'];
+
+const InsumosTab = ({
+  insumos,
+  onUpdate,
+  onAdd,
+  onDelete,
+  providers,
+}: {
+  insumos: InsumoItem[];
+  onUpdate: (updated: InsumoItem) => void;
+  onAdd: (item: InsumoItem) => void;
+  onDelete: (id: string) => void;
+  providers: { name: string }[];
+}) => {
+  const [search, setSearch] = useState('');
+  const [catFilter, setCatFilter] = useState('Todos');
+  const [editing, setEditing] = useState<InsumoItem | null>(null);
+  const [showNew, setShowNew] = useState(false);
+  const [draft, setDraft] = useState<Partial<InsumoItem>>({});
+
+  const cats = ['Todos', ...INSUMO_CATEGORIES];
+  const filtered = insumos.filter(i => {
+    const matchSearch = i.name.toLowerCase().includes(search.toLowerCase()) || i.provider.toLowerCase().includes(search.toLowerCase());
+    const matchCat = catFilter === 'Todos' || i.category === catFilter;
+    return matchSearch && matchCat;
+  });
+
+  const grouped = INSUMO_CATEGORIES.map(cat => ({
+    cat,
+    items: filtered.filter(i => i.category === cat),
+  })).filter(g => g.items.length > 0);
+
+  const openEdit = (item: InsumoItem) => { setDraft({ ...item }); setEditing(item); };
+  const openNew = () => { setDraft({ category: 'Almacén', unit: 'kg', pricePerKg: 0, provider: '' }); setShowNew(true); };
+
+  const saveEdit = () => {
+    if (!draft.name?.trim() || !editing) return;
+    onUpdate({ ...editing, ...draft } as InsumoItem);
+    setEditing(null);
+  };
+  const saveNew = () => {
+    if (!draft.name?.trim()) return;
+    onAdd({ id: 'ci-' + Date.now(), name: draft.name!, category: draft.category || 'Almacén', unit: draft.unit || 'kg', pricePerKg: draft.pricePerKg ?? 0, provider: draft.provider || '', gramsPerUnit: draft.gramsPerUnit });
+    setShowNew(false);
+  };
+
+  const sheetOpen = !!editing || showNew;
+  const isNew = showNew && !editing;
+
+  return (
+    <div className="flex-1 overflow-y-auto pb-24">
+      {/* Search */}
+      <div className="px-4 pt-4 pb-3 sticky top-0 bg-white z-10">
+        <div className="flex items-center gap-2 px-3 py-2.5 rounded-2xl bg-neutral-100">
+          <Search size={15} className="text-neutral-400 shrink-0" strokeWidth={1.75} />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar insumo o proveedor…" className="flex-1 bg-transparent text-sm text-neutral-900 placeholder:text-neutral-400 outline-none" />
+          {search && <button onClick={() => setSearch('')}><X size={14} className="text-neutral-400" /></button>}
+        </div>
+        {/* Category chips */}
+        <div className="flex gap-1.5 mt-2.5 overflow-x-auto pb-0.5 scrollbar-hide">
+          {cats.map(c => (
+            <button key={c} onClick={() => setCatFilter(c)} className={`shrink-0 px-3 py-1 rounded-full text-xs font-normal transition-colors ${catFilter === c ? 'bg-black text-white' : 'bg-neutral-100 text-neutral-500'}`}>{c}</button>
+          ))}
+        </div>
+      </div>
+
+      {/* Count */}
+      <div className="px-4 pb-2">
+        <p className="text-xs text-neutral-400">{filtered.length} insumo{filtered.length !== 1 ? 's' : ''}</p>
+      </div>
+
+      {/* Groups */}
+      {grouped.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 text-neutral-300">
+          <Package size={40} strokeWidth={1} />
+          <p className="text-sm mt-3">No se encontraron insumos</p>
+        </div>
+      ) : (
+        <div className="px-4 space-y-5">
+          {grouped.map(({ cat, items }) => (
+            <div key={cat}>
+              <p className="text-[10px] uppercase tracking-widest text-neutral-400 mb-2">{cat}</p>
+              <div className="space-y-1.5">
+                {items.map(item => (
+                  <button key={item.id} onClick={() => openEdit(item)} className="w-full flex items-center justify-between px-4 py-3 rounded-2xl bg-neutral-50 active:bg-neutral-100 transition-colors text-left">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-normal text-neutral-900 truncate">{item.name}</p>
+                      <p className="text-xs text-neutral-400 mt-0.5">{item.provider || 'Sin proveedor'}</p>
+                    </div>
+                    <div className="text-right ml-3 shrink-0">
+                      <p className="text-sm font-normal text-neutral-900">${item.pricePerKg.toLocaleString('es-AR')}</p>
+                      <p className="text-[10px] text-neutral-400">por {item.unit}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* FAB */}
+      <button onClick={openNew} className="fixed bottom-20 right-4 bg-black text-white rounded-full flex items-center justify-center z-20 active:scale-90 transition-transform shadow-lg" style={{ width: 50, height: 50 }}>
+        <Plus size={22} strokeWidth={1.75} />
+      </button>
+
+      {/* Edit / New sheet — inlined to avoid re-mount bug */}
+      <AnimatePresence>
+        {sheetOpen && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex flex-col justify-end" style={{ maxWidth: 448, margin: '0 auto' }}>
+            <motion.div className="absolute inset-0 bg-black/40" onClick={() => { setEditing(null); setShowNew(false); }} />
+            <motion.div initial={{ y: 80, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 80, opacity: 0 }} transition={{ type: 'spring', stiffness: 320, damping: 28 }} className="relative bg-white rounded-t-3xl px-4 pt-5 pb-10 z-10 max-h-[85vh] overflow-y-auto">
+              <div className="w-10 h-1 bg-neutral-200 rounded-full mx-auto mb-5" />
+              <h3 className="text-base font-normal text-neutral-900 mb-5">{isNew ? 'Nuevo insumo' : 'Editar insumo'}</h3>
+              <div className="space-y-3">
+                <div>
+                  <p className="text-[10px] uppercase tracking-widest text-neutral-400 mb-1">Nombre</p>
+                  <input value={draft.name ?? ''} onChange={e => setDraft(d => ({ ...d, name: e.target.value }))} placeholder="Ej: Harina 000" className="w-full px-3 py-2.5 rounded-xl bg-neutral-100 text-sm text-neutral-900 outline-none" />
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-widest text-neutral-400 mb-1">Categoría</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {INSUMO_CATEGORIES.map(c => (
+                      <button key={c} onClick={() => setDraft(d => ({ ...d, category: c }))} className={`px-3 py-1.5 rounded-full text-xs font-normal transition-colors ${draft.category === c ? 'bg-black text-white' : 'bg-neutral-100 text-neutral-600'}`}>{c}</button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-widest text-neutral-400 mb-1">Unidad de medida</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {UNIT_OPTIONS.map(u => (
+                      <button key={u} onClick={() => setDraft(d => ({ ...d, unit: u }))} className={`px-3 py-1.5 rounded-full text-xs font-normal transition-colors ${draft.unit === u ? 'bg-black text-white' : 'bg-neutral-100 text-neutral-600'}`}>{u}</button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-widest text-neutral-400 mb-1">
+                    {draft.unit === 'u' || draft.unit === 'docena' || draft.unit === 'cajón' || draft.unit === 'atado' ? 'Precio por unidad ($)' : `Precio por ${draft.unit ?? 'kg'} ($)`}
+                  </p>
+                  <input type="number" value={draft.pricePerKg ?? ''} onChange={e => setDraft(d => ({ ...d, pricePerKg: parseFloat(e.target.value) || 0 }))} placeholder="0" className="w-full px-3 py-2.5 rounded-xl bg-neutral-100 text-sm text-neutral-900 outline-none" />
+                </div>
+                {draft.unit === 'u' && (
+                  <div>
+                    <p className="text-[10px] uppercase tracking-widest text-neutral-400 mb-1">Gramos por unidad (opcional)</p>
+                    <input type="number" value={draft.gramsPerUnit ?? ''} onChange={e => setDraft(d => ({ ...d, gramsPerUnit: parseFloat(e.target.value) || undefined }))} placeholder="Ej: 60 (para huevos)" className="w-full px-3 py-2.5 rounded-xl bg-neutral-100 text-sm text-neutral-900 outline-none" />
+                    <p className="text-[10px] text-neutral-400 mt-1">Se usa en recetas para calcular el costo exacto.</p>
+                  </div>
+                )}
+                <div>
+                  <p className="text-[10px] uppercase tracking-widest text-neutral-400 mb-1">Proveedor</p>
+                  <select value={draft.provider ?? ''} onChange={e => setDraft(d => ({ ...d, provider: e.target.value }))} className="w-full px-3 py-2.5 rounded-xl bg-neutral-100 text-sm text-neutral-900 outline-none appearance-none">
+                    <option value="">Sin asignar</option>
+                    {providers.map(p => <option key={p.name} value={p.name}>{p.name}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div className="flex gap-2 mt-5">
+                {!isNew && (
+                  <button onClick={() => { onDelete(editing!.id); setEditing(null); }} className="px-4 py-3 rounded-2xl bg-red-50 text-red-500 text-sm font-normal flex-shrink-0">Eliminar</button>
+                )}
+                <button onClick={isNew ? saveNew : saveEdit} className="flex-1 py-3 rounded-2xl bg-black text-white text-sm font-normal">Guardar</button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
 // ─── CancelOrderSheet ─────────────────────────────────────────────────────────
+
+const DIAS_MAP: Record<string, number> = { Dom: 0, Lun: 1, Mar: 2, Mié: 3, Jue: 4, Vie: 5, Sáb: 6 };
 
 const CancelOrderSheet = ({
   order,
   isOpen,
   onClose,
   onConfirmCancel,
+  providerDias,
+  onChangeDate,
 }: {
   order: Order | null;
   isOpen: boolean;
   onClose: () => void;
   onConfirmCancel: (orderId: string) => void;
+  providerDias?: string[];
+  onChangeDate?: (orderId: string) => void;
 }) => {
+  const [showDateWarning, setShowDateWarning] = useState(false);
+
   if (!order) return null;
   const phone = order.providerPhone?.replace(/[^0-9]/g, '') ?? '';
-  const waMsg = encodeURIComponent(`Hola, quería avisarte que cancelamos el pedido que hicimos hoy. Disculpá las molestias.`);
+  const waMsg = encodeURIComponent(`Hola! Te hago un pedido para ${order.deliveryDate ?? 'coordinar fecha'}. ¿Podés confirmar disponibilidad?`);
+
+  // Check if delivery date falls on a day the provider doesn't deliver
+  const deliveryDateConflict = (() => {
+    if (!order.deliveryDate || !providerDias || providerDias.length === 0) return false;
+    const d = new Date(order.deliveryDate);
+    if (isNaN(d.getTime())) return false;
+    const dayNum = d.getDay();
+    const provDayNums = providerDias.map(d => DIAS_MAP[d] ?? -1);
+    return !provDayNums.includes(dayNum);
+  })();
+
+  const handleWaClick = () => {
+    if (deliveryDateConflict) { setShowDateWarning(true); return; }
+    window.open(`https://wa.me/${phone}?text=${waMsg}`, '_blank');
+    onClose();
+  };
+
   return <AnimatePresence>
     {isOpen && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex flex-col justify-end" style={{ maxWidth: 448, margin: '0 auto' }}>
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/50" onClick={onClose} />
@@ -722,8 +923,42 @@ const CancelOrderSheet = ({
         <div className="w-10 h-1 bg-neutral-200 rounded-full mx-auto mb-5" />
         <p className="text-xs text-neutral-400 uppercase tracking-widest font-normal mb-1">Pedido a</p>
         <h3 className="text-base font-normal text-neutral-900 mb-5">{order.provider}</h3>
+
+        {/* Date conflict warning inline */}
+        <AnimatePresence>
+          {showDateWarning && (
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="mb-3 overflow-hidden">
+              <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3.5">
+                <div className="flex items-start gap-2 mb-3">
+                  <AlertCircle size={15} className="text-amber-500 shrink-0 mt-0.5" strokeWidth={2} />
+                  <div>
+                    <p className="text-sm font-bold text-amber-900 leading-tight">Este proveedor no entrega ese día</p>
+                    <p className="text-xs text-amber-700 font-normal mt-0.5 leading-snug">
+                      Entrega: {providerDias?.join(', ')}. La fecha elegida ({order.deliveryDate}) no coincide.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => { setShowDateWarning(false); onChangeDate?.(order.id); onClose(); }}
+                    className="flex-1 py-2.5 rounded-xl bg-amber-500 text-white text-xs font-bold active:scale-95 transition-transform"
+                  >
+                    Cambiar fecha
+                  </button>
+                  <button
+                    onClick={() => { setShowDateWarning(false); window.open(`https://wa.me/${phone}?text=${waMsg}`, '_blank'); onClose(); }}
+                    className="flex-1 py-2.5 rounded-xl bg-white border border-amber-200 text-amber-700 text-xs font-bold active:scale-95 transition-transform"
+                  >
+                    Continuar igual
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <div className="space-y-2">
-          {phone && <button onClick={() => { window.open(`https://wa.me/${phone}?text=${waMsg}`, '_blank'); onClose(); }} className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-[#22C55E]/10 text-[#16a34a] active:scale-[0.98] transition-transform">
+          {phone && <button onClick={handleWaClick} className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-[#22C55E]/10 text-[#16a34a] active:scale-[0.98] transition-transform">
             <MessageCircle size={18} strokeWidth={1.75} />
             <span className="text-sm font-normal">Contactar proveedor por WhatsApp</span>
           </button>}
@@ -731,7 +966,7 @@ const CancelOrderSheet = ({
             <Trash2 size={18} strokeWidth={1.75} />
             <span className="text-sm font-normal">Cancelar pedido</span>
           </button>
-          <button onClick={onClose} className="w-full py-3.5 text-sm font-normal text-neutral-400 active:scale-[0.98] transition-transform">
+          <button onClick={() => { setShowDateWarning(false); onClose(); }} className="w-full py-3.5 text-sm font-normal text-neutral-400 active:scale-[0.98] transition-transform">
             Volver
           </button>
         </div>
@@ -1832,6 +2067,11 @@ export const InsumaKitchenDashboard = ({ authUserEmail, onSignOut }: { authUserE
     Icon: CreditCard,
     badge: pendingPayments
   }, {
+    id: 'insumos',
+    label: 'Insumos',
+    Icon: Package,
+    badge: 0
+  }, {
     id: 'recetas',
     label: 'Recetas',
     Icon: BookOpen,
@@ -2040,6 +2280,26 @@ export const InsumaKitchenDashboard = ({ authUserEmail, onSignOut }: { authUserE
         {activeTab === 'alertas' && <AlertasTab orders={todayOrders} onResolve={handleResolveAlert} onReorder={handleReorderAlertItem} />}
         {activeTab === 'recibidos' && <RecibidosTab orders={todayOrders} />}
         {activeTab === 'pagos' && <PagosTabEnhanced orders={todayOrders} providers={providers} onConfirmCash={handleConfirmCash} onPayDigital={handlePayDigital} onUpdateBillingDiscrepancy={handleUpdateBillingDiscrepancy} onSaveItemPrices={handleSaveItemPrices} onSaveOrderPrices={handleSaveOrderPrices} onSaveInvoicePhoto={handleSaveInvoicePhoto} onResolveAlert={handleResolveAlert} onReorderAlertItem={handleReorderAlertItem} onUpdateOrderDate={handleUpdateOrderDate} canView={activeUser.role === 'admin'} />}
+        {activeTab === 'insumos' && <InsumosTab
+          insumos={customInsumos}
+          providers={providers}
+          onUpdate={updated => {
+            const next = customInsumos.map(i => i.id === updated.id ? updated : i);
+            setCustomInsumos(next);
+            localStorage.setItem('insuma_insumos', JSON.stringify(next));
+            setLastPriceUpdate(Date.now());
+          }}
+          onAdd={item => {
+            const next = [...customInsumos, item];
+            setCustomInsumos(next);
+            localStorage.setItem('insuma_insumos', JSON.stringify(next));
+          }}
+          onDelete={id => {
+            const next = customInsumos.filter(i => i.id !== id);
+            setCustomInsumos(next);
+            localStorage.setItem('insuma_insumos', JSON.stringify(next));
+          }}
+        />}
         {activeTab === 'recetas' && <RecetasTab canViewCosts={activeUser.role === 'admin'} customInsumos={customInsumos} lastPriceUpdate={lastPriceUpdate} />}
         {activeTab === 'metricas' && <MetricasTab />}
 
@@ -2150,7 +2410,7 @@ export const InsumaKitchenDashboard = ({ authUserEmail, onSignOut }: { authUserE
     }} onOrderReceived={handleOrderReceived} initialOrderId={recepcionOrderId} recepcionadoPor={activeUser.name} orders={pendingReceptionOrders} />
       <AllOrdersSheet isOpen={showAllOrders} onClose={() => setShowAllOrders(false)} orders={todayOrders} onDetailClick={o => { setShowAllOrders(false); setSelectedDetailOrder(o); }} onAlertClick={id => { setShowAllOrders(false); setAlertOrderId(id); }} onCancelClick={o => { setShowAllOrders(false); setCancelOrder(o); }} />
       <AlertDetailSheet order={alertOrder} isOpen={alertOrderId !== null} onClose={() => setAlertOrderId(null)} onResolve={handleResolveAlert} />
-      <CancelOrderSheet order={cancelOrder} isOpen={cancelOrder !== null} onClose={() => setCancelOrder(null)} onConfirmCancel={handleCancelOrder} />
+      <CancelOrderSheet order={cancelOrder} isOpen={cancelOrder !== null} onClose={() => setCancelOrder(null)} onConfirmCancel={handleCancelOrder} providerDias={cancelOrder ? providers.find(p => p.name === cancelOrder.provider)?.diasEntrega : undefined} onChangeDate={(orderId) => { setCancelOrder(null); const o = todayOrders.find(x => x.id === orderId); if (o) setSelectedDetailOrder(o); }} />
       <OrderDetailSheet order={selectedDetailOrder} isOpen={selectedDetailOrder !== null} onClose={() => setSelectedDetailOrder(null)} onUpdateOrder={handleUpdateOrder} insumos={[...customInsumos, ...CATALOG_INSUMOS.filter(i => !customInsumos.some(c => c.id === i.id))]} />
 
       {/* User menu sheet */}

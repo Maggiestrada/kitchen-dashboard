@@ -241,7 +241,72 @@ const CATEGORIA_COLORS: Record<string, string> = {
   Bebidas: '#72BDE8',
 };
 
-const INITIAL_SUBRECETAS: SubReceta[] = [];
+const INITIAL_SUBRECETAS: SubReceta[] = [
+  {
+    id: 'sub-masa-pasta',
+    nombre: 'Masa de pasta fresca',
+    rinde: 500,
+    rindeUnit: 'gr',
+    ingredientes: [
+      { id: 'si-1', tipo: 'insumo', referenciaId: 'ci-harina', nombre: 'Harina 000', grams: 300, unit: 'gr' },
+      { id: 'si-2', tipo: 'insumo', referenciaId: 'ci-huevos', nombre: 'Huevos', grams: 180, unit: 'u' },
+      { id: 'si-3', tipo: 'insumo', referenciaId: 'ci-aceite', nombre: 'Aceite de girasol', grams: 10, unit: 'ml' },
+    ],
+    procedimiento: 'Hacer un volcán con la harina, incorporar huevos y aceite. Amasar 10 min hasta obtener masa lisa. Envolver en film y descansar 30 min en heladera.',
+    createdAt: '2025-11-01T10:00:00Z',
+  },
+  {
+    id: 'sub-salsa-tomate',
+    nombre: 'Salsa de tomate base',
+    rinde: 1000,
+    rindeUnit: 'gr',
+    ingredientes: [
+      { id: 'si-4', tipo: 'insumo', referenciaId: 'ci-tomate', nombre: 'Tomate perita', grams: 800, unit: 'gr' },
+      { id: 'si-5', tipo: 'insumo', referenciaId: 'ci-cebolla', nombre: 'Cebolla morada', grams: 150, unit: 'gr' },
+      { id: 'si-6', tipo: 'insumo', referenciaId: 'ci-aceite', nombre: 'Aceite de girasol', grams: 40, unit: 'ml' },
+    ],
+    procedimiento: 'Sudar cebolla en aceite 5 min. Agregar tomate triturado y cocinar a fuego medio 25 min hasta reducir. Salpimentar y procesar si se desea.',
+    createdAt: '2025-11-01T10:00:00Z',
+  },
+  {
+    id: 'sub-crema-pastelera',
+    nombre: 'Crema pastelera base',
+    rinde: 700,
+    rindeUnit: 'gr',
+    ingredientes: [
+      { id: 'si-7', tipo: 'insumo', referenciaId: 'ci-huevos', nombre: 'Huevos (yemas)', grams: 120, unit: 'u' },
+      { id: 'si-8', tipo: 'insumo', referenciaId: 'ci-azucar', nombre: 'Azúcar', grams: 150, unit: 'gr' },
+      { id: 'si-9', tipo: 'insumo', referenciaId: 'ci-harina', nombre: 'Harina 000', grams: 50, unit: 'gr' },
+      { id: 'si-10', tipo: 'insumo', referenciaId: 'ci-crema', nombre: 'Crema de leche', grams: 400, unit: 'ml' },
+    ],
+    procedimiento: 'Blanquear yemas con azúcar. Tamizar harina e incorporar. Calentar crema a punto de hervor e integrar en hilo sobre la mezcla de yemas. Cocinar revolviendo hasta espesar.',
+    createdAt: '2025-11-01T10:00:00Z',
+  },
+  {
+    id: 'sub-vinagreta',
+    nombre: 'Vinagreta clásica',
+    rinde: 200,
+    rindeUnit: 'ml',
+    ingredientes: [
+      { id: 'si-11', tipo: 'insumo', referenciaId: 'ci-aceite', nombre: 'Aceite de girasol', grams: 150, unit: 'ml' },
+      { id: 'si-12', tipo: 'insumo', referenciaId: 'ci-rucula', nombre: 'Rúcula (decoración)', grams: 20, unit: 'gr' },
+    ],
+    procedimiento: 'Emulsionar aceite con vinagre en proporción 3:1 con batidor de mano. Agregar sal, pimienta y hierbas frescas al gusto.',
+    createdAt: '2025-11-01T10:00:00Z',
+  },
+  {
+    id: 'sub-fondo-pollo',
+    nombre: 'Fondo de pollo',
+    rinde: 2000,
+    rindeUnit: 'ml',
+    ingredientes: [
+      { id: 'si-13', tipo: 'insumo', referenciaId: 'ci-pollo', nombre: 'Carcasas de pollo', grams: 1500, unit: 'gr' },
+      { id: 'si-14', tipo: 'insumo', referenciaId: 'ci-cebolla', nombre: 'Cebolla morada', grams: 200, unit: 'gr' },
+    ],
+    procedimiento: 'Tostar carcasas en horno 200°C 20 min. Cubrir con agua fría y llevar a hervor. Desgrasar, agregar vegetales y hierbas aromáticas. Cocinar 3 hs a fuego suave. Colar y reducir a la mitad.',
+    createdAt: '2025-11-01T10:00:00Z',
+  },
+];
 
 const INITIAL_RECETAS: Receta[] = [
   {
