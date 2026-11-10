@@ -1,15 +1,21 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Minus, BarChart2, Package } from 'lucide-react';
+import { ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Minus, BarChart2, Package, Search, X, ChefHat, ArrowUp, ArrowDown } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+interface PlatoVendido {
+  name: string;
+  porciones: number;
+  categoria: string;
+}
 interface MonthData {
   month: string;
   shortMonth: string;
   total: number;
   areas: AreaData;
+  platos?: PlatoVendido[];
 }
 interface AreaData {
   Carnes: AreaDetail;
@@ -148,7 +154,16 @@ const MONTHS_DATA: MonthData[] = [{
         values: [3800, 4200, 3600]
       }]
     }
-  }
+  },
+  platos: [
+    { name: 'Pollo asado', porciones: 148, categoria: 'Principales' },
+    { name: 'Pasta al tomate', porciones: 132, categoria: 'Pastas' },
+    { name: 'Milanesa napolitana', porciones: 118, categoria: 'Principales' },
+    { name: 'Crema pastelera', porciones: 96, categoria: 'Postres' },
+    { name: 'Risotto de hongos', porciones: 72, categoria: 'Pastas' },
+    { name: 'Ensalada césar', porciones: 54, categoria: 'Entradas' },
+    { name: 'Sopa de verduras', porciones: 28, categoria: 'Entradas' },
+  ]
 }, {
   month: 'Diciembre 2024',
   shortMonth: 'Dic',
@@ -266,7 +281,16 @@ const MONTHS_DATA: MonthData[] = [{
         values: [3800, 4200, 3600]
       }]
     }
-  }
+  },
+  platos: [
+    { name: 'Pollo asado', porciones: 162, categoria: 'Principales' },
+    { name: 'Milanesa napolitana', porciones: 141, categoria: 'Principales' },
+    { name: 'Pasta al tomate', porciones: 108, categoria: 'Pastas' },
+    { name: 'Crema pastelera', porciones: 88, categoria: 'Postres' },
+    { name: 'Risotto de hongos', porciones: 65, categoria: 'Pastas' },
+    { name: 'Ensalada césar', porciones: 42, categoria: 'Entradas' },
+    { name: 'Sopa de verduras', porciones: 21, categoria: 'Entradas' },
+  ]
 }, {
   month: 'Enero 2025',
   shortMonth: 'Ene',
@@ -384,7 +408,16 @@ const MONTHS_DATA: MonthData[] = [{
         values: [3800, 4200, 3600]
       }]
     }
-  }
+  },
+  platos: [
+    { name: 'Pollo asado', porciones: 134, categoria: 'Principales' },
+    { name: 'Pasta al tomate', porciones: 119, categoria: 'Pastas' },
+    { name: 'Milanesa napolitana', porciones: 104, categoria: 'Principales' },
+    { name: 'Crema pastelera', porciones: 78, categoria: 'Postres' },
+    { name: 'Risotto de hongos', porciones: 59, categoria: 'Pastas' },
+    { name: 'Ensalada césar', porciones: 38, categoria: 'Entradas' },
+    { name: 'Sopa de verduras', porciones: 19, categoria: 'Entradas' },
+  ]
 }, {
   month: 'Octubre 2025',
   shortMonth: 'Oct',
@@ -423,7 +456,16 @@ const MONTHS_DATA: MonthData[] = [{
       { id: 'a4', name: 'Sal x kg', values: [800, 900, 950] },
       { id: 'a5', name: 'Arroz x kg', values: [3800, 4200, 4600] },
     ]},
-  }
+  },
+  platos: [
+    { name: 'Pollo asado', porciones: 176, categoria: 'Principales' },
+    { name: 'Milanesa napolitana', porciones: 158, categoria: 'Principales' },
+    { name: 'Pasta al tomate', porciones: 143, categoria: 'Pastas' },
+    { name: 'Crema pastelera', porciones: 112, categoria: 'Postres' },
+    { name: 'Risotto de hongos', porciones: 84, categoria: 'Pastas' },
+    { name: 'Ensalada césar', porciones: 47, categoria: 'Entradas' },
+    { name: 'Sopa de verduras', porciones: 24, categoria: 'Entradas' },
+  ]
 }, {
   month: 'Noviembre 2025',
   shortMonth: 'Nov',
@@ -462,7 +504,16 @@ const MONTHS_DATA: MonthData[] = [{
       { id: 'a4', name: 'Sal x kg', values: [900, 950, 900] },
       { id: 'a5', name: 'Arroz x kg', values: [4200, 4600, 4600] },
     ]},
-  }
+  },
+  platos: [
+    { name: 'Pollo asado', porciones: 189, categoria: 'Principales' },
+    { name: 'Milanesa napolitana', porciones: 164, categoria: 'Principales' },
+    { name: 'Pasta al tomate', porciones: 151, categoria: 'Pastas' },
+    { name: 'Crema pastelera', porciones: 118, categoria: 'Postres' },
+    { name: 'Risotto de hongos', porciones: 91, categoria: 'Pastas' },
+    { name: 'Ensalada césar', porciones: 52, categoria: 'Entradas' },
+    { name: 'Sopa de verduras', porciones: 22, categoria: 'Entradas' },
+  ]
 }];
 // ─── Area colors ──────────────────────────────────────────────────────────────
 const AREA_COLORS: Record<AreaKey, {
@@ -839,6 +890,8 @@ const maxItemVal = (item: ItemDetail) => Math.max(...item.values, 1);
 export const MetricasTab = () => {
   const [monthIdx, setMonthIdx] = useState(MONTHS_DATA.length - 1);
   const [selectedArea, setSelectedArea] = useState<AreaKey | null>(null);
+  const [search, setSearch] = useState('');
+  const [expandedMonthDetail, setExpandedMonthDetail] = useState<number | null>(null);
   const month = MONTHS_DATA[monthIdx];
 
   const prevMonth = monthIdx > 0 ? MONTHS_DATA[monthIdx - 1] : null;
@@ -846,9 +899,41 @@ export const MetricasTab = () => {
   const totalPct = prevMonth && prevMonth.total > 0 ? (totalDiff / prevMonth.total * 100).toFixed(1) : null;
   const totalIsUp = totalDiff > 0;
 
-  // Compare with 3-month average
   const allTotals = MONTHS_DATA.map(m => m.total);
   const avg3 = allTotals.reduce((s, v) => s + v, 0) / allTotals.length;
+
+  const searchLower = search.toLowerCase();
+
+  // Filter area keys by search
+  const filteredAreas = AREA_KEYS.filter(area => {
+    if (!search) return true;
+    if (area.toLowerCase().includes(searchLower)) return true;
+    return month.areas[area].items.some(it => it.name.toLowerCase().includes(searchLower));
+  });
+
+  // Top insumos across all areas for selected month
+  const allInsumos = AREA_KEYS.flatMap(area =>
+    month.areas[area].items.map(item => ({
+      name: item.name,
+      area,
+      value: item.values[item.values.length - 1] ?? 0,
+    }))
+  ).sort((a, b) => b.value - a.value);
+  const filteredInsumos = search
+    ? allInsumos.filter(i => i.name.toLowerCase().includes(searchLower) || i.area.toLowerCase().includes(searchLower))
+    : allInsumos.slice(0, 5);
+
+  // Platos vendidos for selected month
+  const platos = month.platos ?? [];
+  const sortedPlatos = [...platos].sort((a, b) => b.porciones - a.porciones);
+  const filteredPlatos = search
+    ? sortedPlatos.filter(p => p.name.toLowerCase().includes(searchLower) || p.categoria.toLowerCase().includes(searchLower))
+    : sortedPlatos;
+  const maxPorciones = sortedPlatos[0]?.porciones ?? 1;
+
+  const CATEGORIA_COLORS: Record<string, string> = {
+    Principales: '#EF4444', Pastas: '#8B5CF6', Postres: '#F59E0B', Entradas: '#22C55E',
+  };
 
   return (
     <motion.div key="tab-metricas" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="px-4 pt-4 pb-24 space-y-5">
@@ -861,107 +946,250 @@ export const MetricasTab = () => {
         <span className="text-[10px] font-semibold text-amber-600 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">Datos de muestra</span>
       </div>
 
-      {/* Month selector */}
-      <div className="flex bg-neutral-100 rounded-xl p-0.5">
-        {MONTHS_DATA.map((m, i) => (
-          <button
-            key={m.shortMonth}
-            onClick={() => setMonthIdx(i)}
-            className={`flex-1 py-2.5 rounded-[10px] text-xs font-black transition-all ${i === monthIdx ? 'bg-white shadow-sm text-black' : 'text-neutral-400'}`}
-          >
-            {m.shortMonth}
+      {/* Search bar */}
+      <div className="relative">
+        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" strokeWidth={2} />
+        <input
+          type="text"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Buscar categoría, insumo o plato…"
+          className="w-full pl-9 pr-9 py-2.5 bg-neutral-100 rounded-xl text-sm font-medium text-black placeholder-neutral-400 outline-none"
+        />
+        {search && (
+          <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2">
+            <X size={14} className="text-neutral-400" strokeWidth={2} />
           </button>
-        ))}
+        )}
       </div>
 
-      {/* KPI total */}
-      <div className="bg-neutral-50 border border-neutral-100 rounded-2xl px-5 py-4 flex items-center justify-between">
-        <div>
-          <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">Total gastado</p>
-          <p className="text-3xl font-black text-black tabular-nums leading-none">{formatMoney(month.total)}</p>
-          {totalPct !== null && (
-            <p className={`text-[11px] font-bold mt-1.5 flex items-center gap-1 ${totalIsUp ? 'text-red-500' : 'text-emerald-600'}`}>
-              {totalIsUp ? <TrendingUp size={11} strokeWidth={2.5} /> : <TrendingDown size={11} strokeWidth={2.5} />}
-              {totalIsUp ? '+' : ''}{totalPct}% vs {prevMonth?.shortMonth}
-            </p>
-          )}
+      {/* Month selector */}
+      {!search && (
+        <div className="flex bg-neutral-100 rounded-xl p-0.5">
+          {MONTHS_DATA.map((m, i) => (
+            <button
+              key={m.shortMonth}
+              onClick={() => setMonthIdx(i)}
+              className={`flex-1 py-2.5 rounded-[10px] text-xs font-black transition-all ${i === monthIdx ? 'bg-white shadow-sm text-black' : 'text-neutral-400'}`}
+            >
+              {m.shortMonth}
+            </button>
+          ))}
         </div>
-        <div className="text-right">
-          <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">Prom. 3 meses</p>
-          <p className="text-lg font-black text-neutral-500 tabular-nums">{formatMoneyShort(Math.round(avg3))}</p>
-        </div>
-      </div>
+      )}
 
-      {/* 3-month trend chart */}
-      <div className="bg-white border border-neutral-100 rounded-2xl p-4">
-        <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-3">Evolución 3 meses</p>
-        <div className="h-32">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={MONTHS_DATA.map(m => ({ month: m.shortMonth, value: m.total }))} barSize={40}>
-              <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 700, fill: '#9CA3AF' }} />
-              <YAxis hide />
-              <CartesianGrid vertical={false} stroke="#F3F4F6" />
-              <Tooltip
-                formatter={((value: number) => [formatMoney(value ?? 0), 'Total']) as any}
-                contentStyle={{ border: 'none', borderRadius: 12, boxShadow: '0 4px 20px rgba(0,0,0,0.1)', fontSize: 11, fontWeight: 700 }}
-                cursor={{ fill: 'rgba(0,0,0,0.04)', radius: 6 }}
-              />
-              <Bar dataKey="value" radius={[8, 8, 0, 0]}>
-                {MONTHS_DATA.map((m, i) => (
-                  <Cell key={i} fill={i === monthIdx ? '#171717' : '#D1D5DB'} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
+      {!search && (
+        <>
+          {/* KPI total */}
+          <div className="bg-neutral-50 border border-neutral-100 rounded-2xl px-5 py-4 flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">Total gastado</p>
+              <p className="text-3xl font-black text-black tabular-nums leading-none">{formatMoney(month.total)}</p>
+              {totalPct !== null && (
+                <p className={`text-[11px] font-bold mt-1.5 flex items-center gap-1 ${totalIsUp ? 'text-red-500' : 'text-emerald-600'}`}>
+                  {totalIsUp ? <TrendingUp size={11} strokeWidth={2.5} /> : <TrendingDown size={11} strokeWidth={2.5} />}
+                  {totalIsUp ? '+' : ''}{totalPct}% vs {prevMonth?.shortMonth}
+                </p>
+              )}
+            </div>
+            <div className="text-right">
+              <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">Prom. 3 meses</p>
+              <p className="text-lg font-black text-neutral-500 tabular-nums">{formatMoneyShort(Math.round(avg3))}</p>
+            </div>
+          </div>
+
+          {/* 3-month trend chart — tap a bar to expand detail */}
+          <div className="bg-white border border-neutral-100 rounded-2xl p-4">
+            <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-1">Evolución · tocá el mes para ver detalle</p>
+            <div className="h-32">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={MONTHS_DATA.map((m, i) => ({ month: m.shortMonth, value: m.total, idx: i }))}
+                  barSize={40}
+                  onClick={(data: any) => {
+                    if (data?.activePayload?.[0]) {
+                      const i = (data.activePayload[0].payload as { idx: number }).idx;
+                      setMonthIdx(i);
+                      setExpandedMonthDetail(expandedMonthDetail === i ? null : i);
+                    }
+                  }}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 700, fill: '#9CA3AF' }} />
+                  <YAxis hide />
+                  <CartesianGrid vertical={false} stroke="#F3F4F6" />
+                  <Tooltip
+                    formatter={((value: number) => [formatMoney(value ?? 0), 'Total']) as any}
+                    contentStyle={{ border: 'none', borderRadius: 12, boxShadow: '0 4px 20px rgba(0,0,0,0.1)', fontSize: 11, fontWeight: 700 }}
+                    cursor={{ fill: 'rgba(0,0,0,0.04)', radius: 6 }}
+                  />
+                  <Bar dataKey="value" radius={[8, 8, 0, 0]}>
+                    {MONTHS_DATA.map((m, i) => (
+                      <Cell key={i} fill={i === monthIdx ? '#171717' : '#D1D5DB'} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            {/* Expanded month detail */}
+            <AnimatePresence>
+              {expandedMonthDetail !== null && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="overflow-hidden"
+                >
+                  <div className="pt-3 border-t border-neutral-100 mt-3">
+                    <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">{MONTHS_DATA[expandedMonthDetail].month}</p>
+                    <div className="space-y-1.5">
+                      {AREA_KEYS.map(area => {
+                        const areaData = MONTHS_DATA[expandedMonthDetail].areas[area];
+                        const colors = AREA_COLORS[area];
+                        const pct = MONTHS_DATA[expandedMonthDetail].total > 0
+                          ? (areaData.total / MONTHS_DATA[expandedMonthDetail].total * 100).toFixed(0)
+                          : '0';
+                        return (
+                          <div key={area} className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: colors.primary }} />
+                            <p className="text-xs font-bold text-neutral-700 w-20 shrink-0">{area}</p>
+                            <div className="flex-1 h-1.5 bg-neutral-100 rounded-full overflow-hidden">
+                              <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: colors.primary }} />
+                            </div>
+                            <p className="text-xs font-black text-black tabular-nums shrink-0">{formatMoneyShort(areaData.total)}</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </>
+      )}
 
       {/* Area breakdown */}
-      <div>
-        <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">Por categoría · tocá para detallar</p>
-        <div className="space-y-2">
-          {AREA_KEYS.map(area => {
-            const areaData = month.areas[area];
-            const prevAreaData = prevMonth?.areas[area];
-            const diff = prevAreaData ? areaData.total - prevAreaData.total : 0;
-            const pct = prevAreaData && prevAreaData.total > 0 ? (diff / prevAreaData.total * 100).toFixed(0) : null;
-            const isUp = diff > 0;
-            const colors = AREA_COLORS[area];
-            const pctOfTotal = month.total > 0 ? (areaData.total / month.total * 100) : 0;
-            return (
-              <button
-                key={area}
-                onClick={() => setSelectedArea(area)}
-                className="w-full text-left bg-white border border-neutral-100 rounded-2xl px-4 py-3.5 active:scale-[0.985] transition-transform"
-              >
-                <div className="flex items-center justify-between gap-2 mb-2">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: colors.light }}>
-                      <Package size={13} style={{ color: colors.primary }} strokeWidth={2.5} />
-                    </div>
-                    <p className="text-sm font-black text-black">{area}</p>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    {pct !== null && (
-                      <div className={`flex items-center gap-0.5 text-[9px] font-black px-1.5 py-0.5 rounded-full ${isUp ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`}>
-                        {isUp ? <TrendingUp size={8} strokeWidth={3} /> : <TrendingDown size={8} strokeWidth={3} />}
-                        <span>{isUp ? '+' : ''}{pct}%</span>
+      {filteredAreas.length > 0 && (
+        <div>
+          <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">Por categoría · tocá para detallar</p>
+          <div className="space-y-2">
+            {filteredAreas.map(area => {
+              const areaData = month.areas[area];
+              const prevAreaData = prevMonth?.areas[area];
+              const diff = prevAreaData ? areaData.total - prevAreaData.total : 0;
+              const pct = prevAreaData && prevAreaData.total > 0 ? (diff / prevAreaData.total * 100).toFixed(0) : null;
+              const isUp = diff > 0;
+              const colors = AREA_COLORS[area];
+              const pctOfTotal = month.total > 0 ? (areaData.total / month.total * 100) : 0;
+              return (
+                <button
+                  key={area}
+                  onClick={() => setSelectedArea(area)}
+                  className="w-full text-left bg-white border border-neutral-100 rounded-2xl px-4 py-3.5 active:scale-[0.985] transition-transform"
+                >
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: colors.light }}>
+                        <Package size={13} style={{ color: colors.primary }} strokeWidth={2.5} />
                       </div>
+                      <p className="text-sm font-black text-black">{area}</p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {pct !== null && (
+                        <div className={`flex items-center gap-0.5 text-[9px] font-black px-1.5 py-0.5 rounded-full ${isUp ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`}>
+                          {isUp ? <TrendingUp size={8} strokeWidth={3} /> : <TrendingDown size={8} strokeWidth={3} />}
+                          <span>{isUp ? '+' : ''}{pct}%</span>
+                        </div>
+                      )}
+                      <p className="text-sm font-black text-black tabular-nums">{formatMoney(areaData.total)}</p>
+                      <ChevronRight size={14} className="text-neutral-300" strokeWidth={2} />
+                    </div>
+                  </div>
+                  <div className="h-1.5 bg-neutral-100 rounded-full overflow-hidden">
+                    <div className="h-full rounded-full transition-all" style={{ width: `${pctOfTotal}%`, backgroundColor: colors.primary }} />
+                  </div>
+                  <p className="text-[10px] text-neutral-400 font-medium mt-1">{pctOfTotal.toFixed(0)}% del total</p>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Top insumos por gasto */}
+      {filteredInsumos.length > 0 && (
+        <div>
+          <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">
+            {search ? 'Insumos encontrados' : 'Top 5 insumos · más gastado'}
+          </p>
+          <div className="bg-white border border-neutral-100 rounded-2xl overflow-hidden divide-y divide-neutral-50">
+            {filteredInsumos.map((ins, idx) => {
+              const colors = AREA_COLORS[ins.area as AreaKey];
+              const barPct = allInsumos[0]?.value > 0 ? (ins.value / allInsumos[0].value * 100) : 0;
+              return (
+                <div key={ins.name} className="px-4 py-3">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    {!search && (
+                      <span className="text-[10px] font-black text-neutral-300 w-4 shrink-0">{idx + 1}</span>
                     )}
-                    <p className="text-sm font-black text-black tabular-nums">{formatMoney(areaData.total)}</p>
-                    <ChevronRight size={14} className="text-neutral-300" strokeWidth={2} />
+                    <div className="flex-1 min-w-0 flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-xs font-black text-neutral-800 truncate">{ins.name}</p>
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ backgroundColor: colors.light, color: colors.text }}>{ins.area}</span>
+                      </div>
+                      <p className="text-sm font-black text-black tabular-nums shrink-0">{formatMoney(ins.value)}</p>
+                    </div>
+                  </div>
+                  <div className="h-1 bg-neutral-100 rounded-full overflow-hidden">
+                    <div className="h-full rounded-full" style={{ width: `${barPct}%`, backgroundColor: colors.primary }} />
                   </div>
                 </div>
-                {/* Progress bar */}
-                <div className="h-1.5 bg-neutral-100 rounded-full overflow-hidden">
-                  <div className="h-full rounded-full transition-all" style={{ width: `${pctOfTotal}%`, backgroundColor: colors.primary }} />
-                </div>
-                <p className="text-[10px] text-neutral-400 font-medium mt-1">{pctOfTotal.toFixed(0)}% del total</p>
-              </button>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Platos vendidos */}
+      {filteredPlatos.length > 0 && (
+        <div>
+          <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">Platos vendidos</p>
+          <div className="bg-white border border-neutral-100 rounded-2xl overflow-hidden divide-y divide-neutral-50">
+            {filteredPlatos.map((plato, idx) => {
+              const color = CATEGORIA_COLORS[plato.categoria] ?? '#9CA3AF';
+              const barPct = (plato.porciones / maxPorciones) * 100;
+              const isTop = idx === 0 && !search;
+              const isLast = idx === filteredPlatos.length - 1 && !search;
+              return (
+                <div key={plato.name} className="px-4 py-3">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      {isTop && <ArrowUp size={11} className="text-emerald-500 shrink-0" strokeWidth={3} />}
+                      {isLast && <ArrowDown size={11} className="text-red-400 shrink-0" strokeWidth={3} />}
+                      {!isTop && !isLast && <ChefHat size={11} style={{ color }} strokeWidth={2} className="shrink-0" />}
+                      <div className="min-w-0">
+                        <p className="text-xs font-black text-neutral-800 truncate">{plato.name}</p>
+                        <span className="text-[9px] font-bold" style={{ color }}>{plato.categoria}</span>
+                      </div>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <p className="text-sm font-black text-black tabular-nums">{plato.porciones}</p>
+                      <p className="text-[9px] text-neutral-400 font-medium">porciones</p>
+                    </div>
+                  </div>
+                  <div className="h-1 bg-neutral-100 rounded-full overflow-hidden">
+                    <div className="h-full rounded-full transition-all" style={{ width: `${barPct}%`, backgroundColor: color }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <p className="text-[9px] text-neutral-300 font-medium mt-1.5 text-center">
+            ↑ más vendido · ↓ menos vendido
+          </p>
+        </div>
+      )}
 
       <AreaDetailSheet
         area={selectedArea}
