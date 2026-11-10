@@ -885,11 +885,145 @@ const AreaDetailSheet = ({
 };
 const maxItemVal = (item: ItemDetail) => Math.max(...item.values, 1);
 
+// ─── Plato Drill Sheet ────────────────────────────────────────────────────────
+
+const PlatoDrillSheet = ({
+  plato,
+  isOpen,
+  onClose,
+}: {
+  plato: PlatoVendido | null;
+  isOpen: boolean;
+  onClose: () => void;
+}) => {
+  if (!plato) return null;
+  const color = ({ Principales: '#EF4444', Pastas: '#8B5CF6', Postres: '#F59E0B', Entradas: '#22C55E' } as Record<string, string>)[plato.categoria] ?? '#9CA3AF';
+  const colorLight = ({ Principales: '#FEF2F2', Pastas: '#F5F3FF', Postres: '#FFFBEB', Entradas: '#F0FDF4' } as Record<string, string>)[plato.categoria] ?? '#F3F4F6';
+
+  const chartData = MONTHS_DATA.map(m => {
+    const found = m.platos?.find(p => p.name === plato.name);
+    return { month: m.shortMonth, value: found?.porciones ?? 0 };
+  });
+  const values = chartData.map(d => d.value);
+  const maxVal = Math.max(...values, 1);
+  const minVal = Math.min(...values.filter(v => v > 0));
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[90] flex flex-col justify-end" style={{ maxWidth: 448, margin: '0 auto' }}>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="absolute inset-0 bg-black/60" onClick={onClose} />
+          <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+            transition={{ type: 'spring', damping: 30, stiffness: 320 }}
+            className="relative flex flex-col bg-white rounded-t-3xl overflow-hidden max-h-[80vh]">
+            <div className="flex justify-center pt-3 pb-1 shrink-0">
+              <div className="w-9 h-1 rounded-full bg-neutral-200" />
+            </div>
+            <div className="px-5 pt-2 pb-4 flex items-start justify-between shrink-0">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
+                  <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color }}>{plato.categoria}</span>
+                </div>
+                <h2 className="text-base font-black text-black leading-tight">{plato.name}</h2>
+                <p className="text-[11px] text-neutral-400 font-medium mt-0.5">Porciones vendidas · últimos meses</p>
+              </div>
+              <button onClick={onClose} className="w-9 h-9 rounded-full border border-neutral-200 flex items-center justify-center text-neutral-500 active:scale-90 transition-transform">
+                <span className="text-lg font-medium leading-none">×</span>
+              </button>
+            </div>
+            <div className="h-px bg-neutral-100 mx-5 shrink-0" />
+
+            <div className="flex-1 overflow-y-auto px-5 pt-4 pb-8 space-y-5">
+              {/* Chart */}
+              <div className="bg-neutral-50 border border-neutral-100 rounded-2xl p-4">
+                <div className="h-36">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={chartData} barSize={28}>
+                      <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 700, fill: '#9CA3AF' }} />
+                      <YAxis hide />
+                      <CartesianGrid vertical={false} stroke="#F3F4F6" />
+                      <Tooltip
+                        formatter={((value: number) => [value + ' porciones', plato.name]) as any}
+                        contentStyle={{ border: 'none', borderRadius: 12, boxShadow: '0 4px 20px rgba(0,0,0,0.1)', fontSize: 11, fontWeight: 700 }}
+                        cursor={{ fill: 'rgba(0,0,0,0.04)', radius: 6 }}
+                      />
+                      <Bar dataKey="value" radius={[6, 6, 0, 0]}>
+                        {chartData.map((_, i) => (
+                          <Cell key={i} fill={i === chartData.length - 1 ? color : color + '60'} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Month comparison */}
+              <div>
+                <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest mb-2">Comparación mes a mes</p>
+                <div className="space-y-2">
+                  {MONTHS_DATA.map((m, idx) => {
+                    const val = chartData[idx]?.value ?? 0;
+                    const prevVal = idx > 0 ? (chartData[idx - 1]?.value ?? 0) : null;
+                    const diff = prevVal !== null ? val - prevVal : null;
+                    const pct = prevVal !== null && prevVal > 0 ? ((val - prevVal) / prevVal * 100).toFixed(1) : null;
+                    const isUp = diff !== null && diff > 0;
+                    const isDown = diff !== null && diff < 0;
+                    return (
+                      <div key={m.shortMonth} className="flex items-center justify-between bg-white border border-neutral-100 rounded-xl px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black"
+                            style={{ backgroundColor: idx === MONTHS_DATA.length - 1 ? color : colorLight, color: idx === MONTHS_DATA.length - 1 ? 'white' : color }}>
+                            <span>{m.shortMonth.slice(0, 1)}</span>
+                          </div>
+                          <div>
+                            <p className="text-xs font-black text-neutral-800">{m.shortMonth}</p>
+                            <p className="text-[10px] text-neutral-400 font-medium">{m.month.split(' ')[1]}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {pct !== null && (
+                            <div className={`flex items-center gap-0.5 text-[9px] font-black px-1.5 py-0.5 rounded-full ${isUp ? 'bg-green-50 text-green-600' : isDown ? 'bg-red-50 text-red-500' : 'bg-neutral-100 text-neutral-500'}`}>
+                              {isUp ? <TrendingUp size={8} strokeWidth={3} /> : isDown ? <TrendingDown size={8} strokeWidth={3} /> : <Minus size={8} strokeWidth={3} />}
+                              <span>{isUp ? '+' : ''}{pct}%</span>
+                            </div>
+                          )}
+                          <p className="text-sm font-black text-black tabular-nums">{val}</p>
+                          <p className="text-[10px] text-neutral-400 font-medium">porc.</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Summary */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="bg-neutral-50 border border-neutral-100 rounded-xl px-3 py-3">
+                  <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest mb-1">Máximo</p>
+                  <p className="text-base font-black text-black tabular-nums">{maxVal} <span className="text-[10px] font-medium text-neutral-400">porc.</span></p>
+                </div>
+                <div className="bg-neutral-50 border border-neutral-100 rounded-xl px-3 py-3">
+                  <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest mb-1">Mínimo</p>
+                  <p className="text-base font-black text-black tabular-nums">{minVal} <span className="text-[10px] font-medium text-neutral-400">porc.</span></p>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+};
+
 // ─── Main MetricasTab ─────────────────────────────────────────────────────────
 
 export const MetricasTab = () => {
   const [monthIdx, setMonthIdx] = useState(MONTHS_DATA.length - 1);
   const [selectedArea, setSelectedArea] = useState<AreaKey | null>(null);
+  const [selectedPlato, setSelectedPlato] = useState<PlatoVendido | null>(null);
   const [search, setSearch] = useState('');
   const [expandedMonthDetail, setExpandedMonthDetail] = useState<number | null>(null);
   const month = MONTHS_DATA[monthIdx];
@@ -1162,7 +1296,7 @@ export const MetricasTab = () => {
               const isTop = idx === 0 && !search;
               const isLast = idx === filteredPlatos.length - 1 && !search;
               return (
-                <div key={plato.name} className="px-4 py-3">
+                <button key={plato.name} onClick={() => setSelectedPlato(plato)} className="w-full text-left px-4 py-3 active:scale-[0.985] transition-transform">
                   <div className="flex items-center gap-2 mb-1.5">
                     <div className="flex items-center gap-2 flex-1 min-w-0">
                       {isTop && <ArrowUp size={11} className="text-emerald-500 shrink-0" strokeWidth={3} />}
@@ -1173,15 +1307,18 @@ export const MetricasTab = () => {
                         <span className="text-[9px] font-bold" style={{ color }}>{plato.categoria}</span>
                       </div>
                     </div>
-                    <div className="shrink-0 text-right">
-                      <p className="text-sm font-black text-black tabular-nums">{plato.porciones}</p>
-                      <p className="text-[9px] text-neutral-400 font-medium">porciones</p>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <div className="text-right">
+                        <p className="text-sm font-black text-black tabular-nums">{plato.porciones}</p>
+                        <p className="text-[9px] text-neutral-400 font-medium">porciones</p>
+                      </div>
+                      <ChevronRight size={12} className="text-neutral-300" strokeWidth={2} />
                     </div>
                   </div>
                   <div className="h-1 bg-neutral-100 rounded-full overflow-hidden">
                     <div className="h-full rounded-full transition-all" style={{ width: `${barPct}%`, backgroundColor: color }} />
                   </div>
-                </div>
+                </button>
               );
             })}
           </div>
@@ -1195,6 +1332,11 @@ export const MetricasTab = () => {
         area={selectedArea}
         isOpen={selectedArea !== null}
         onClose={() => setSelectedArea(null)}
+      />
+      <PlatoDrillSheet
+        plato={selectedPlato}
+        isOpen={selectedPlato !== null}
+        onClose={() => setSelectedPlato(null)}
       />
     </motion.div>
   );
