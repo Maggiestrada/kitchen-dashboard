@@ -260,7 +260,6 @@ const INITIAL_RECETAS: Receta[] = [
     procedimiento: 'Marinar el pollo con especias. Precalentar horno a 200°C. Colocar el pollo junto con los vegetales cortados. Cocinar 45 minutos hasta dorar.',
     imagenUrl: undefined,
     precioVenta: 3200,
-    emiteFactura: false,
     createdAt: '2025-11-01T10:00:00Z',
   },
   {
@@ -280,7 +279,6 @@ const INITIAL_RECETAS: Receta[] = [
     procedimiento: 'Hacer la masa con harina y huevos, descansar 30 min. Estirar y cortar en fettuccine. Cocinar la salsa de tomate 20 min. Terminar con rúcula fresca.',
     imagenUrl: undefined,
     precioVenta: 2800,
-    emiteFactura: false,
     createdAt: '2025-11-01T10:00:00Z',
   },
   {
@@ -300,7 +298,6 @@ const INITIAL_RECETAS: Receta[] = [
     procedimiento: 'Batir yemas con azúcar hasta blanquear. Agregar harina y crema. Calentar revolviendo hasta espesar. Incorporar manteca fría fuera del fuego.',
     imagenUrl: undefined,
     precioVenta: 1500,
-    emiteFactura: false,
     createdAt: '2025-11-01T10:00:00Z',
   },
 ];
@@ -1363,6 +1360,7 @@ const RecetaDetailView = ({
   onToggleCosts,
   insumos,
   subRecetas,
+  recetas = [],
   canViewCosts = true,
 }: {
   receta: Receta | null;
@@ -1373,6 +1371,7 @@ const RecetaDetailView = ({
   onToggleCosts: () => void;
   insumos: Insumo[];
   subRecetas: SubReceta[];
+  recetas?: Receta[];
   canViewCosts?: boolean;
 }) => {
   const [multiplicador, setMultiplicador] = useState(1);
@@ -2773,6 +2772,7 @@ export const RecetasTab: React.FC<{ canViewCosts?: boolean; customInsumos?: Insu
         onToggleCosts={() => setShowCosts(v => !v)}
         insumos={insumos}
         subRecetas={subRecetas}
+        recetas={recetas}
         canViewCosts={canViewCosts}
       />
 
