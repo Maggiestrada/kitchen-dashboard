@@ -1036,6 +1036,7 @@ const AlertasTab = ({
 }) => {
   const allAlerts = orders.flatMap(o => (o.alerts ?? []).map(a => ({
     ...a,
+    orderId: o.id,
     orderProvider: o.provider,
     orderPhone: o.providerPhone ?? '',
   })));
