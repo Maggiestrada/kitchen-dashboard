@@ -243,7 +243,67 @@ const CATEGORIA_COLORS: Record<string, string> = {
 
 const INITIAL_SUBRECETAS: SubReceta[] = [];
 
-const INITIAL_RECETAS: Receta[] = [];
+const INITIAL_RECETAS: Receta[] = [
+  {
+    id: 'rec-pollo-asado',
+    nombre: 'Pollo asado con vegetales',
+    categoria: 'Principales',
+    porciones: 4,
+    rindeGramos: 600,
+    ingredientes: [
+      { id: 'ri-1', tipo: 'insumo', referenciaId: 'ci-pollo', nombre: 'Pollo entero', grams: 800, wastePercent: 15, wasteGrams: 120, unit: 'gr' },
+      { id: 'ri-2', tipo: 'insumo', referenciaId: 'ci-tomate', nombre: 'Tomate perita', grams: 200, wastePercent: 5, wasteGrams: 10, unit: 'gr' },
+      { id: 'ri-3', tipo: 'insumo', referenciaId: 'ci-cebolla', nombre: 'Cebolla morada', grams: 150, wastePercent: 10, wasteGrams: 15, unit: 'gr' },
+      { id: 'ri-4', tipo: 'insumo', referenciaId: 'ci-aceite', nombre: 'Aceite de girasol', grams: 30, wastePercent: 0, wasteGrams: 0, unit: 'ml' },
+    ],
+    ingredientesExtra: [],
+    procedimiento: 'Marinar el pollo con especias. Precalentar horno a 200°C. Colocar el pollo junto con los vegetales cortados. Cocinar 45 minutos hasta dorar.',
+    imagenUrl: undefined,
+    precioVenta: 3200,
+    emiteFactura: false,
+    createdAt: '2025-11-01T10:00:00Z',
+  },
+  {
+    id: 'rec-pasta-tomate',
+    nombre: 'Pasta con tomate y rúcula',
+    categoria: 'Pastas',
+    porciones: 4,
+    rindeGramos: 800,
+    ingredientes: [
+      { id: 'ri-5', tipo: 'insumo', referenciaId: 'ci-harina', nombre: 'Harina 000', grams: 300, wastePercent: 5, wasteGrams: 15, unit: 'gr' },
+      { id: 'ri-6', tipo: 'insumo', referenciaId: 'ci-huevos', nombre: 'Huevos', grams: 150, wastePercent: 0, wasteGrams: 0, unit: 'u' },
+      { id: 'ri-7', tipo: 'insumo', referenciaId: 'ci-tomate', nombre: 'Tomate perita', grams: 400, wastePercent: 8, wasteGrams: 32, unit: 'gr' },
+      { id: 'ri-8', tipo: 'insumo', referenciaId: 'ci-rucula', nombre: 'Rúcula', grams: 80, wastePercent: 5, wasteGrams: 4, unit: 'gr' },
+      { id: 'ri-9', tipo: 'insumo', referenciaId: 'ci-aceite', nombre: 'Aceite de girasol', grams: 20, wastePercent: 0, wasteGrams: 0, unit: 'ml' },
+    ],
+    ingredientesExtra: [],
+    procedimiento: 'Hacer la masa con harina y huevos, descansar 30 min. Estirar y cortar en fettuccine. Cocinar la salsa de tomate 20 min. Terminar con rúcula fresca.',
+    imagenUrl: undefined,
+    precioVenta: 2800,
+    emiteFactura: false,
+    createdAt: '2025-11-01T10:00:00Z',
+  },
+  {
+    id: 'rec-crema-pastelera',
+    nombre: 'Crema pastelera',
+    categoria: 'Postres',
+    porciones: 8,
+    rindeGramos: 700,
+    ingredientes: [
+      { id: 'ri-10', tipo: 'insumo', referenciaId: 'ci-huevos', nombre: 'Huevos', grams: 180, wastePercent: 0, wasteGrams: 0, unit: 'u' },
+      { id: 'ri-11', tipo: 'insumo', referenciaId: 'ci-azucar', nombre: 'Azúcar', grams: 150, wastePercent: 0, wasteGrams: 0, unit: 'gr' },
+      { id: 'ri-12', tipo: 'insumo', referenciaId: 'ci-manteca', nombre: 'Manteca', grams: 50, wastePercent: 0, wasteGrams: 0, unit: 'gr' },
+      { id: 'ri-13', tipo: 'insumo', referenciaId: 'ci-crema', nombre: 'Crema de leche', grams: 300, wastePercent: 0, wasteGrams: 0, unit: 'ml' },
+      { id: 'ri-14', tipo: 'insumo', referenciaId: 'ci-harina', nombre: 'Harina 000', grams: 50, wastePercent: 0, wasteGrams: 0, unit: 'gr' },
+    ],
+    ingredientesExtra: [],
+    procedimiento: 'Batir yemas con azúcar hasta blanquear. Agregar harina y crema. Calentar revolviendo hasta espesar. Incorporar manteca fría fuera del fuego.',
+    imagenUrl: undefined,
+    precioVenta: 1500,
+    emiteFactura: false,
+    createdAt: '2025-11-01T10:00:00Z',
+  },
+];
 
 // ─── IngredientePicker ────────────────────────────────────────────────────────
 

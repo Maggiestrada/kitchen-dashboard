@@ -1255,6 +1255,8 @@ export const InsumaKitchenDashboard = ({ authUserEmail, onSignOut }: { authUserE
   const [recepcionOrderId, setRecepcionOrderId] = useState<string | undefined>(undefined);
   const [todayOrders, setTodayOrders] = useState<Order[]>(() => {
     try {
+      const v = localStorage.getItem('insuma_data_v');
+      if (v !== '2') { localStorage.removeItem('insuma_pedidos'); localStorage.removeItem('insuma_insumos'); localStorage.removeItem('insuma_recetas'); localStorage.setItem('insuma_data_v', '2'); }
       const saved = localStorage.getItem('insuma_pedidos');
       if (saved) return JSON.parse(saved) as Order[];
     } catch { /* ignore */ }

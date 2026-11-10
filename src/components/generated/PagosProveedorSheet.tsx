@@ -913,6 +913,9 @@ const AiInvoiceDetailSheet = ({
                             <CheckCircle2 size={10} className="text-violet-500" strokeWidth={2.5} />
                             <p className="text-[10px] text-violet-500 font-medium">Escaneado el {activeScan?.scannedAt ?? 'recientemente'}</p>
                           </div>
+                          <div className="flex items-center gap-1 mt-1">
+                            <span className="text-[9px] font-semibold text-amber-600 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">⚡ Scan simulado — backend: POST /scan-invoice</span>
+                          </div>
                         </motion.div>}
                       </motion.div>}
                       </AnimatePresence>

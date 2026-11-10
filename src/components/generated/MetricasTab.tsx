@@ -858,6 +858,7 @@ export const MetricasTab = () => {
           <h2 className="text-xl font-black text-black leading-tight">Métricas</h2>
           <p className="text-[11px] text-neutral-400 font-medium mt-0.5">Gastos por categoría</p>
         </div>
+        <span className="text-[10px] font-semibold text-amber-600 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">Datos de muestra</span>
       </div>
 
       {/* Month selector */}
