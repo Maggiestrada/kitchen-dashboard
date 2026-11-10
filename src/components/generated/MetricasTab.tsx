@@ -1038,8 +1038,8 @@ const PlatoDrillSheet = ({
   onClose: () => void;
 }) => {
   if (!plato) return null;
-  const color = ({ Principales: '#EF4444', Pastas: '#8B5CF6', Postres: '#F59E0B', Entradas: '#22C55E' } as Record<string, string>)[plato.categoria] ?? '#9CA3AF';
-  const colorLight = ({ Principales: '#FEF2F2', Pastas: '#F5F3FF', Postres: '#FFFBEB', Entradas: '#F0FDF4' } as Record<string, string>)[plato.categoria] ?? '#F3F4F6';
+  const color = '#38BDF8';
+  const colorLight = '#F0F9FF';
 
   const chartData = MONTHS_DATA.map(m => {
     const found = m.platos?.find(p => p.name === plato.name);
@@ -1207,7 +1207,7 @@ export const MetricasTab = () => {
   const maxPorciones = sortedPlatos[0]?.porciones ?? 1;
 
   const CATEGORIA_COLORS: Record<string, string> = {
-    Principales: '#EF4444', Pastas: '#8B5CF6', Postres: '#F59E0B', Entradas: '#22C55E',
+    Principales: '#38BDF8', Pastas: '#38BDF8', Postres: '#38BDF8', Entradas: '#38BDF8',
   };
 
   return (
