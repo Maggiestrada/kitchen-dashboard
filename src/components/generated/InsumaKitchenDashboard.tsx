@@ -131,11 +131,86 @@ const MOCK_ORDERS: Order[] = [
     category: 'Bebidas', status: 'discrepancy', time: '10:00', items: 2, total: 32000,
     paymentStatus: 'pending', weekLabel: 'Esta semana', paymentHistory: [],
     alerts: [
-      { id: 'alt-1', type: 'missing_item', itemName: 'Vino Malbec 750ml', orderedQty: 12, receivedQty: 8, unit: 'botellas', resolved: false }
+      { id: 'alt-1', orderId: 'demo-4', provider: 'Zuccardi', itemName: 'Vino Malbec 750ml', message: 'Faltan 4 botellas — pidieron 12, llegaron 8', resolved: false, timestamp: '10:05' }
     ],
     orderItems: [
       { id: 'oi-4a', name: 'Vino Malbec 750ml', requestedQty: 12, receivedQty: 8, unit: 'botellas', status: 'discrepancy', alertMsg: 'Faltan 4 botellas', precioUnit: 2800 },
       { id: 'oi-4b', name: 'Vino Cabernet 750ml', requestedQty: 6, receivedQty: 6, unit: 'botellas', status: 'ok', alertMsg: '', precioUnit: 2600 },
+    ],
+  },
+  // ─── Órdenes pagas históricas (Archivo / Pagos) ────────────────────────────
+  {
+    id: 'paid-1', provider: 'Fura', providerPhone: '+5491156937934',
+    category: 'Carnes', status: 'paid_cash', time: '08:00', items: 3, total: 42500,
+    paymentStatus: 'confirmed', weekLabel: 'Octubre', paymentHistory: [
+      { id: 'ph-1a', type: 'received', label: 'Recibido', timestamp: '2025-10-28T08:30:00Z' },
+      { id: 'ph-1b', type: 'confirmed_cash', label: 'Pagado en efectivo', timestamp: '2025-10-28T09:00:00Z' },
+    ],
+    deliveryDate: '2025-10-28',
+    orderItems: [
+      { id: 'oi-p1a', name: 'Asado', requestedQty: 5, receivedQty: 5, unit: 'kg', status: 'ok', alertMsg: '', precioUnit: 8200 },
+      { id: 'oi-p1b', name: 'Vacío', requestedQty: 2, receivedQty: 2, unit: 'kg', status: 'ok', alertMsg: '', precioUnit: 10200 },
+      { id: 'oi-p1c', name: 'Pollo entero', requestedQty: 4, receivedQty: 4, unit: 'kg', status: 'ok', alertMsg: '', precioUnit: 5800 },
+    ],
+  },
+  {
+    id: 'paid-2', provider: 'Soleil', providerPhone: '+5491128324242',
+    category: 'Almacén', status: 'received', time: '07:30', items: 4, total: 28600,
+    paymentStatus: 'paid_digital', weekLabel: 'Octubre', paymentHistory: [
+      { id: 'ph-2a', type: 'received', label: 'Recibido', timestamp: '2025-10-22T07:45:00Z' },
+      { id: 'ph-2b', type: 'paid_digital', label: 'Transferencia enviada', timestamp: '2025-10-23T11:00:00Z' },
+      { id: 'ph-2c', type: 'comprobante_sent', label: 'Comprobante enviado por WhatsApp', timestamp: '2025-10-23T11:05:00Z' },
+    ],
+    deliveryDate: '2025-10-22',
+    orderItems: [
+      { id: 'oi-p2a', name: 'Harina 000', requestedQty: 15, receivedQty: 15, unit: 'kg', status: 'ok', alertMsg: '', precioUnit: 980 },
+      { id: 'oi-p2b', name: 'Aceite de girasol', requestedQty: 8, receivedQty: 8, unit: 'lt', status: 'ok', alertMsg: '', precioUnit: 1200 },
+      { id: 'oi-p2c', name: 'Azúcar', requestedQty: 6, receivedQty: 6, unit: 'kg', status: 'ok', alertMsg: '', precioUnit: 850 },
+      { id: 'oi-p2d', name: 'Sal gruesa', requestedQty: 4, receivedQty: 4, unit: 'kg', status: 'ok', alertMsg: '', precioUnit: 420 },
+    ],
+  },
+  {
+    id: 'paid-3', provider: 'Zuccardi', providerPhone: '+5491165310391',
+    category: 'Bebidas', status: 'paid_cash', time: '11:00', items: 3, total: 68400,
+    paymentStatus: 'confirmed', weekLabel: 'Octubre', paymentHistory: [
+      { id: 'ph-3a', type: 'received', label: 'Recibido', timestamp: '2025-10-15T11:00:00Z' },
+      { id: 'ph-3b', type: 'confirmed_cash', label: 'Pagado en efectivo', timestamp: '2025-10-16T10:00:00Z' },
+    ],
+    deliveryDate: '2025-10-15',
+    orderItems: [
+      { id: 'oi-p3a', name: 'Vino Malbec 750ml', requestedQty: 12, receivedQty: 12, unit: 'botellas', status: 'ok', alertMsg: '', precioUnit: 2800 },
+      { id: 'oi-p3b', name: 'Vino Cabernet 750ml', requestedQty: 6, receivedQty: 6, unit: 'botellas', status: 'ok', alertMsg: '', precioUnit: 2600 },
+      { id: 'oi-p3c', name: 'Espumante Brut', requestedQty: 4, receivedQty: 4, unit: 'botellas', status: 'ok', alertMsg: '', precioUnit: 3800 },
+    ],
+  },
+  {
+    id: 'paid-4', provider: '4 estaciones', providerPhone: '+5491150496176',
+    category: 'Verduras', status: 'received', time: '08:00', items: 5, total: 19800,
+    paymentStatus: 'paid_digital', weekLabel: 'Noviembre', paymentHistory: [
+      { id: 'ph-4a', type: 'received', label: 'Recibido', timestamp: '2025-11-03T08:00:00Z' },
+      { id: 'ph-4b', type: 'paid_digital', label: 'Transferencia enviada', timestamp: '2025-11-04T14:30:00Z' },
+    ],
+    deliveryDate: '2025-11-03',
+    orderItems: [
+      { id: 'oi-p4a', name: 'Tomate perita', requestedQty: 8, receivedQty: 8, unit: 'kg', status: 'ok', alertMsg: '', precioUnit: 1800 },
+      { id: 'oi-p4b', name: 'Rúcula', requestedQty: 3, receivedQty: 3, unit: 'kg', status: 'ok', alertMsg: '', precioUnit: 3200 },
+      { id: 'oi-p4c', name: 'Cebolla morada', requestedQty: 4, receivedQty: 4, unit: 'kg', status: 'ok', alertMsg: '', precioUnit: 1600 },
+      { id: 'oi-p4d', name: 'Zucchini', requestedQty: 3, receivedQty: 3, unit: 'kg', status: 'ok', alertMsg: '', precioUnit: 2400 },
+      { id: 'oi-p4e', name: 'Zapallito', requestedQty: 2, receivedQty: 2, unit: 'kg', status: 'ok', alertMsg: '', precioUnit: 1900 },
+    ],
+  },
+  {
+    id: 'paid-5', provider: 'Fura', providerPhone: '+5491156937934',
+    category: 'Carnes', status: 'paid_cash', time: '08:30', items: 2, total: 55000,
+    paymentStatus: 'confirmed', weekLabel: 'Noviembre', paymentHistory: [
+      { id: 'ph-5a', type: 'received', label: 'Recibido', timestamp: '2025-11-06T08:30:00Z' },
+      { id: 'ph-5b', type: 'alerted', label: 'Discrepancia registrada', timestamp: '2025-11-06T08:35:00Z' },
+      { id: 'ph-5c', type: 'confirmed_cash', label: 'Pagado en efectivo', timestamp: '2025-11-07T09:00:00Z' },
+    ],
+    deliveryDate: '2025-11-06',
+    orderItems: [
+      { id: 'oi-p5a', name: 'Lomo', requestedQty: 2, receivedQty: 2, unit: 'kg', status: 'ok', alertMsg: '', precioUnit: 18500 },
+      { id: 'oi-p5b', name: 'Asado', requestedQty: 4, receivedQty: 4, unit: 'kg', status: 'ok', alertMsg: '', precioUnit: 8200 },
     ],
   },
 ];
@@ -389,6 +464,19 @@ const WaIcon = ({
 
 // ─── OrderCard ────────────────────────────────────────────────────────────────
 
+const todayStr = (() => { const d = new Date(); return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`; })();
+const isSameDayDelivery = (deliveryDate?: string) => {
+  if (!deliveryDate) return false;
+  const s = deliveryDate.trim().toLowerCase();
+  if (s === 'hoy' || s === 'today') return true;
+  // DD/MM/YYYY or DD/MM
+  const parts = s.split('/');
+  if (parts.length >= 2) { const d = new Date(); return parseInt(parts[0]) === d.getDate() && parseInt(parts[1]) === d.getMonth()+1; }
+  // ISO YYYY-MM-DD
+  if (s.length >= 10 && s[4] === '-') { const d2 = new Date(s); if (!isNaN(d2.getTime())) { const n = new Date(); return d2.getDate() === n.getDate() && d2.getMonth() === n.getMonth() && d2.getFullYear() === n.getFullYear(); } }
+  return false;
+};
+
 const OrderCard = ({
   order,
   onAlertClick,
@@ -402,7 +490,9 @@ const OrderCard = ({
 }) => {
   const cfg = STATUS_CONFIG[order.status];
   const alertCount = order.alerts?.filter(a => !a.resolved).length ?? 0;
+  const sameDayWarn = isSameDayDelivery(order.deliveryDate) && (order.status === 'waiting' || order.status === 'on_way');
   return <motion.article initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-xl border border-neutral-100 overflow-hidden active:scale-[0.99] transition-transform cursor-pointer" onClick={() => onDetailClick?.(order)}>
+      {sameDayWarn && <div className="bg-amber-50 border-b border-amber-200 px-3 py-1.5 flex items-center gap-1.5"><span className="text-[10px] font-bold text-amber-700">🚨 Entrega programada para hoy — confirmá con el proveedor</span></div>}
       <div className="flex">
         <div className="w-1 shrink-0 rounded-l-xl" style={{ backgroundColor: cfg.dot }} />
         <div className="flex-1 px-3 py-2.5">
@@ -1885,34 +1975,37 @@ export const InsumaKitchenDashboard = ({ authUserEmail, onSignOut }: { authUserE
                 <div className="w-12 h-12 rounded-2xl bg-green-50 border border-green-100 flex items-center justify-center"><CheckCircle2 size={22} className="text-green-400" strokeWidth={1.5} /></div>
                 <p className="text-sm font-normal text-neutral-400">Todo recepcionado</p>
                 <p className="text-xs text-neutral-300">No hay pedidos pendientes de recepción</p>
-              </div> : <div className="space-y-1.5">
-                <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest mt-1">Por recepcionar</p>
-                {pendingReceptionOrders.map(order => {
-            const cfg = STATUS_CONFIG[order.status];
-            return <button key={order.id} onClick={() => {
-              setRecepcionOrderId(order.id);
-              setShowRecepcion(true);
-            }} className="w-full text-left bg-white border border-neutral-100 rounded-xl overflow-hidden active:scale-[0.985] transition-transform">
-                      <div className="flex">
-                        <div className="w-1 shrink-0 rounded-l-xl" style={{
-                  backgroundColor: cfg.dot
-                }} />
-                        <div className="flex-1 px-3 py-2.5 flex items-center justify-between gap-2">
-                          <div className="flex-1 min-w-0">
-                            <p className="font-normal text-sm text-neutral-900 leading-tight truncate">{order.provider}</p>
-                            <p className="text-neutral-400 text-[11px] font-normal">{order.category} · {order.items} items</p>
-                          </div>
-                          <div className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-normal uppercase tracking-wide shrink-0" style={{
-                    backgroundColor: cfg.bg,
-                    color: cfg.text
-                  }}>
-                            <span>{cfg.label}</span>
-                          </div>
+              </div> : (() => {
+                const hoy = pendingReceptionOrders.filter(o => !o.deliveryDate || isSameDayDelivery(o.deliveryDate));
+                const programados = pendingReceptionOrders.filter(o => o.deliveryDate && !isSameDayDelivery(o.deliveryDate));
+                const ReceptionRow = ({ order }: { order: Order }) => {
+                  const cfg = STATUS_CONFIG[order.status];
+                  return <button key={order.id} onClick={() => { setRecepcionOrderId(order.id); setShowRecepcion(true); }} className="w-full text-left bg-white border border-neutral-100 rounded-xl overflow-hidden active:scale-[0.985] transition-transform">
+                    <div className="flex">
+                      <div className="w-1 shrink-0 rounded-l-xl" style={{ backgroundColor: cfg.dot }} />
+                      <div className="flex-1 px-3 py-2.5 flex items-center justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-normal text-sm text-neutral-900 leading-tight truncate">{order.provider}</p>
+                          <p className="text-neutral-400 text-[11px] font-normal">{order.category} · {order.items} items{order.deliveryDate ? ` · 🚚 ${order.deliveryDate}` : ''}</p>
+                        </div>
+                        <div className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-normal uppercase tracking-wide shrink-0" style={{ backgroundColor: cfg.bg, color: cfg.text }}>
+                          <span>{cfg.label}</span>
                         </div>
                       </div>
-                    </button>;
-          })}
-              </div>}
+                    </div>
+                  </button>;
+                };
+                return <div className="space-y-3">
+                  {hoy.length > 0 && <div className="space-y-1.5">
+                    <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">Para hoy</p>
+                    {hoy.map(o => <ReceptionRow key={o.id} order={o} />)}
+                  </div>}
+                  {programados.length > 0 && <div className="space-y-1.5">
+                    <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">Programados</p>
+                    {programados.map(o => <ReceptionRow key={o.id} order={o} />)}
+                  </div>}
+                </div>;
+              })()}
           </motion.div>}
 
         {activeTab === 'alertas' && <AlertasTab orders={todayOrders} onResolve={handleResolveAlert} />}
